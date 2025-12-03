@@ -1,0 +1,16 @@
+{
+  "name": "astro-zoom-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Workspace for astro-zoom component development",
+  "type": "module",
+  "workspaces": [
+    "demo",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=demo",
+    "build": "npm run build --workspace=demo",
+    "preview": "npm run preview --workspace=demo"
+  }
+}
