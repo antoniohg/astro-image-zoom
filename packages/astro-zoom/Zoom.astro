@@ -1,0 +1,247 @@
+---
+/**
+ * Zoom Component for Astro
+ * Medium-style zoom overlay with accessibility and performance features
+ */
+
+export interface Props {
+  /**
+   * Theme configuration
+   */
+  theme?: {
+    backgroundColor?: string;
+    closeButtonColor?: string;
+    navigationColor?: string;
+  };
+
+  /**
+   * Animation duration in milliseconds
+   */
+  animationDuration?: number;
+
+  /**
+   * Enable keyboard navigation
+   */
+  keyboardNavigation?: boolean;
+
+  /**
+   * Close on backdrop click
+   */
+  closeOnBackdrop?: boolean;
+
+  /**
+   * Close on image click
+   */
+  closeOnImage?: boolean;
+
+  /**
+   * Close on scroll/wheel
+   */
+  closeOnScroll?: boolean;
+
+  /**
+   * Show navigation arrows for galleries
+   */
+  showNavigation?: boolean;
+
+  /**
+   * Custom CSS class for the zoom container
+  */
+  class?: string;
+
+  /**
+   * Unique ID for this zoom instance
+  */
+  id?: string;
+}
+
+const {
+  theme = {},
+  animationDuration = 300,
+  keyboardNavigation = true,
+  closeOnBackdrop = true,
+  closeOnImage = true,
+  closeOnScroll = true,
+  showNavigation = true,
+  class: className = "",
+  id = "astro-zoom",
+} = Astro.props;
+
+// Store theme config as data attributes to be read by JS
+const themeConfig = JSON.stringify(theme);
+const wrapperClasses = ["astro-zoom-wrapper", className].filter(Boolean).join(" ");
+
+// Process slot content to wrap images in accessible links
+let slotContent = await Astro.slots.render('default');
+
+// Auto-wrap <img> tags that aren't already inside <a> tags
+// This provides proper semantics and accessibility
+slotContent = slotContent.replace(
+  /<img\s+([^>]*?)>/gi,
+  (imgTag, attributes) => {
+    // Extract the portion of HTML before this image
+    const indexOfImg = slotContent.indexOf(imgTag);
+    const beforeImg = slotContent.substring(0, indexOfImg);
+
+    // Check if there's an unclosed <a> tag before this image
+    const lastOpenA = beforeImg.lastIndexOf('<a');
+    const lastCloseA = beforeImg.lastIndexOf('</a>');
+
+    // If already inside a link, don't wrap
+    if (lastOpenA > lastCloseA && lastOpenA !== -1) {
+      return imgTag;
+    }
+
+    // Extract attributes for the link
+    const srcMatch = attributes.match(/src=["']([^"']+)["']/i);
+    const zoomSrcMatch = attributes.match(/data-zoom-src=["']([^"']+)["']/i);
+    const captionMatch = attributes.match(/data-zoom-caption=["']([^"']+)["']/i);
+    const altMatch = attributes.match(/alt=["']([^"']*?)["']/i);
+
+    if (!srcMatch) return imgTag;
+
+    const href = zoomSrcMatch ? zoomSrcMatch[1] : srcMatch[1];
+    const caption = captionMatch ? ` data-zoom-caption="${captionMatch[1]}"` : '';
+    const altText = altMatch ? altMatch[1] : 'imagen';
+
+    // Create accessible link with ARIA attributes
+    const ariaLabel = `Ver ${altText} en modo zoom`;
+    const title = `Click para ampliar: ${altText}`;
+
+    // Wrap in an accessible link with proper ARIA attributes
+    return `<a href="${href}" data-zoom-generated${caption} aria-label="${ariaLabel}" title="${title}">${imgTag}</a>`;
+  }
+);
+---
+
+<astro-zoom
+  class={wrapperClasses}
+  data-zoom-id={id}
+  data-keyboard={keyboardNavigation ? "true" : "false"}
+  data-close-backdrop={closeOnBackdrop ? "true" : "false"}
+  data-close-image={closeOnImage ? "true" : "false"}
+  data-close-scroll={closeOnScroll ? "true" : "false"}
+  data-show-nav={showNavigation ? "true" : "false"}
+  data-theme-config={themeConfig}
+  data-animation-duration={animationDuration}
+>
+  <Fragment set:html={slotContent} />
+</astro-zoom>
+
+<!-- Global Zoom Overlay (shared across all zoom instances) -->
+<div
+  id="astro-zoom-global-overlay"
+  class="astro-zoom-overlay"
+  role="dialog"
+  aria-modal="true"
+  aria-hidden="true"
+  aria-label="Image zoom overlay"
+  style="display: none;"
+>
+  <div class="astro-zoom-backdrop" aria-hidden="true"></div>
+  <div class="astro-zoom-content" role="document">
+    <button
+      class="astro-zoom-close"
+      aria-label="Close zoom overlay"
+      type="button"
+    >
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M18 6L6 18M6 6L18 18"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"></path>
+      </svg>
+    </button>
+    <button
+      class="astro-zoom-nav astro-zoom-prev"
+      aria-label="Previous image"
+      type="button"
+    >
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M15 18L9 12L15 6"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"></path>
+      </svg>
+    </button>
+    <button
+      class="astro-zoom-nav astro-zoom-next"
+      aria-label="Next image"
+      type="button"
+    >
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M9 18L15 12L9 6"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"></path>
+      </svg>
+    </button>
+    <figure class="astro-zoom-figure">
+      <div class="astro-zoom-image-container">
+        <img class="astro-zoom-image" src="" alt="" loading="eager" />
+      </div>
+      <figcaption class="astro-zoom-caption" aria-live="polite">
+      </figcaption>
+    </figure>
+  </div>
+</div>
+
+<script>
+  import { Zoom } from "./zoom";
+
+  // Move overlay to end of body for proper z-index stacking
+  const overlay = document.getElementById("astro-zoom-global-overlay");
+  if (overlay && overlay.parentElement !== document.body) {
+    document.body.appendChild(overlay);
+  }
+
+  // Define custom element for astro-zoom
+  class AstroZoomElement extends HTMLElement {
+    private zoom: Zoom | null = null;
+
+    connectedCallback() {
+      // Initialize zoom for this instance
+      this.zoom = new Zoom(this);
+    }
+
+    disconnectedCallback() {
+      // Cleanup when element is removed
+      if (this.zoom) {
+        this.zoom.destroy();
+        this.zoom = null;
+      }
+    }
+  }
+
+  // Register custom element (only runs once even with multiple instances)
+  if (!customElements.get("astro-zoom")) {
+    customElements.define("astro-zoom", AstroZoomElement);
+  }
+</script>
+
+<style>
+  @import "./zoom.css";
+</style>

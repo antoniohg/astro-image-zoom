@@ -1,0 +1,36 @@
+{
+  "name": "astro-zoom",
+  "version": "0.1.0",
+  "description": "A Medium-style Zoom component for Astro - accessible, performant, and easy to use",
+  "type": "module",
+  "author": "Antonio <email@antoniohg.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/antoniohg/astro-zoom"
+  },
+  "keywords": [
+    "astro-component",
+    "withastro",
+    "zoom",
+    "image-zoom",
+    "image-gallery",
+    "a11y",
+    "performance"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./Zoom.astro": "./Zoom.astro",
+    "./zoom.css": "./zoom.css"
+  },
+  "files": [
+    "index.js",
+    "Zoom.astro",
+    "zoom.ts",
+    "zoom.css",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "astro": "^4.0.0 || ^5.0.0"
+  }
+}
