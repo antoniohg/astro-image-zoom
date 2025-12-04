@@ -51,6 +51,7 @@ class Zoom {
   private focusableElements: HTMLElement[] = [];
   private isClosing = false;
   private closedByScroll = false;
+  private navigationId = 0;
 
   constructor(wrapper: HTMLElement) {
     this.wrapper = wrapper;
@@ -179,11 +180,21 @@ class Zoom {
     // Reset styles
     this.imageElement.style.transform = '';
 
-    // Wait for image to load if needed
-    if (!this.imageElement.complete || this.imageElement.naturalWidth === 0) {
+    // Check if image is already loaded (cached)
+    if (this.imageElement.complete && this.imageElement.naturalWidth > 0) {
+      // Image is ready, show immediately
+      this.imageElement.style.opacity = '1';
+    } else {
+      // Image needs loading, show spinner
+      this.imageElement.parentElement?.classList.add('is-loading');
+
       await new Promise<void>((resolve) => {
         this.imageElement.onload = () => resolve();
       });
+
+      // Remove loading state and show image
+      this.imageElement.parentElement?.classList.remove('is-loading');
+      this.imageElement.style.opacity = '1';
     }
 
     // FLIP Animation
@@ -294,30 +305,106 @@ class Zoom {
     }
   }
 
-  private navigateTo(index: number): void {
+  private async navigateTo(index: number): Promise<void> {
+    const currentId = ++this.navigationId;
     this.state.currentIndex = index;
 
-    // Fade out and show loading state
+    // Fade out current image
     this.imageElement.style.opacity = '0';
-    this.imageElement.classList.add('is-loading');
 
-    setTimeout(async () => {
-      this.updateContent(index);
-      this.updateNavigationButtons();
+    // Wait for fade out to complete
+    await this.waitForTransition(this.imageElement);
 
-      // Wait for new image to load
-      if (!this.imageElement.complete || this.imageElement.naturalWidth === 0) {
-        await new Promise<void>((resolve) => {
-          this.imageElement.onload = () => resolve();
-          // Fallback timeout in case image fails to load
-          setTimeout(() => resolve(), 3000);
-        });
+    // Check if navigation was superseded
+    if (currentId !== this.navigationId) return;
+
+    this.updateContent(index);
+    this.updateNavigationButtons();
+
+    const img = this.imageElement;
+
+    // Create a promise that resolves when image loads
+    const imageLoadPromise = new Promise<void>((resolve) => {
+      if (img.complete && img.naturalWidth > 0) {
+        resolve();
+      } else {
+        img.onload = () => resolve();
+        img.onerror = () => resolve(); // Handle error gracefully
+      }
+    });
+
+    // Race between image load and a small delay for the spinner
+    // If image loads within 50ms, we don't show spinner at all
+    let showSpinner = true;
+
+    const spinnerDelayPromise = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        // Only show spinner if this is still the active navigation
+        if (showSpinner && currentId === this.navigationId) {
+          img.parentElement?.classList.add('is-loading');
+        }
+        resolve();
+      }, 200);
+    });
+
+    // Wait for image to load
+    await Promise.race([
+      imageLoadPromise.then(() => {
+        showSpinner = false; // Image loaded fast, cancel spinner
+      }),
+      spinnerDelayPromise // Wait for spinner delay if needed
+    ]);
+
+    // Check if navigation was superseded
+    if (currentId !== this.navigationId) return;
+
+    // If spinner was shown, we need to wait for image load to finish if it hasn't already
+    if (showSpinner) {
+      await imageLoadPromise;
+      if (currentId === this.navigationId) {
+        img.parentElement?.classList.remove('is-loading');
+      }
+    }
+
+    // Show image
+    if (currentId === this.navigationId) {
+      img.style.opacity = '1';
+    }
+  }
+
+  private waitForTransition(element: HTMLElement): Promise<void> {
+    return new Promise((resolve) => {
+      const duration = parseFloat(getComputedStyle(element).transitionDuration) * 1000;
+
+      // If no transition or very short, resolve immediately
+      if (!duration || duration < 10) {
+        resolve();
+        return;
       }
 
-      // Remove loading state and fade in
-      this.imageElement.classList.remove('is-loading');
-      this.imageElement.style.opacity = '1';
-    }, 150);
+      let resolved = false;
+
+      const onTransitionEnd = (e: TransitionEvent) => {
+        if (e.target === element && e.propertyName === 'opacity') {
+          if (!resolved) {
+            resolved = true;
+            element.removeEventListener('transitionend', onTransitionEnd);
+            resolve();
+          }
+        }
+      };
+
+      element.addEventListener('transitionend', onTransitionEnd);
+
+      // Safety fallback: resolve after duration + buffer if event doesn't fire
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          element.removeEventListener('transitionend', onTransitionEnd);
+          resolve();
+        }
+      }, duration + 50);
+    });
   }
 
   private updateNavigationButtons(): void {
@@ -482,8 +569,8 @@ class Zoom {
 
     const themeMap: Record<string, string[]> = {
       backgroundColor: ['--zoom-bg'],
-      closeButtonColor: ['--zoom-close-color', '--zoom-close-bg', '--zoom-close-bg-hover'],
-      navigationColor: ['--zoom-nav-color', '--zoom-nav-bg', '--zoom-nav-bg-hover']
+      closeButtonColor: ['--zoom-close-color'],
+      navigationColor: ['--zoom-nav-color']
     };
 
     Object.entries(themeMap).forEach(([key, vars]) => {
