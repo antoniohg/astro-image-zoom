@@ -318,20 +318,30 @@ class Zoom {
     // Check if navigation was superseded
     if (currentId !== this.navigationId) return;
 
-    this.updateContent(index);
-    this.updateNavigationButtons();
-
     const img = this.imageElement;
+    let resolveImageLoad: () => void;
 
     // Create a promise that resolves when image loads
+    // We create this BEFORE setting src to ensure we don't miss events
     const imageLoadPromise = new Promise<void>((resolve) => {
-      if (img.complete && img.naturalWidth > 0) {
-        resolve();
-      } else {
-        img.onload = () => resolve();
-        img.onerror = () => resolve(); // Handle error gracefully
-      }
+      resolveImageLoad = resolve;
     });
+
+    // Setup handlers
+    const handleLoad = () => {
+      if (resolveImageLoad) resolveImageLoad();
+    };
+
+    img.onload = handleLoad;
+    img.onerror = handleLoad;
+
+    // Now set the src
+    this.updateContent(index);
+
+    // Check if already complete (e.g. cached)
+    if (img.complete && img.naturalWidth > 0) {
+      handleLoad();
+    }
 
     // Race between image load and a small delay for the spinner
     // If image loads within 50ms, we don't show spinner at all
