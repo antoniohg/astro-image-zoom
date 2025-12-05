@@ -205,6 +205,8 @@ class Zoom {
     this.imageElement.style.setProperty('--tx-from', `${transform.x}px`);
     this.imageElement.style.setProperty('--ty-from', `${transform.y}px`);
     this.imageElement.style.setProperty('--scale-from', transform.scale.toString());
+    this.imageElement.style.setProperty('--clip-from', transform.clipPath);
+    this.imageElement.style.setProperty('--clip-to', 'inset(0px)');
 
     // Trigger CSS animation
     this.overlay.classList.add('is-opening');
@@ -244,25 +246,27 @@ class Zoom {
     this.overlay.classList.remove('is-open');
     this.overlay.classList.add('is-closing');
 
-    // Get source image
+    // Get source image and its rect BEFORE any DOM changes
     const sourceElement = this.state.images[this.state.currentIndex].element;
     const sourceImg = sourceElement.querySelector('img')!;
-
-    // Calculate transform for closing animation
     const startRect = this.imageElement.getBoundingClientRect();
     const targetRect = sourceImg.getBoundingClientRect();
+
+    // Calculate transform for closing animation
     const transform = this.calculateFlipTransform(targetRect, startRect);
 
     // Set CSS variables for closing animation
     this.imageElement.style.setProperty('--tx-from', `${transform.x}px`);
     this.imageElement.style.setProperty('--ty-from', `${transform.y}px`);
     this.imageElement.style.setProperty('--scale-from', transform.scale.toString());
+    this.imageElement.style.setProperty('--clip-from', transform.clipPath);
+    this.imageElement.style.setProperty('--clip-to', 'inset(0px)');
 
     // If closed by scroll, unlock scroll immediately and use special animation
     if (this.closedByScroll) {
       document.body.style.overflow = '';
       this.closedByScroll = false;
-      this.animateScrollClose(sourceImg);
+      this.animateScrollClose(startRect, targetRect);
     }
 
     // Cleanup after animation completes
@@ -549,7 +553,7 @@ class Zoom {
     this.updateNavigationButtons();
   }
 
-  private calculateFlipTransform(sourceRect: DOMRect, finalRect: DOMRect): { x: number, y: number, scale: number } {
+  private calculateFlipTransform(sourceRect: DOMRect, finalRect: DOMRect): { x: number, y: number, scale: number, clipPath: string } {
     const scaleX = sourceRect.width / finalRect.width;
     const scaleY = sourceRect.height / finalRect.height;
     const scale = Math.max(scaleX, scaleY); // Use max to fill thumbnail
@@ -557,7 +561,23 @@ class Zoom {
     const translateX = sourceRect.left + sourceRect.width / 2 - (finalRect.left + finalRect.width / 2);
     const translateY = sourceRect.top + sourceRect.height / 2 - (finalRect.top + finalRect.height / 2);
 
-    return { x: translateX, y: translateY, scale };
+    // Calculate clip-path to hide parts that extend beyond the thumbnail
+    // The scaled image is larger than the thumbnail, so we clip the excess
+    const scaledWidth = finalRect.width * scale;
+    const scaledHeight = finalRect.height * scale;
+
+    const clipX = (scaledWidth - sourceRect.width) / 2;
+    const clipY = (scaledHeight - sourceRect.height) / 2;
+
+    // Inset values relative to the element's own dimensions
+    const insetTop = clipY / scale;
+    const insetRight = clipX / scale;
+    const insetBottom = clipY / scale;
+    const insetLeft = clipX / scale;
+
+    const clipPath = `inset(${insetTop}px ${insetRight}px ${insetBottom}px ${insetLeft}px)`;
+
+    return { x: translateX, y: translateY, scale, clipPath };
   }
 
 
@@ -595,14 +615,13 @@ class Zoom {
     });
   }
 
-  private animateScrollClose(sourceImg: HTMLImageElement): void {
+  private animateScrollClose(startRect: DOMRect, targetRect: DOMRect): void {
     // Reparenting strategy:
     // 1. Move the EXISTING image to the body (no cloning = no flicker)
     // 2. Position it absolutely so it scrolls with the page
     // 3. Animate it to the thumbnail position
     // 4. Move it back to the overlay when done
 
-    const rect = this.imageElement.getBoundingClientRect();
     const originalParent = this.imageElement.parentElement;
     const originalNextSibling = this.imageElement.nextSibling;
 
@@ -612,10 +631,10 @@ class Zoom {
 
     // Apply styles to the existing element
     this.imageElement.style.position = 'absolute';
-    this.imageElement.style.top = `${rect.top + scrollTop}px`;
-    this.imageElement.style.left = `${rect.left + scrollLeft}px`;
-    this.imageElement.style.width = `${rect.width}px`;
-    this.imageElement.style.height = `${rect.height}px`;
+    this.imageElement.style.top = `${startRect.top + scrollTop}px`;
+    this.imageElement.style.left = `${startRect.left + scrollLeft}px`;
+    this.imageElement.style.width = `${startRect.width}px`;
+    this.imageElement.style.height = `${startRect.height}px`;
     this.imageElement.style.transform = 'none';
     this.imageElement.style.animation = 'none';
     this.imageElement.style.margin = '0';
@@ -625,7 +644,6 @@ class Zoom {
     document.body.appendChild(this.imageElement);
 
     // Calculate target position (absolute relative to document)
-    const targetRect = sourceImg.getBoundingClientRect();
     const targetTop = targetRect.top + scrollTop;
     const targetLeft = targetRect.left + scrollLeft;
     const targetWidth = targetRect.width;
@@ -634,10 +652,10 @@ class Zoom {
     // Animate using WAAPI
     const animation = this.imageElement.animate([
       {
-        top: `${rect.top + scrollTop}px`,
-        left: `${rect.left + scrollLeft}px`,
-        width: `${rect.width}px`,
-        height: `${rect.height}px`
+        top: `${startRect.top + scrollTop}px`,
+        left: `${startRect.left + scrollLeft}px`,
+        width: `${startRect.width}px`,
+        height: `${startRect.height}px`
       },
       {
         top: `${targetTop}px`,

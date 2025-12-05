@@ -231,20 +231,24 @@
 @keyframes zoomIn {
   from {
     transform: translate(var(--tx-from, 0), var(--ty-from, 0)) scale(var(--scale-from, 0.5));
+    clip-path: var(--clip-from, inset(0));
   }
 
   to {
     transform: translate(0, 0) scale(1);
+    clip-path: var(--clip-to, inset(0));
   }
 }
 
 @keyframes zoomOut {
   from {
     transform: translate(0, 0) scale(1);
+    clip-path: var(--clip-to, inset(0));
   }
 
   to {
     transform: translate(var(--tx-from, 0), var(--ty-from, 0)) scale(var(--scale-from, 0.5));
+    clip-path: var(--clip-from, inset(0));
   }
 }
 
