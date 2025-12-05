@@ -21,7 +21,7 @@ interface ZoomState {
 
 class Zoom {
   private wrapper: HTMLElement;
-  private overlay!: HTMLElement;
+  private overlay!: HTMLDialogElement;
   private imageElement!: HTMLImageElement;
   private captionElement!: HTMLElement;
   private closeButton!: HTMLButtonElement;
@@ -80,7 +80,7 @@ class Zoom {
     }
 
     // Use global overlay
-    const overlay = document.getElementById('astro-zoom-global-overlay');
+    const overlay = document.getElementById('astro-zoom-global-overlay') as HTMLDialogElement;
 
     if (!overlay) {
       console.error('Zoom global overlay not found');
@@ -171,8 +171,7 @@ class Zoom {
     this.updateContent(index);
 
     // Show overlay and prevent body scroll
-    this.overlay.style.display = 'flex';
-    this.overlay.setAttribute('aria-hidden', 'false');
+    this.overlay.showModal();
     this.overlay.setAttribute('data-close-backdrop', String(this.options.closeOnBackdrop));
     this.overlay.setAttribute('data-close-image', String(this.options.closeOnImage));
     document.body.style.overflow = 'hidden';
@@ -271,12 +270,13 @@ class Zoom {
 
     // Cleanup after animation completes
     setTimeout(() => {
-      this.overlay.style.display = 'none';
+      this.overlay.close();
       this.overlay.classList.remove('is-closing');
-      this.overlay.setAttribute('aria-hidden', 'true');
       document.body.style.overflow = '';
 
       this.resetImageStyles();
+      this.imageElement.src = '';
+      this.imageElement.alt = '';
 
       // Restore focus
       if (this.state.previousFocus) {

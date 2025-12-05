@@ -46,12 +46,12 @@ export interface Props {
 
   /**
    * Custom CSS class for the zoom container
-  */
+   */
   class?: string;
 
   /**
    * Unique ID for this zoom instance
-  */
+   */
   id?: string;
 }
 
@@ -69,14 +69,16 @@ const {
 
 // Store theme config as data attributes to be read by JS
 const themeConfig = JSON.stringify(theme);
-const wrapperClasses = ["astro-zoom-wrapper", className].filter(Boolean).join(" ");
+const wrapperClasses = ["astro-zoom-wrapper", className]
+  .filter(Boolean)
+  .join(" ");
 
 // Process slot content to wrap images in accessible links
-let slotContent = await Astro.slots.render('default');
+let slotContent = await Astro.slots.render("default");
 
 // Split by <img tags and process each
 const parts = slotContent.split(/(<img[^>]*>)/i);
-let processedContent = '';
+let processedContent = "";
 
 for (let i = 0; i < parts.length; i++) {
   const part = parts[i];
@@ -84,7 +86,7 @@ for (let i = 0; i < parts.length; i++) {
   // Check if this part is an <img> tag
   if (part.match(/^<img/i)) {
     // Count how many <a> and </a> tags are before this
-    const beforeThis = parts.slice(0, i).join('');
+    const beforeThis = parts.slice(0, i).join("");
     const openACount = (beforeThis.match(/<a[\s>]/gi) || []).length;
     const closeACount = (beforeThis.match(/<\/a>/gi) || []).length;
 
@@ -106,8 +108,10 @@ for (let i = 0; i < parts.length; i++) {
     }
 
     const href = zoomSrcMatch ? zoomSrcMatch[1] : srcMatch[1];
-    const caption = captionMatch ? ` data-zoom-caption="${captionMatch[1]}"` : '';
-    const altText = altMatch ? altMatch[1] : 'imagen';
+    const caption = captionMatch
+      ? ` data-zoom-caption="${captionMatch[1]}"`
+      : "";
+    const altText = altMatch ? altMatch[1] : "imagen";
 
     // Create accessible link with ARIA attributes
     const ariaLabel = `Ver ${altText} en modo zoom`;
@@ -138,14 +142,10 @@ slotContent = processedContent;
 </astro-zoom>
 
 <!-- Global Zoom Overlay (shared across all zoom instances) -->
-<div
+<dialog
   id="astro-zoom-global-overlay"
   class="astro-zoom-overlay"
-  role="dialog"
-  aria-modal="true"
-  aria-hidden="true"
   aria-label="Image zoom overlay"
-  style="display: none;"
 >
   <div class="astro-zoom-backdrop" aria-hidden="true"></div>
   <div class="astro-zoom-content" role="document">
@@ -209,22 +209,27 @@ slotContent = processedContent;
       </svg>
     </button>
     <figure class="astro-zoom-figure">
-      <div class="astro-zoom-image-container">
-        <img class="astro-zoom-image" src="" alt="" loading="eager" />
-      </div>
-      <figcaption class="astro-zoom-caption" aria-live="polite">
-      </figcaption>
+      <img class="astro-zoom-image" src="" alt="" loading="eager" />
+      <figcaption class="astro-zoom-caption" aria-live="polite"></figcaption>
     </figure>
   </div>
-</div>
+</dialog>
 
 <script>
   import { Zoom } from "./zoom";
 
-  // Move overlay to end of body for proper z-index stacking
-  const overlay = document.getElementById("astro-zoom-global-overlay");
-  if (overlay && overlay.parentElement !== document.body) {
-    document.body.appendChild(overlay);
+  // Move overlay to end of body and remove duplicates
+  const overlays = document.querySelectorAll("#astro-zoom-global-overlay");
+  if (overlays.length > 0) {
+    const [firstOverlay, ...duplicates] = Array.from(overlays);
+
+    // Move first overlay to body if needed
+    if (firstOverlay.parentElement !== document.body) {
+      document.body.appendChild(firstOverlay);
+    }
+
+    // Remove duplicates
+    duplicates.forEach((overlay) => overlay.remove());
   }
 
   // Define custom element for astro-zoom
