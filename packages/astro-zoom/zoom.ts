@@ -225,6 +225,9 @@ class Zoom {
     this.overlay.addEventListener('touchstart', this.handleTouchStart, { passive: true });
     this.overlay.addEventListener('touchend', this.handleTouchEnd, { passive: true });
 
+    // Handle native dialog cancel (Escape key)
+    this.overlay.addEventListener('cancel', this.handleCancel);
+
     // Smooth close on scroll/wheel (like Medium - non-blocking)
     if (this.options.closeOnScroll) {
       this.overlay.addEventListener('wheel', this.handleWheel, { passive: true });
@@ -291,6 +294,7 @@ class Zoom {
     document.removeEventListener('keydown', this.handleKeydown);
     this.overlay.removeEventListener('touchstart', this.handleTouchStart);
     this.overlay.removeEventListener('touchend', this.handleTouchEnd);
+    this.overlay.removeEventListener('cancel', this.handleCancel);
     if (this.options.closeOnScroll) {
       this.overlay.removeEventListener('wheel', this.handleWheel);
       this.overlay.removeEventListener('touchmove', this.handleTouchMove);
@@ -454,10 +458,6 @@ class Zoom {
     if (!this.state.isOpen) return;
 
     switch (e.key) {
-      case 'Escape':
-        e.preventDefault();
-        this.close();
-        break;
       case 'ArrowLeft':
         e.preventDefault();
         this.prev();
@@ -470,6 +470,11 @@ class Zoom {
         this.handleTabKey(e);
         break;
     }
+  }
+
+  private handleCancel = (e: Event): void => {
+    e.preventDefault(); // Prevent immediate closing
+    this.close(); // Trigger animated close
   }
 
   private handleTouchStart = (e: TouchEvent): void => {
