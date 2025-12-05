@@ -74,31 +74,36 @@ const wrapperClasses = ["astro-zoom-wrapper", className].filter(Boolean).join(" 
 // Process slot content to wrap images in accessible links
 let slotContent = await Astro.slots.render('default');
 
-// Auto-wrap <img> tags that aren't already inside <a> tags
-// This provides proper semantics and accessibility
-slotContent = slotContent.replace(
-  /<img\s+([^>]*?)>/gi,
-  (imgTag, attributes) => {
-    // Extract the portion of HTML before this image
-    const indexOfImg = slotContent.indexOf(imgTag);
-    const beforeImg = slotContent.substring(0, indexOfImg);
+// Split by <img tags and process each
+const parts = slotContent.split(/(<img[^>]*>)/i);
+let processedContent = '';
 
-    // Check if there's an unclosed <a> tag before this image
-    const lastOpenA = beforeImg.lastIndexOf('<a');
-    const lastCloseA = beforeImg.lastIndexOf('</a>');
+for (let i = 0; i < parts.length; i++) {
+  const part = parts[i];
 
-    // If already inside a link, don't wrap
-    if (lastOpenA > lastCloseA && lastOpenA !== -1) {
-      return imgTag;
+  // Check if this part is an <img> tag
+  if (part.match(/^<img/i)) {
+    // Count how many <a> and </a> tags are before this
+    const beforeThis = parts.slice(0, i).join('');
+    const openACount = (beforeThis.match(/<a[\s>]/gi) || []).length;
+    const closeACount = (beforeThis.match(/<\/a>/gi) || []).length;
+
+    // If inside an <a> tag (more opens than closes), don't wrap
+    if (openACount > closeACount) {
+      processedContent += part;
+      continue;
     }
 
     // Extract attributes for the link
-    const srcMatch = attributes.match(/src=["']([^"']+)["']/i);
-    const zoomSrcMatch = attributes.match(/data-zoom-src=["']([^"']+)["']/i);
-    const captionMatch = attributes.match(/data-zoom-caption=["']([^"']+)["']/i);
-    const altMatch = attributes.match(/alt=["']([^"']*?)["']/i);
+    const srcMatch = part.match(/src=["']([^"']+)["']/i);
+    const zoomSrcMatch = part.match(/data-zoom-src=["']([^"']+)["']/i);
+    const captionMatch = part.match(/data-zoom-caption=["']([^"']+)["']/i);
+    const altMatch = part.match(/alt=["']([^"']*?)["']/i);
 
-    if (!srcMatch) return imgTag;
+    if (!srcMatch) {
+      processedContent += part;
+      continue;
+    }
 
     const href = zoomSrcMatch ? zoomSrcMatch[1] : srcMatch[1];
     const caption = captionMatch ? ` data-zoom-caption="${captionMatch[1]}"` : '';
@@ -109,9 +114,13 @@ slotContent = slotContent.replace(
     const title = `Click para ampliar: ${altText}`;
 
     // Wrap in an accessible link with proper ARIA attributes
-    return `<a href="${href}" data-zoom-generated${caption} aria-label="${ariaLabel}" title="${title}">${imgTag}</a>`;
+    processedContent += `<a href="${href}" data-zoom-generated${caption} aria-label="${ariaLabel}" title="${title}">${part}</a>`;
+  } else {
+    processedContent += part;
   }
-);
+}
+
+slotContent = processedContent;
 ---
 
 <astro-zoom
