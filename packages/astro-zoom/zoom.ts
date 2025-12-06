@@ -478,11 +478,17 @@ class Zoom {
   }
 
   private handleTouchStart = (e: TouchEvent): void => {
+    // Ignore multi-touch (pinch to zoom)
+    if (e.touches.length > 1) return;
+
     this.state.touchStartX = e.touches[0].clientX;
     this.state.touchStartY = e.touches[0].clientY;
   }
 
   private handleTouchEnd = (e: TouchEvent): void => {
+    // Ignore if it was a multi-touch gesture or if touches still remain
+    if (e.changedTouches.length > 1 || e.touches.length > 0) return;
+
     const deltaX = e.changedTouches[0].clientX - this.state.touchStartX;
     const deltaY = e.changedTouches[0].clientY - this.state.touchStartY;
 
@@ -500,6 +506,9 @@ class Zoom {
   }
 
   private handleTouchMove = (e: TouchEvent): void => {
+    // Ignore multi-touch (pinch to zoom)
+    if (e.touches.length > 1) return;
+
     const touch = e.touches[0];
     const deltaX = Math.abs(touch.clientX - this.state.touchStartX);
     const deltaY = Math.abs(touch.clientY - this.state.touchStartY);
