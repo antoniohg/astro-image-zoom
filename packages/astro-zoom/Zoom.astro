@@ -218,35 +218,42 @@ slotContent = processedContent;
 <script>
   import { Zoom } from "./zoom";
 
-  // Move overlay to end of body and remove duplicates
-  const overlays = document.querySelectorAll("#astro-zoom-global-overlay");
-  if (overlays.length > 0) {
+  // Ensure overlay is at the end of body and remove any duplicates
+  function initGlobalOverlay() {
+    const overlays = document.querySelectorAll("#astro-zoom-global-overlay");
+    if (overlays.length === 0) return;
+    
+    // Keep only the first overlay, move to body end
     const [firstOverlay, ...duplicates] = Array.from(overlays);
-
-    // Move first overlay to body if needed
+    
     if (firstOverlay.parentElement !== document.body) {
       document.body.appendChild(firstOverlay);
     }
-
-    // Remove duplicates
-    duplicates.forEach((overlay) => overlay.remove());
+    
+    // Remove duplicates efficiently
+    for (const overlay of duplicates) {
+      overlay.remove();
+    }
   }
+
+  // Run on initial load
+  initGlobalOverlay();
 
   // Define custom element for astro-zoom
   class AstroZoomElement extends HTMLElement {
     private zoom: Zoom | null = null;
 
     connectedCallback() {
-      // Initialize zoom for this instance
+      // Ensure overlay is ready before initializing
+      if (!document.getElementById("astro-zoom-global-overlay")) {
+        initGlobalOverlay();
+      }
       this.zoom = new Zoom(this);
     }
 
     disconnectedCallback() {
-      // Cleanup when element is removed
-      if (this.zoom) {
-        this.zoom.destroy();
-        this.zoom = null;
-      }
+      this.zoom?.destroy();
+      this.zoom = null;
     }
   }
 
