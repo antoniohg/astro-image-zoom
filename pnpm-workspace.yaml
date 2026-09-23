@@ -1,0 +1,10 @@
+packages:
+  - demo
+  - packages/*
+
+# Supply chain: do not install versions published less than 48h ago
+minimumReleaseAge: 2880
+
+allowBuilds:
+  esbuild: false
+  sharp: false

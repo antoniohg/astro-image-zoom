@@ -9,14 +9,14 @@ This repository is a monorepo containing the source code for the `astro-image-zo
 
 ## 🚀 Getting Started
 
-This project uses [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces) to manage dependencies.
+This project uses [pnpm workspaces](https://pnpm.io/workspaces) to manage dependencies. Use the Node version in `.nvmrc`.
 
 ### 1. Install Dependencies
 
 Run the following command in the root directory to install dependencies for all packages:
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 2. Run the Demo
@@ -24,7 +24,7 @@ npm install
 To start the development server for the demo application:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 This will start the demo at [http://localhost:4321](http://localhost:4321).
@@ -38,13 +38,13 @@ For detailed documentation on how to use the component, configuration options, a
 To build the demo:
 
 ```bash
-npm run build
+pnpm build
 ```
 
 To preview the built demo:
 
 ```bash
-npm run preview
+pnpm preview
 ```
 
 ## 📄 License
