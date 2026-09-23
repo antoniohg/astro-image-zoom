@@ -52,6 +52,7 @@ class Zoom {
   private isClosing = false;
   private closedByScroll = false;
   private navigationId = 0;
+  private openId = 0;
 
   constructor(wrapper: HTMLElement) {
     this.wrapper = wrapper;
@@ -150,6 +151,9 @@ class Zoom {
   private async open(index: number): Promise<void> {
     if (this.state.isOpen) return;
 
+    // Identifies this opening; close() increments it to cancel a pending open
+    const currentOpenId = ++this.openId;
+
     // Store current focused element
     this.state.previousFocus = document.activeElement as HTMLElement;
 
@@ -170,6 +174,9 @@ class Zoom {
     // Update content (image, caption, nav buttons)
     this.updateContent(index);
 
+    // Handle native dialog cancel (Escape key), also while the image is loading
+    this.overlay.addEventListener('cancel', this.handleCancel);
+
     // Show overlay and prevent body scroll
     this.overlay.showModal();
     this.overlay.setAttribute('data-close-backdrop', String(this.options.closeOnBackdrop));
@@ -189,7 +196,11 @@ class Zoom {
 
       await new Promise<void>((resolve) => {
         this.imageElement.onload = () => resolve();
+        this.imageElement.onerror = () => resolve();
       });
+
+      // Closed while loading: close() already restored everything
+      if (currentOpenId !== this.openId) return;
 
       // Remove loading state and show image
       this.imageElement.parentElement?.classList.remove('is-loading');
@@ -201,17 +212,17 @@ class Zoom {
     const transform = this.calculateFlipTransform(sourceRect, finalRect);
 
     // Set CSS variables for animation
-    this.imageElement.style.setProperty('--tx-from', `${transform.x}px`);
-    this.imageElement.style.setProperty('--ty-from', `${transform.y}px`);
-    this.imageElement.style.setProperty('--scale-from', transform.scale.toString());
-    this.imageElement.style.setProperty('--clip-from', transform.clipPath);
-    this.imageElement.style.setProperty('--clip-to', 'inset(0px)');
+    this.setAnimationVariables(transform);
 
-    // Trigger CSS animation
+    // Hide thumbnail instantly and trigger CSS animation simultaneously
+    sourceImg.style.transition = 'none';
+    sourceImg.style.opacity = '0';
+    sourceImg.style.pointerEvents = 'none';
     this.overlay.classList.add('is-opening');
 
     // After animation completes, switch to is-open state
     setTimeout(() => {
+      if (currentOpenId !== this.openId) return;
       this.overlay.classList.remove('is-opening');
       this.overlay.classList.add('is-open');
     }, this.options.animationDuration);
@@ -224,9 +235,6 @@ class Zoom {
     // Add touch listeners for swipe
     this.overlay.addEventListener('touchstart', this.handleTouchStart, { passive: true });
     this.overlay.addEventListener('touchend', this.handleTouchEnd, { passive: true });
-
-    // Handle native dialog cancel (Escape key)
-    this.overlay.addEventListener('cancel', this.handleCancel);
 
     // Smooth close on scroll/wheel (like Medium - non-blocking)
     if (this.options.closeOnScroll) {
@@ -245,50 +253,9 @@ class Zoom {
     this.isClosing = true;
     this.state.isOpen = false;
 
-    this.overlay.classList.remove('is-open');
-    this.overlay.classList.add('is-closing');
-
-    // Get source image and its rect BEFORE any DOM changes
-    const sourceElement = this.state.images[this.state.currentIndex].element;
-    const sourceImg = sourceElement.querySelector('img')!;
-    const startRect = this.imageElement.getBoundingClientRect();
-    const targetRect = sourceImg.getBoundingClientRect();
-
-    // Calculate transform for closing animation
-    const transform = this.calculateFlipTransform(targetRect, startRect);
-
-    // Set CSS variables for closing animation
-    this.imageElement.style.setProperty('--tx-from', `${transform.x}px`);
-    this.imageElement.style.setProperty('--ty-from', `${transform.y}px`);
-    this.imageElement.style.setProperty('--scale-from', transform.scale.toString());
-    this.imageElement.style.setProperty('--clip-from', transform.clipPath);
-    this.imageElement.style.setProperty('--clip-to', 'inset(0px)');
-
-    // If closed by scroll, unlock scroll immediately and use special animation
-    if (this.closedByScroll) {
-      document.body.style.overflow = '';
-      this.closedByScroll = false;
-      this.animateScrollClose(startRect, targetRect);
-    }
-
-    // Cleanup after animation completes
-    setTimeout(() => {
-      this.overlay.close();
-      this.overlay.classList.remove('is-closing');
-      document.body.style.overflow = '';
-
-      this.resetImageStyles();
-      this.imageElement.src = '';
-      this.imageElement.alt = '';
-
-      // Restore focus
-      if (this.state.previousFocus) {
-        this.state.previousFocus.focus({ preventScroll: true });
-        this.state.previousFocus = null;
-      }
-
-      this.isClosing = false;
-    }, this.options.animationDuration);
+    // Cancel a pending open() that is still waiting for the image to load
+    this.openId++;
+    const isLoading = this.imageElement.parentElement?.classList.contains('is-loading') ?? false;
 
     // Remove listeners
     document.removeEventListener('keydown', this.handleKeydown);
@@ -298,6 +265,43 @@ class Zoom {
     if (this.options.closeOnScroll) {
       this.overlay.removeEventListener('wheel', this.handleWheel);
       this.overlay.removeEventListener('touchmove', this.handleTouchMove);
+    }
+
+    // Get source image BEFORE any DOM changes
+    const sourceElement = this.state.images[this.state.currentIndex].element;
+    const sourceImg = sourceElement.querySelector('img')!;
+
+    // Closed while loading: the opening animation never ran, so close without animating
+    if (isLoading) {
+      this.imageElement.parentElement?.classList.remove('is-loading');
+      this.closedByScroll = false;
+      this.finalizeClose(sourceImg);
+      return;
+    }
+
+    this.overlay.classList.remove('is-open', 'is-opening');
+    this.overlay.classList.add('is-closing');
+
+    const startRect = this.imageElement.getBoundingClientRect();
+    const targetRect = sourceImg.getBoundingClientRect();
+
+    // Calculate transform for closing animation
+    const transform = this.calculateFlipTransform(targetRect, startRect);
+
+    // Set CSS variables for closing animation
+    this.setAnimationVariables(transform);
+
+    // If closed by scroll, unlock scroll immediately and use special animation
+    if (this.closedByScroll) {
+      document.body.style.overflow = '';
+      this.closedByScroll = false;
+      this.animateScrollClose(startRect, targetRect, sourceImg);
+    } else {
+      // Normal close: cleanup after animation completes (closing animation is 75% of duration)
+      const closeDuration = this.options.animationDuration * 0.75;
+      setTimeout(() => {
+        this.finalizeClose(sourceImg);
+      }, closeDuration);
     }
   }
 
@@ -629,53 +633,39 @@ class Zoom {
     });
   }
 
-  private animateScrollClose(startRect: DOMRect, targetRect: DOMRect): void {
-    // Reparenting strategy:
-    // 1. Move the EXISTING image to the body (no cloning = no flicker)
-    // 2. Position it absolutely so it scrolls with the page
-    // 3. Animate it to the thumbnail position
-    // 4. Move it back to the overlay when done
-
+  private animateScrollClose(startRect: DOMRect, targetRect: DOMRect, sourceImg: HTMLImageElement): void {
+    // Use transform + clip-path instead of animating size to handle different aspect ratios
     const originalParent = this.imageElement.parentElement;
     const originalNextSibling = this.imageElement.nextSibling;
 
-    // Set initial position (absolute relative to document)
     const scrollTop = window.scrollY;
     const scrollLeft = window.scrollX;
 
-    // Apply styles to the existing element
+    // Calculate the FLIP transform (same logic as normal close)
+    const transform = this.calculateFlipTransform(targetRect, startRect);
+
+    // Position image absolutely at its current visual position
     this.imageElement.style.position = 'absolute';
     this.imageElement.style.top = `${startRect.top + scrollTop}px`;
     this.imageElement.style.left = `${startRect.left + scrollLeft}px`;
     this.imageElement.style.width = `${startRect.width}px`;
     this.imageElement.style.height = `${startRect.height}px`;
-    this.imageElement.style.transform = 'none';
-    this.imageElement.style.animation = 'none';
     this.imageElement.style.margin = '0';
-    this.imageElement.style.zIndex = '9999999'; // Ensure it's on top of everything
+    this.imageElement.style.animation = 'none';
+    this.imageElement.style.zIndex = '9999999';
 
-    // Move to body
+    // Move to body so it scrolls with the page
     document.body.appendChild(this.imageElement);
 
-    // Calculate target position (absolute relative to document)
-    const targetTop = targetRect.top + scrollTop;
-    const targetLeft = targetRect.left + scrollLeft;
-    const targetWidth = targetRect.width;
-    const targetHeight = targetRect.height;
-
-    // Animate using WAAPI
+    // Animate using transform + clip-path (maintains aspect ratio)
     const animation = this.imageElement.animate([
       {
-        top: `${startRect.top + scrollTop}px`,
-        left: `${startRect.left + scrollLeft}px`,
-        width: `${startRect.width}px`,
-        height: `${startRect.height}px`
+        transform: 'translate(0, 0) scale(1)',
+        clipPath: 'inset(0px)'
       },
       {
-        top: `${targetTop}px`,
-        left: `${targetLeft}px`,
-        width: `${targetWidth}px`,
-        height: `${targetHeight}px`
+        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+        clipPath: transform.clipPath
       }
     ], {
       duration: this.options.animationDuration * 0.75,
@@ -684,9 +674,6 @@ class Zoom {
     });
 
     animation.onfinish = () => {
-      // Hide it until full reset to prevent jump
-      this.imageElement.style.opacity = '0';
-
       // Cancel animation to remove fill: forwards effects
       animation.cancel();
 
@@ -698,6 +685,8 @@ class Zoom {
           originalParent.appendChild(this.imageElement);
         }
       }
+
+      this.finalizeClose(sourceImg);
     };
   }
 
@@ -706,6 +695,41 @@ class Zoom {
       transform: '', animation: '', opacity: '', zIndex: '',
       position: '', top: '', left: '', width: '', height: '', margin: ''
     });
+  }
+
+  private setAnimationVariables(transform: { x: number, y: number, scale: number, clipPath: string }): void {
+    this.imageElement.style.setProperty('--tx-from', `${transform.x}px`);
+    this.imageElement.style.setProperty('--ty-from', `${transform.y}px`);
+    this.imageElement.style.setProperty('--scale-from', transform.scale.toString());
+    this.imageElement.style.setProperty('--clip-from', transform.clipPath);
+    this.imageElement.style.setProperty('--clip-to', 'inset(0px)');
+  }
+
+  private finalizeClose(sourceImg: HTMLImageElement): void {
+    // Hide overlay image and restore thumbnail instantly - same frame
+    this.imageElement.style.opacity = '0';
+    sourceImg.style.opacity = '';
+    sourceImg.style.pointerEvents = '';
+
+    // Force reflow then restore transition
+    void sourceImg.offsetHeight;
+    sourceImg.style.transition = '';
+
+    this.overlay.close();
+    this.overlay.classList.remove('is-closing');
+    document.body.style.overflow = '';
+
+    this.resetImageStyles();
+    this.imageElement.src = '';
+    this.imageElement.alt = '';
+
+    // Restore focus
+    if (this.state.previousFocus) {
+      this.state.previousFocus.focus({ preventScroll: true });
+      this.state.previousFocus = null;
+    }
+
+    this.isClosing = false;
   }
 }
 

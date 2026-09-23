@@ -26,12 +26,12 @@
 }
 
 /* Wrapper - makes images clickable */
-.astro-zoom-wrapper img {
+:global(.astro-zoom-wrapper img) {
   cursor: zoom-in;
   transition: opacity 0.2s ease;
 }
 
-.astro-zoom-wrapper img:hover {
+:global(.astro-zoom-wrapper img):hover {
   opacity: 0.9;
 }
 
