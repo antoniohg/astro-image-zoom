@@ -1,8 +1,8 @@
 {
-  "name": "astro-zoom-workspace",
+  "name": "astro-image-zoom-workspace",
   "version": "1.0.0",
   "private": true,
-  "description": "Workspace for astro-zoom component development",
+  "description": "Workspace for astro-image-zoom component development",
   "type": "module",
   "workspaces": [
     "demo",

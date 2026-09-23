@@ -17,7 +17,7 @@ A beautiful, accessible, and performant zoom component for Astro with Medium-sty
 ## 📦 Installation
 
 ```bash
-npm install astro-zoom
+npm install astro-image-zoom
 ```
 
 ## 🚀 Quick Start
@@ -26,8 +26,8 @@ npm install astro-zoom
 
 ```astro
 ---
-import Zoom from 'astro-zoom/Zoom.astro';
-import 'astro-zoom/zoom.css';
+import Zoom from 'astro-image-zoom/Zoom.astro';
+import 'astro-image-zoom/zoom.css';
 ---
 
 <Zoom>
@@ -88,8 +88,8 @@ To use optimized Astro images, you can use the `<Image />` component. For the zo
 ```astro
 ---
 import { Image, getImage } from 'astro:assets';
-import Zoom from 'astro-zoom/Zoom.astro';
-import 'astro-zoom/zoom.css';
+import Zoom from 'astro-image-zoom/Zoom.astro';
+import 'astro-image-zoom/zoom.css';
 
 import myImage from '../assets/my-image.jpg';
 
@@ -255,7 +255,7 @@ Or apply custom styles to specific instances:
 <Zoom id="my-gallery" />
 
 <script>
-  import { ZoomClass } from 'astro-zoom';
+  import { ZoomClass } from 'astro-image-zoom';
 
   const wrapper = document.querySelector('[data-zoom-id="my-gallery"]');
   const zoom = new ZoomClass(wrapper);
@@ -271,8 +271,8 @@ Or apply custom styles to specific instances:
 
 ```astro
 ---
-import Zoom from 'astro-zoom/Zoom.astro';
-import 'astro-zoom/zoom.css';
+import Zoom from 'astro-image-zoom/Zoom.astro';
+import 'astro-image-zoom/zoom.css';
 ---
 
 <article>
@@ -305,8 +305,8 @@ import 'astro-zoom/zoom.css';
 
 ```astro
 ---
-import Zoom from 'astro-zoom/Zoom.astro';
-import 'astro-zoom/zoom.css';
+import Zoom from 'astro-image-zoom/Zoom.astro';
+import 'astro-image-zoom/zoom.css';
 
 const projects = [
   { thumb: '/thumb1.jpg', full: '/full1.jpg', title: 'Project 1' },
@@ -354,7 +354,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 🐛 Issues
 
-Found a bug? Please open an issue on [GitHub](https://github.com/antoniohg/astro-zoom/issues).
+Found a bug? Please open an issue on [GitHub](https://github.com/antoniohg/astro-image-zoom/issues).
 
 ## 🙏 Credits
 

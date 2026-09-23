@@ -1,11 +1,11 @@
 # Astro Zoom Monorepo
 
-This repository is a monorepo containing the source code for the `astro-zoom` component and a demo application.
+This repository is a monorepo containing the source code for the `astro-image-zoom` component and a demo application.
 
 ## 📂 Project Structure
 
-- **`packages/astro-zoom`**: The core library package. A Medium-style Zoom component for Astro.
-- **`demo`**: A demo Astro project showcasing the usage of `astro-zoom`.
+- **`packages/astro-image-zoom`**: The core library package. A Medium-style Zoom component for Astro.
+- **`demo`**: A demo Astro project showcasing the usage of `astro-image-zoom`.
 
 ## 🚀 Getting Started
 
@@ -31,7 +31,7 @@ This will start the demo at [http://localhost:4321](http://localhost:4321).
 
 ## 📦 Package Documentation
 
-For detailed documentation on how to use the component, configuration options, and API, please refer to the [astro-zoom README](./packages/astro-zoom/README.md).
+For detailed documentation on how to use the component, configuration options, and API, please refer to the [astro-image-zoom README](./packages/astro-image-zoom/README.md).
 
 ## 🛠️ Development
 

@@ -1,5 +1,5 @@
 /**
- * astro-zoom
+ * astro-image-zoom
  * A Medium-style zoom component for Astro
  */
 
