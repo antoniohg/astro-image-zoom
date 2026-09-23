@@ -64,12 +64,12 @@ const {
   closeOnScroll = true,
   showNavigation = true,
   class: className = "",
-  id = "astro-zoom",
+  id = "astro-image-zoom",
 } = Astro.props;
 
 // Store theme config as data attributes to be read by JS
 const themeConfig = JSON.stringify(theme);
-const wrapperClasses = ["astro-zoom-wrapper", className]
+const wrapperClasses = ["astro-image-zoom-wrapper", className]
   .filter(Boolean)
   .join(" ");
 
@@ -127,7 +127,7 @@ for (let i = 0; i < parts.length; i++) {
 slotContent = processedContent;
 ---
 
-<astro-zoom
+<astro-image-zoom
   class={wrapperClasses}
   data-zoom-id={id}
   data-keyboard={keyboardNavigation ? "true" : "false"}
@@ -139,18 +139,18 @@ slotContent = processedContent;
   data-animation-duration={animationDuration}
 >
   <Fragment set:html={slotContent} />
-</astro-zoom>
+</astro-image-zoom>
 
 <!-- Global Zoom Overlay (shared across all zoom instances) -->
 <dialog
-  id="astro-zoom-global-overlay"
-  class="astro-zoom-overlay"
+  id="astro-image-zoom-global-overlay"
+  class="astro-image-zoom-overlay"
   aria-label="Image zoom overlay"
 >
-  <div class="astro-zoom-backdrop" aria-hidden="true"></div>
-  <div class="astro-zoom-content" role="document">
+  <div class="astro-image-zoom-backdrop" aria-hidden="true"></div>
+  <div class="astro-image-zoom-content" role="document">
     <button
-      class="astro-zoom-close"
+      class="astro-image-zoom-close"
       aria-label="Close zoom overlay"
       type="button"
     >
@@ -169,7 +169,7 @@ slotContent = processedContent;
       </svg>
     </button>
     <button
-      class="astro-zoom-nav astro-zoom-prev"
+      class="astro-image-zoom-nav astro-image-zoom-prev"
       aria-label="Previous image"
       type="button"
     >
@@ -189,7 +189,7 @@ slotContent = processedContent;
       </svg>
     </button>
     <button
-      class="astro-zoom-nav astro-zoom-next"
+      class="astro-image-zoom-nav astro-image-zoom-next"
       aria-label="Next image"
       type="button"
     >
@@ -208,9 +208,9 @@ slotContent = processedContent;
           stroke-linejoin="round"></path>
       </svg>
     </button>
-    <figure class="astro-zoom-figure">
-      <img class="astro-zoom-image" src="" alt="" loading="eager" />
-      <figcaption class="astro-zoom-caption" aria-live="polite"></figcaption>
+    <figure class="astro-image-zoom-figure">
+      <img class="astro-image-zoom-image" src="" alt="" loading="eager" />
+      <figcaption class="astro-image-zoom-caption" aria-live="polite"></figcaption>
     </figure>
   </div>
 </dialog>
@@ -220,7 +220,7 @@ slotContent = processedContent;
 
   // Ensure overlay is at the end of body and remove any duplicates
   function initGlobalOverlay() {
-    const overlays = document.querySelectorAll("#astro-zoom-global-overlay");
+    const overlays = document.querySelectorAll("#astro-image-zoom-global-overlay");
     if (overlays.length === 0) return;
     
     // Keep only the first overlay, move to body end
@@ -239,13 +239,13 @@ slotContent = processedContent;
   // Run on initial load
   initGlobalOverlay();
 
-  // Define custom element for astro-zoom
-  class AstroZoomElement extends HTMLElement {
+  // Define custom element for astro-image-zoom
+  class AstroImageZoomElement extends HTMLElement {
     private zoom: Zoom | null = null;
 
     connectedCallback() {
       // Ensure overlay is ready before initializing
-      if (!document.getElementById("astro-zoom-global-overlay")) {
+      if (!document.getElementById("astro-image-zoom-global-overlay")) {
         initGlobalOverlay();
       }
       this.zoom = new Zoom(this);
@@ -258,8 +258,8 @@ slotContent = processedContent;
   }
 
   // Register custom element (only runs once even with multiple instances)
-  if (!customElements.get("astro-zoom")) {
-    customElements.define("astro-zoom", AstroZoomElement);
+  if (!customElements.get("astro-image-zoom")) {
+    customElements.define("astro-image-zoom", AstroImageZoomElement);
   }
 </script>
 

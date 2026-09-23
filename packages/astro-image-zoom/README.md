@@ -149,7 +149,7 @@ const optimizedImage = await getImage({
 | `closeOnScroll` | `boolean` | `true` | Close when scrolling/wheeling |
 | `showNavigation` | `boolean` | `true` | Show navigation arrows |
 | `class` | `string` | `''` | Custom CSS class |
-| `id` | `string` | `'astro-zoom'` | Unique zoom ID |
+| `id` | `string` | `'astro-image-zoom'` | Unique zoom ID |
 
 ### Custom Styling
 

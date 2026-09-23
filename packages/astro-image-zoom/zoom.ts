@@ -81,7 +81,7 @@ class Zoom {
     }
 
     // Use global overlay
-    const overlay = document.getElementById('astro-zoom-global-overlay') as HTMLDialogElement;
+    const overlay = document.getElementById('astro-image-zoom-global-overlay') as HTMLDialogElement;
 
     if (!overlay) {
       console.error('Zoom global overlay not found');
@@ -89,12 +89,12 @@ class Zoom {
     }
 
     this.overlay = overlay;
-    this.backdrop = this.overlay.querySelector('.astro-zoom-backdrop')!;
-    this.imageElement = this.overlay.querySelector('.astro-zoom-image')!;
-    this.captionElement = this.overlay.querySelector('.astro-zoom-caption')!;
-    this.closeButton = this.overlay.querySelector('.astro-zoom-close')!;
-    this.prevButton = this.overlay.querySelector('.astro-zoom-prev');
-    this.nextButton = this.overlay.querySelector('.astro-zoom-next');
+    this.backdrop = this.overlay.querySelector('.astro-image-zoom-backdrop')!;
+    this.imageElement = this.overlay.querySelector('.astro-image-zoom-image')!;
+    this.captionElement = this.overlay.querySelector('.astro-image-zoom-caption')!;
+    this.closeButton = this.overlay.querySelector('.astro-image-zoom-close')!;
+    this.prevButton = this.overlay.querySelector('.astro-image-zoom-prev');
+    this.nextButton = this.overlay.querySelector('.astro-image-zoom-next');
 
     this.collectImages();
     this.setupEventListeners();
@@ -102,7 +102,7 @@ class Zoom {
 
   private collectImages(): void {
     const links = this.wrapper.querySelectorAll<HTMLAnchorElement>(
-      'a[data-zoom-generated], a[data-zoom], a:has(img):not(.astro-zoom-overlay *)'
+      'a[data-zoom-generated], a[data-zoom], a:has(img):not(.astro-image-zoom-overlay *)'
     );
 
     this.state.images = Array.from(links)
