@@ -73,6 +73,14 @@ const wrapperClasses = ["astro-image-zoom-wrapper", className]
   .filter(Boolean)
   .join(" ");
 
+// Read an attribute from an <img> tag string. The value may contain the other
+// quote type (alt="Antonio's photo"); double quotes are escaped so it can be
+// written back inside a double-quoted attribute.
+const getAttribute = (tag: string, name: string): string | undefined => {
+  const match = tag.match(new RegExp(`\\s${name}=(["'])(.*?)\\1`, "i"));
+  return match?.[2].replaceAll('"', "&quot;");
+};
+
 // Process slot content to wrap images in accessible links
 let slotContent = await Astro.slots.render("default");
 
@@ -97,28 +105,23 @@ for (let i = 0; i < parts.length; i++) {
     }
 
     // Extract attributes for the link
-    const srcMatch = part.match(/src=["']([^"']+)["']/i);
-    const zoomSrcMatch = part.match(/data-zoom-src=["']([^"']+)["']/i);
-    const captionMatch = part.match(/data-zoom-caption=["']([^"']+)["']/i);
-    const altMatch = part.match(/alt=["']([^"']*?)["']/i);
+    const src = getAttribute(part, "src");
+    const zoomSrc = getAttribute(part, "data-zoom-src");
+    const captionText = getAttribute(part, "data-zoom-caption");
+    const altText = getAttribute(part, "alt");
 
-    if (!srcMatch) {
+    if (!src) {
       processedContent += part;
       continue;
     }
 
-    const href = zoomSrcMatch ? zoomSrcMatch[1] : srcMatch[1];
-    const caption = captionMatch
-      ? ` data-zoom-caption="${captionMatch[1]}"`
-      : "";
-    const altText = altMatch ? altMatch[1] : "imagen";
+    const href = zoomSrc || src;
+    const caption = captionText ? ` data-zoom-caption="${captionText}"` : "";
 
-    // Create accessible link with ARIA attributes
-    const ariaLabel = `Ver ${altText} en modo zoom`;
-    const title = `Click para ampliar: ${altText}`;
+    // The link is named after the image so screen readers announce what opens
+    const ariaLabel = altText ? `Enlarge image: ${altText}` : "Enlarge image";
 
-    // Wrap in an accessible link with proper ARIA attributes
-    processedContent += `<a href="${href}" data-zoom-generated${caption} aria-label="${ariaLabel}" title="${title}">${part}</a>`;
+    processedContent += `<a href="${href}" data-zoom-generated${caption} aria-label="${ariaLabel}">${part}</a>`;
   } else {
     processedContent += part;
   }
