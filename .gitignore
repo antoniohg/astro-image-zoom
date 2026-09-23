@@ -19,3 +19,9 @@ demo/.astro/
 .DS_Store
 .vscode/
 .idea/
+
+# AI agents (kept local, never committed)
+CLAUDE.md
+AGENTS.md
+.claude/
+.claude-tmp/
