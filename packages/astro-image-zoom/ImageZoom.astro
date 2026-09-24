@@ -19,7 +19,8 @@ export interface Props {
   };
 
   /**
-   * Animation duration in milliseconds
+   * Animation duration in milliseconds. Without it, the duration comes from the
+   * --zoom-animation-duration CSS variable (300ms by default)
    */
   animationDuration?: number;
 
@@ -56,7 +57,7 @@ export interface Props {
 
 const {
   theme = {},
-  animationDuration = 300,
+  animationDuration,
   keyboardNavigation = true,
   closeOnBackdrop = true,
   closeOnImage = true,

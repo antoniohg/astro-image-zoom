@@ -257,13 +257,13 @@
     transform: translateX(-50%);
     max-width: 70%;
     padding: 0.875rem 1.25rem;
-    color: #fff;
+    color: var(--zoom-caption-color, #fff);
     font-size: 0.8125rem;
     font-weight: 500;
     line-height: 1.6;
     letter-spacing: 0.01em;
     text-align: center;
-    background-color: rgba(0, 0, 0, 0.9);
+    background-color: var(--zoom-caption-bg, rgba(0, 0, 0, 0.9));
     border-radius: 6px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     opacity: 0;
@@ -387,7 +387,7 @@
     .astro-image-zoom-caption {
       max-width: 90%;
       padding: 0.75rem 1rem;
-      background-color: rgba(0, 0, 0, 0.95);
+      background-color: var(--zoom-caption-bg, rgba(0, 0, 0, 0.95));
     }
 
     /* Cheaper than blurring on small devices */

@@ -168,10 +168,10 @@ const optimizedImage = await getImage({
 | `theme.backgroundColor` | `string` | `rgba(0, 0, 0, 0.95)` | Overlay background color |
 | `theme.closeButtonColor` | `string` | `#ffffff` | Close button color |
 | `theme.navigationColor` | `string` | `#ffffff` | Navigation arrows color |
-| `animationDuration` | `number` | `300` | Animation duration in milliseconds |
+| `animationDuration` | `number` | `300` | Animation duration in milliseconds; overrides `--zoom-animation-duration` |
 | `keyboardNavigation` | `boolean` | `true` | Enable keyboard shortcuts |
 | `closeOnBackdrop` | `boolean` | `true` | Close when clicking backdrop |
-| `closeOnImage` | `boolean` | `false` | Close when clicking the zoomed image |
+| `closeOnImage` | `boolean` | `true` | Close when clicking the zoomed image |
 | `closeOnScroll` | `boolean` | `true` | Close when scrolling/wheeling |
 | `showNavigation` | `boolean` | `true` | Show navigation arrows |
 | `class` | `string` | `''` | Custom CSS class |
@@ -185,13 +185,21 @@ You can override the default styles using CSS variables:
   --zoom-bg: rgba(20, 20, 30, 0.98);
   --zoom-close-color: #ff6b6b;
   --zoom-nav-color: #4ecdc4;
-  --zoom-animation-duration: 400ms;
+  --zoom-close-bg: rgba(255, 255, 255, 0.1);
+  --zoom-nav-bg: rgba(255, 255, 255, 0.1);
+  --zoom-caption-color: #fff;
+  --zoom-caption-bg: rgba(0, 0, 0, 0.9);
+  --zoom-animation-duration: 400ms; /* ms or s; the animationDuration prop wins over it */
 
   /* Focus ring drawn on the image when its link has keyboard focus */
   --zoom-focus-outline: 3px solid rebeccapurple; /* default: 2px solid currentColor */
   --zoom-focus-offset: 3px; /* use a negative value if a parent with overflow: hidden clips it */
 }
 ```
+
+The overlay is appended to `<body>` and shared by every `<ImageZoom>`, so set these variables
+on `:root` (or `body`): a variable set on a container around the images does not reach it. To
+theme one instance only, use the `theme` prop.
 
 The component loads its own stylesheet, so you don't need to import `zoom.css` yourself. Import
 `astro-image-zoom/zoom.css` directly only if you use `ZoomClass` without the `<ImageZoom>` component.

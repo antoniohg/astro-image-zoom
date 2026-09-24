@@ -29,6 +29,8 @@ interface ZoomTheme {
   navigationColor?: string;
 }
 
+// Animation duration (ms) when neither the prop nor --zoom-animation-duration sets one
+const DEFAULT_DURATION = 300;
 // The spinner only shows when the image takes longer than this to load
 const SPINNER_DELAY = 200;
 // How long (ms) a requested slide counts as the target while the smooth scroll runs
@@ -63,6 +65,15 @@ const OVERLAY_HTML = `
     <p class="astro-image-zoom-caption" aria-live="polite"></p>
   </div>
 </dialog>`;
+
+// Milliseconds of a CSS time such as `400ms` or `0.4s`; null when it is not one
+function parseDuration(value: string): number | null {
+  const match = /^([\d.]+)(m?s)$/.exec(value.trim());
+  if (!match) return null;
+
+  const duration = Number.parseFloat(match[1]) * (match[2] === 's' ? 1000 : 1);
+  return Number.isFinite(duration) ? duration : null;
+}
 
 /**
  * Returns the overlay shared by every zoom instance, creating it on first use.
@@ -102,7 +113,8 @@ class Zoom {
     closeOnImage: true,
     closeOnScroll: true,
     showNavigation: true,
-    animationDuration: 300,
+    // null: the duration comes from --zoom-animation-duration
+    animationDuration: null as number | null,
     theme: {} as ZoomTheme
   };
 
@@ -228,11 +240,14 @@ class Zoom {
     return this.slides[this.state.currentIndex].img;
   }
 
-  // Zero when the user prefers reduced motion, so animations and their timers finish at once
+  // Zero when the user prefers reduced motion, so animations and their timers finish at once.
+  // Otherwise the animationDuration prop, or else the --zoom-animation-duration variable
   private get duration(): number {
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      ? 0
-      : this.options.animationDuration;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
+    if (this.options.animationDuration !== null) return this.options.animationDuration;
+
+    const value = getComputedStyle(this.overlay).getPropertyValue('--zoom-animation-duration');
+    return parseDuration(value) ?? DEFAULT_DURATION;
   }
 
   private async open(index: number): Promise<void> {
@@ -251,7 +266,9 @@ class Zoom {
     // Apply theme configuration for this instance
     this.applyTheme();
 
-    // Apply animation duration
+    // Pin the duration on the overlay, so the CSS animations and the JS timers agree. The inline
+    // value of a previous opening goes first: it would hide the page's --zoom-animation-duration
+    this.overlay.style.removeProperty('--zoom-animation-duration');
     this.overlay.style.setProperty('--zoom-animation-duration', `${this.duration}ms`);
 
     // Get source image and position
