@@ -19,13 +19,6 @@
   /* Links wrapping images: the image is the click target */
   .astro-image-zoom-wrapper a img {
     cursor: zoom-in;
-    transition: opacity 0.2s ease;
-  }
-
-  @media (hover: hover) {
-    .astro-image-zoom-wrapper a img:hover {
-      opacity: 0.9;
-    }
   }
 
   /*
