@@ -139,7 +139,10 @@
 
   /*
    * Carousel: one slide per image, scrolled and snapped natively, so touchpad and touch swipes
-   * come with inertia for free. overscroll-behavior stops the browser's swipe-back gesture.
+   * come with inertia for free. overscroll-behavior-x stops the browser's swipe-back gesture.
+   * The vertical axis stays free: a vertical swipe closes the overlay (closeOnScroll) and the
+   * same gesture, inertia included, must go on scrolling the page. Containing it would hold the
+   * page still until the next gesture.
    */
   .astro-image-zoom-track {
     /* Scrolls from left to right whatever the page direction, like the nav buttons */
@@ -150,9 +153,9 @@
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
-    overscroll-behavior: contain;
+    overscroll-behavior-x: contain;
     scrollbar-width: none;
-    touch-action: pan-x pinch-zoom;
+    touch-action: pan-x pan-y pinch-zoom;
   }
 
   .astro-image-zoom-track::-webkit-scrollbar {
