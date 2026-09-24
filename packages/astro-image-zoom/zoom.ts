@@ -29,6 +29,31 @@ interface ZoomTheme {
   navigationColor?: string;
 }
 
+// The custom properties of the overlay. When it opens, it takes the values set around the
+// <astro-image-zoom> that opened it, so each gallery can have its own
+const ZOOM_VARIABLES = [
+  '--zoom-bg',
+  '--zoom-close-color',
+  '--zoom-close-bg',
+  '--zoom-nav-color',
+  '--zoom-nav-bg',
+  '--zoom-caption-color',
+  '--zoom-caption-bg',
+  '--zoom-controls-offset',
+  '--zoom-caption-max-width',
+  '--zoom-caption-font',
+  '--zoom-caption-font-size',
+  '--zoom-caption-radius',
+  '--zoom-padding',
+  '--zoom-image-radius',
+  '--zoom-button-size',
+  '--zoom-button-radius',
+  '--zoom-animation-duration'
+];
+
+const CAPTION_POSITIONS = ['bottom', 'top'];
+const NAVIGATION_LAYOUTS = ['bar', 'sides'];
+
 // Animation duration (ms) when neither the prop nor --zoom-animation-duration sets one
 const DEFAULT_DURATION = 300;
 // The spinner only shows when the image takes longer than this to load
@@ -51,18 +76,23 @@ const OVERLAY_HTML = `
         <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
       </svg>
     </button>
-    <button class="astro-image-zoom-nav astro-image-zoom-prev" aria-label="Previous image" type="button">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-      </svg>
-    </button>
-    <button class="astro-image-zoom-nav astro-image-zoom-next" aria-label="Next image" type="button">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-      </svg>
-    </button>
     <div class="astro-image-zoom-track"></div>
-    <p class="astro-image-zoom-caption" aria-live="polite"></p>
+    <div class="astro-image-zoom-bottom">
+      <p class="astro-image-zoom-caption" aria-live="polite"></p>
+      <div class="astro-image-zoom-toolbar">
+        <button class="astro-image-zoom-nav astro-image-zoom-prev" aria-label="Previous image" type="button">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </button>
+        <span class="astro-image-zoom-counter"></span>
+        <button class="astro-image-zoom-nav astro-image-zoom-next" aria-label="Next image" type="button">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
   </div>
 </dialog>`;
 
@@ -97,8 +127,10 @@ class Zoom {
   private track!: HTMLElement;
   private captionElement!: HTMLElement;
   private closeButton!: HTMLButtonElement;
-  private prevButton!: HTMLButtonElement | null;
-  private nextButton!: HTMLButtonElement | null;
+  private toolbar!: HTMLElement;
+  private counter!: HTMLElement;
+  private prevButton!: HTMLButtonElement;
+  private nextButton!: HTMLButtonElement;
   private slides: ZoomSlide[] = [];
 
   private state: ZoomState = {
@@ -166,8 +198,10 @@ class Zoom {
     this.track = this.overlay.querySelector('.astro-image-zoom-track')!;
     this.captionElement = this.overlay.querySelector('.astro-image-zoom-caption')!;
     this.closeButton = this.overlay.querySelector('.astro-image-zoom-close')!;
-    this.prevButton = this.overlay.querySelector('.astro-image-zoom-prev');
-    this.nextButton = this.overlay.querySelector('.astro-image-zoom-next');
+    this.toolbar = this.overlay.querySelector('.astro-image-zoom-toolbar')!;
+    this.counter = this.overlay.querySelector('.astro-image-zoom-counter')!;
+    this.prevButton = this.overlay.querySelector('.astro-image-zoom-prev')!;
+    this.nextButton = this.overlay.querySelector('.astro-image-zoom-next')!;
 
     this.setupEventListeners();
   }
@@ -218,7 +252,7 @@ class Zoom {
 
     this.closeButton.addEventListener('click', () => this.close(), { signal });
 
-    if (this.prevButton && this.nextButton && this.options.showNavigation) {
+    if (this.options.showNavigation) {
       this.prevButton.addEventListener('click', () => this.prev(), { signal });
       this.nextButton.addEventListener('click', () => this.next(), { signal });
     }
@@ -263,12 +297,11 @@ class Zoom {
     this.state.isOpen = true;
     this.state.currentIndex = index;
 
-    // Apply theme configuration for this instance
+    // The variables of this gallery, then its theme prop, which wins over them
+    this.inheritVariables();
     this.applyTheme();
 
-    // Pin the duration on the overlay, so the CSS animations and the JS timers agree. The inline
-    // value of a previous opening goes first: it would hide the page's --zoom-animation-duration
-    this.overlay.style.removeProperty('--zoom-animation-duration');
+    // Pin the duration on the overlay, so the CSS animations and the JS timers agree
     this.overlay.style.setProperty('--zoom-animation-duration', `${this.duration}ms`);
 
     // Get source image and position
@@ -287,6 +320,19 @@ class Zoom {
     this.overlay.showModal();
     this.overlay.setAttribute('data-close-backdrop', String(this.options.closeOnBackdrop));
     this.overlay.setAttribute('data-close-image', String(this.options.closeOnImage));
+    // Read on each opening, so a page can change them after load
+    const captionPosition = this.wrapper.dataset.captionPosition ?? '';
+    this.overlay.setAttribute(
+      'data-caption-position',
+      CAPTION_POSITIONS.includes(captionPosition) ? captionPosition : 'bottom'
+    );
+    this.overlay.setAttribute('data-show-caption', String(this.wrapper.dataset.showCaption !== 'false'));
+    this.overlay.setAttribute('data-show-counter', String(this.wrapper.dataset.showCounter !== 'false'));
+    const navigationLayout = this.wrapper.dataset.navigationLayout ?? '';
+    this.overlay.setAttribute(
+      'data-navigation-layout',
+      NAVIGATION_LAYOUTS.includes(navigationLayout) ? navigationLayout : 'bar'
+    );
     document.body.style.overflow = 'hidden';
 
     // Show the slide of the image, without letting a swipe move it away while it loads
@@ -493,28 +539,16 @@ class Zoom {
     this.updateNavigationButtons();
   }
 
+  // The navigation bar: arrows and counter, only for galleries
   private updateNavigationButtons(): void {
-    if (!this.prevButton || !this.nextButton) return;
+    const total = this.state.images.length;
+    this.toolbar.hidden = !this.options.showNavigation || total < 2;
+    if (this.toolbar.hidden) return;
 
-    const shouldShowNav = this.options.showNavigation && this.state.images.length > 1;
-
-    if (!shouldShowNav) {
-      this.prevButton.hidden = true;
-      this.nextButton.hidden = true;
-      return;
-    }
-
-    // Show navigation buttons
-    this.prevButton.hidden = false;
-    this.nextButton.hidden = false;
-
-    // Update prev button state
-    const isFirst = this.state.currentIndex === 0;
-    this.prevButton.setAttribute('aria-disabled', String(isFirst));
-
-    // Update next button state
-    const isLast = this.state.currentIndex === this.state.images.length - 1;
-    this.nextButton.setAttribute('aria-disabled', String(isLast));
+    const index = this.state.currentIndex;
+    this.counter.textContent = `${index + 1} / ${total}`;
+    this.prevButton.setAttribute('aria-disabled', String(index === 0));
+    this.nextButton.setAttribute('aria-disabled', String(index === total - 1));
   }
 
   private handleKeydown = (e: KeyboardEvent): void => {
@@ -610,6 +644,21 @@ class Zoom {
     }
   }
 
+  // Copies the --zoom-* values around the wrapper to the overlay, which lives in <body> and would
+  // otherwise only see the ones set on :root. A previous opening's values are cleared too.
+  private inheritVariables(): void {
+    const styles = getComputedStyle(this.wrapper);
+
+    for (const name of ZOOM_VARIABLES) {
+      const value = styles.getPropertyValue(name).trim();
+      if (value) {
+        this.overlay.style.setProperty(name, value);
+      } else {
+        this.overlay.style.removeProperty(name);
+      }
+    }
+  }
+
   private applyTheme(): void {
     const { backgroundColor, closeButtonColor, navigationColor } = this.options.theme;
     const variables = {
@@ -618,12 +667,9 @@ class Zoom {
       '--zoom-nav-color': navigationColor
     };
 
+    // Only the colors it sets: inheritVariables() already reset the rest
     for (const [name, value] of Object.entries(variables)) {
-      if (value) {
-        this.overlay.style.setProperty(name, value);
-      } else {
-        this.overlay.style.removeProperty(name);
-      }
+      if (value) this.overlay.style.setProperty(name, value);
     }
   }
 

@@ -174,6 +174,10 @@ const optimizedImage = await getImage({
 | `closeOnImage` | `boolean` | `true` | Close when clicking the zoomed image |
 | `closeOnScroll` | `boolean` | `true` | Close when scrolling/wheeling |
 | `showNavigation` | `boolean` | `true` | Show navigation arrows |
+| `navigationLayout` | `'bar' \| 'sides'` | `'bar'` | Arrows and counter in a bar at the bottom, or arrows at the sides |
+| `showCounter` | `boolean` | `true` | Show the position in the gallery, such as "3 / 8" |
+| `showCaption` | `boolean` | `true` | Show the caption of the zoomed image |
+| `captionPosition` | `'bottom' \| 'top'` | `'bottom'` | Where the caption sits on the screen |
 | `class` | `string` | `''` | Custom CSS class |
 
 ### Custom Styling
@@ -184,12 +188,23 @@ You can override the default styles using CSS variables:
 :root {
   --zoom-bg: rgba(20, 20, 30, 0.98);
   --zoom-close-color: #ff6b6b;
-  --zoom-nav-color: #4ecdc4;
+  --zoom-nav-color: #4ecdc4; /* arrows and counter */
   --zoom-close-bg: rgba(255, 255, 255, 0.1);
   --zoom-nav-bg: rgba(255, 255, 255, 0.1);
   --zoom-caption-color: #fff;
   --zoom-caption-bg: rgba(0, 0, 0, 0.9);
   --zoom-animation-duration: 400ms; /* ms or s; the animationDuration prop wins over it */
+
+  /* Layout */
+  --zoom-padding: 0; /* space between the zoomed image and the screen edges */
+  --zoom-image-radius: 0; /* corners of the zoomed image */
+  --zoom-button-size: 44px; /* arrows and close button */
+  --zoom-button-radius: 999px; /* shape of the buttons and the navigation bar */
+  --zoom-controls-offset: 1.25rem; /* distance from the controls and the caption to the edges */
+  --zoom-caption-max-width: 70%; /* 90% on phones */
+  --zoom-caption-font: inherit;
+  --zoom-caption-font-size: 0.8125rem;
+  --zoom-caption-radius: 6px;
 
   /* Focus ring drawn on the image when its link has keyboard focus */
   --zoom-focus-outline: 3px solid rebeccapurple; /* default: 2px solid currentColor */
@@ -197,9 +212,16 @@ You can override the default styles using CSS variables:
 }
 ```
 
-The overlay is appended to `<body>` and shared by every `<ImageZoom>`, so set these variables
-on `:root` (or `body`): a variable set on a container around the images does not reach it. To
-theme one instance only, use the `theme` prop.
+Set them on `:root` for the whole site, or on any element around an `<ImageZoom>` for that gallery
+only: when a gallery opens, the overlay takes the values found around it. The `theme` prop wins over
+the variables.
+
+```css
+.portfolio {
+  --zoom-padding: 5vmin;
+  --zoom-image-radius: 12px;
+}
+```
 
 The component loads its own stylesheet, so you don't need to import `zoom.css` yourself. Import
 `astro-image-zoom/zoom.css` directly only if you use `ZoomClass` without the `<ImageZoom>` component.

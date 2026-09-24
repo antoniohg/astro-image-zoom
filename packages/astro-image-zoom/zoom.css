@@ -159,7 +159,10 @@
     position: relative;
     flex: 0 0 100%;
     height: 100%;
+    /* Border box: the padding must not widen the slide, or the carousel loses its step */
+    box-sizing: border-box;
     margin: 0;
+    padding: var(--zoom-padding, 0);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -177,6 +180,7 @@
     width: auto;
     height: auto;
     object-fit: contain;
+    border-radius: var(--zoom-image-radius, 0);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     user-select: none;
     -webkit-user-select: none;
@@ -249,100 +253,147 @@
     }
   }
 
-  /* Caption - fixed to the viewport bottom; hidden while empty */
-  .astro-image-zoom-caption {
+  /*
+   * Bottom stack: the caption and, below it, the navigation bar. Clicks beside them reach the
+   * slides, so they still close the zoom.
+   */
+  .astro-image-zoom-bottom {
     position: fixed;
-    bottom: 2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: 70%;
+    inset-inline: 0;
+    bottom: var(--zoom-controls-offset, 1.25rem);
+    z-index: 11;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding-inline: 1rem;
+    pointer-events: none;
+  }
+
+  .astro-image-zoom-bottom > * {
+    pointer-events: auto;
+  }
+
+  /* Caption - above the navigation bar, or at the top of the screen; hidden while empty */
+  .astro-image-zoom-caption {
+    max-width: var(--zoom-caption-max-width, 70%);
+    margin: 0;
     padding: 0.875rem 1.25rem;
     color: var(--zoom-caption-color, #fff);
-    font-size: 0.8125rem;
+    font-family: var(--zoom-caption-font, inherit);
+    font-size: var(--zoom-caption-font-size, 0.8125rem);
     font-weight: 500;
     line-height: 1.6;
     letter-spacing: 0.01em;
     text-align: center;
     background-color: var(--zoom-caption-bg, rgba(0, 0, 0, 0.9));
-    border-radius: 6px;
+    border-radius: var(--zoom-caption-radius, 6px);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     opacity: 0;
     animation: astro-image-zoom-caption-in 0.3s ease 0.1s forwards;
-    z-index: 11;
   }
 
-  .astro-image-zoom-caption:empty {
+  .astro-image-zoom-caption:empty,
+  .astro-image-zoom-overlay[data-show-caption="false"] .astro-image-zoom-caption {
     display: none;
+  }
+
+  /* At the top, the caption stays clear of the close button in the corner */
+  .astro-image-zoom-overlay[data-caption-position="top"] .astro-image-zoom-caption {
+    position: fixed;
+    top: var(--zoom-controls-offset, 1.25rem);
+    inset-inline: 0;
+    width: fit-content;
+    max-width: min(
+      var(--zoom-caption-max-width, 70%),
+      100% - 2 * (var(--zoom-button-size, 44px) + 2 * var(--zoom-controls-offset, 1.25rem))
+    );
+    margin-inline: auto;
   }
 
   @keyframes astro-image-zoom-caption-in {
     from {
       opacity: 0;
-      transform: translateX(-50%) translateY(10px);
+      translate: 0 10px;
     }
 
     to {
       opacity: 1;
-      transform: translateX(-50%) translateY(0);
+      translate: 0 0;
     }
   }
 
-  /* Close and navigation buttons */
+  /*
+   * Controls: the close button in the corner, and the navigation bar (previous, counter, next).
+   * Every color, size and shape comes from a --zoom-* variable.
+   */
   .astro-image-zoom-close,
   .astro-image-zoom-nav {
-    position: absolute;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.15));
-    border-radius: 50%;
+    flex: none;
+    width: var(--zoom-button-size, 44px);
+    height: var(--zoom-button-size, 44px);
+    padding: 0;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: var(--zoom-button-radius, 999px);
     cursor: pointer;
-    transition: background-color 0.15s ease, scale 0.15s ease, box-shadow 0.15s ease;
-    z-index: 10;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
-  }
-
-  .astro-image-zoom-close:hover,
-  .astro-image-zoom-nav:hover {
-    background-color: light-dark(#fff, rgba(255, 255, 255, 0.22));
-    scale: 1.05;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  }
-
-  .astro-image-zoom-close:active,
-  .astro-image-zoom-nav:active {
-    scale: 0.98;
-  }
-
-  .astro-image-zoom-close:focus-visible,
-  .astro-image-zoom-nav:focus-visible {
-    outline: 2px solid;
-    outline-offset: 2px;
+    transition: background-color 0.15s ease;
   }
 
   .astro-image-zoom-close svg,
   .astro-image-zoom-nav svg {
     display: block;
+    width: 22px;
+    height: 22px;
+  }
+
+  .astro-image-zoom-close:focus-visible,
+  .astro-image-zoom-nav:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+
+  /* The surfaces: the close button, the bar, and in "sides" layout each arrow and the counter */
+  .astro-image-zoom-close,
+  .astro-image-zoom-toolbar,
+  .astro-image-zoom-overlay[data-navigation-layout="sides"] :is(.astro-image-zoom-nav, .astro-image-zoom-counter) {
+    border: 1px solid light-dark(rgba(0, 0, 0, 0.08), rgba(255, 255, 255, 0.14));
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   }
 
   .astro-image-zoom-close {
-    top: 1.25rem;
-    right: 1.25rem;
-    width: 40px;
-    height: 40px;
-    background-color: var(--zoom-close-bg, light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.12)));
-    color: var(--zoom-close-color, light-dark(rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.9)));
+    position: absolute;
+    top: var(--zoom-controls-offset, 1.25rem);
+    right: var(--zoom-controls-offset, 1.25rem);
+    z-index: 11;
+    color: var(--zoom-close-color, light-dark(rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.92)));
+    background-color: var(--zoom-close-bg, light-dark(rgba(255, 255, 255, 0.9), rgba(30, 30, 32, 0.85)));
   }
 
-  .astro-image-zoom-nav {
-    top: 50%;
-    transform: translateY(-50%);
-    width: 48px;
-    height: 48px;
-    background-color: var(--zoom-nav-bg, light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.12)));
-    color: var(--zoom-nav-color, light-dark(rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.9)));
+  .astro-image-zoom-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.25rem;
+    color: var(--zoom-nav-color, light-dark(rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.92)));
+    background-color: var(--zoom-nav-bg, light-dark(rgba(255, 255, 255, 0.9), rgba(30, 30, 32, 0.85)));
+    border-radius: calc(var(--zoom-button-radius, 999px) + 0.25rem);
+  }
+
+  /* display: flex above would beat the [hidden] of the user agent */
+  .astro-image-zoom-toolbar[hidden] {
+    display: none;
+  }
+
+  /* Hover tints whatever background the button has, so custom colors keep working */
+  .astro-image-zoom-close:hover,
+  .astro-image-zoom-nav:hover {
+    --astro-image-zoom-tint: light-dark(rgba(0, 0, 0, 0.08), rgba(255, 255, 255, 0.16));
+    background-image: linear-gradient(var(--astro-image-zoom-tint), var(--astro-image-zoom-tint));
   }
 
   .astro-image-zoom-nav[aria-disabled="true"] {
@@ -351,51 +402,66 @@
     cursor: default;
   }
 
-  /* display: flex above would beat the [hidden] of the user agent */
-  .astro-image-zoom-nav[hidden] {
+  .astro-image-zoom-counter {
+    min-width: 4.5ch;
+    padding-inline: 0.375rem;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .astro-image-zoom-overlay[data-show-counter="false"] .astro-image-zoom-counter {
     display: none;
   }
 
-  .astro-image-zoom-prev {
-    left: 1.5rem;
+  /* "sides" layout: the arrows move to the screen edges, the counter stays at the bottom */
+  .astro-image-zoom-overlay[data-navigation-layout="sides"] .astro-image-zoom-toolbar {
+    display: contents;
   }
 
-  .astro-image-zoom-next {
-    right: 1.5rem;
+  .astro-image-zoom-overlay[data-navigation-layout="sides"] .astro-image-zoom-toolbar[hidden] {
+    display: none;
+  }
+
+  .astro-image-zoom-overlay[data-navigation-layout="sides"] .astro-image-zoom-nav {
+    position: fixed;
+    top: 50%;
+    translate: 0 -50%;
+    color: var(--zoom-nav-color, light-dark(rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.92)));
+    background-color: var(--zoom-nav-bg, light-dark(rgba(255, 255, 255, 0.9), rgba(30, 30, 32, 0.85)));
+  }
+
+  .astro-image-zoom-overlay[data-navigation-layout="sides"] .astro-image-zoom-prev {
+    left: var(--zoom-controls-offset, 1.25rem);
+  }
+
+  .astro-image-zoom-overlay[data-navigation-layout="sides"] .astro-image-zoom-next {
+    right: var(--zoom-controls-offset, 1.25rem);
+  }
+
+  .astro-image-zoom-overlay[data-navigation-layout="sides"] .astro-image-zoom-counter {
+    padding: 0.5rem 0.75rem;
+    color: var(--zoom-nav-color, light-dark(rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.92)));
+    background-color: var(--zoom-nav-bg, light-dark(rgba(255, 255, 255, 0.9), rgba(30, 30, 32, 0.85)));
+    border-radius: var(--zoom-button-radius, 999px);
+  }
+
+  /* Windows high contrast: the surfaces lose their backgrounds, so they get an outline */
+  @media (forced-colors: active) {
+    .astro-image-zoom-close,
+    .astro-image-zoom-toolbar,
+    .astro-image-zoom-caption {
+      border: 1px solid CanvasText;
+    }
   }
 
   /* Mobile Responsive */
   @media (max-width: 768px) {
-    .astro-image-zoom-close {
-      top: 1rem;
-      right: 1rem;
-    }
-
-    .astro-image-zoom-nav {
-      width: 40px;
-      height: 40px;
-    }
-
-    .astro-image-zoom-prev {
-      left: 1rem;
-    }
-
-    .astro-image-zoom-next {
-      right: 1rem;
-    }
-
     .astro-image-zoom-caption {
-      max-width: 90%;
+      max-width: var(--zoom-caption-max-width, 90%);
       padding: 0.75rem 1rem;
-      background-color: var(--zoom-caption-bg, rgba(0, 0, 0, 0.95));
-    }
-
-    /* Cheaper than blurring on small devices */
-    .astro-image-zoom-nav,
-    .astro-image-zoom-close {
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
   }
 

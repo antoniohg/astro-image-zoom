@@ -50,6 +50,26 @@ export interface Props {
   showNavigation?: boolean;
 
   /**
+   * Navigation arrows in a bar at the bottom, with the counter, or at the sides of the screen
+   */
+  navigationLayout?: "bar" | "sides";
+
+  /**
+   * Show the position in the gallery, such as "3 / 8"
+   */
+  showCounter?: boolean;
+
+  /**
+   * Show the caption of the zoomed image
+   */
+  showCaption?: boolean;
+
+  /**
+   * Where the caption sits: at the bottom or the top of the screen
+   */
+  captionPosition?: "bottom" | "top";
+
+  /**
    * Custom CSS class for the zoom container
    */
   class?: string;
@@ -63,6 +83,10 @@ const {
   closeOnImage = true,
   closeOnScroll = true,
   showNavigation = true,
+  navigationLayout = "bar",
+  showCounter = true,
+  showCaption = true,
+  captionPosition = "bottom",
   class: className = "",
 } = Astro.props;
 
@@ -83,6 +107,10 @@ const slotContent = wrapImages(await Astro.slots.render("default"));
   data-close-image={closeOnImage ? "true" : "false"}
   data-close-scroll={closeOnScroll ? "true" : "false"}
   data-show-nav={showNavigation ? "true" : "false"}
+  data-navigation-layout={navigationLayout}
+  data-show-counter={showCounter ? "true" : "false"}
+  data-show-caption={showCaption ? "true" : "false"}
+  data-caption-position={captionPosition}
   data-theme-config={themeConfig}
   data-animation-duration={animationDuration}
 >
