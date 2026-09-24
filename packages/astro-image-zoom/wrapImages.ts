@@ -22,9 +22,28 @@ function parseAttributes(source: string): Attributes {
 // Values keep their original entities; only the quote that delimits the new attribute needs escaping
 const escapeQuotes = (value: string): string => value.replaceAll('"', '&quot;');
 
+// The image URL becomes a link href, so only schemes that cannot run code are allowed:
+// relative URLs, http(s), blob: and data:image/. javascript:, vbscript: and the like are dropped.
+function isSafeUrl(url: string): boolean {
+  try {
+    // The URL parser strips the whitespace and control characters browsers ignore in schemes
+    const { protocol } = new URL(url, 'https://astro-image-zoom.invalid/');
+    if (protocol === 'data:') return /^[\s\0-\x1f]*data:image\//i.test(url);
+    return protocol === 'http:' || protocol === 'https:' || protocol === 'blob:';
+  } catch {
+    return false;
+  }
+}
+
+// The zoom URL of an image: data-zoom-src wins over src, and unsafe URLs are ignored
+const getSource = (image: Attributes): string | undefined => {
+  const src = image.get('data-zoom-src') || image.get('src');
+  return src && isSafeUrl(src) ? src : undefined;
+};
+
 // The link is named after the image so screen readers announce what opens
 function wrap(html: string, image: Attributes): string {
-  const src = image.get('data-zoom-src') || image.get('src');
+  const src = getSource(image);
   if (!src) return html;
 
   const caption = image.get('data-zoom-caption');
@@ -65,7 +84,7 @@ export function wrapImages(html: string): string {
       } else if (picture) {
         const { start: pictureStart, image } = picture;
         picture = null;
-        if (image?.get('data-zoom-src') || image?.get('src')) {
+        if (image && getSource(image)) {
           output += html.slice(cursor, pictureStart) + wrap(html.slice(pictureStart, end), image);
           cursor = end;
         }
@@ -74,7 +93,7 @@ export function wrapImages(html: string): string {
       const image = parseAttributes(rawAttributes);
       if (picture) {
         picture.image ??= image;
-      } else if (image.get('data-zoom-src') || image.get('src')) {
+      } else if (getSource(image)) {
         output += html.slice(cursor, start) + wrap(tag, image);
         cursor = end;
       }
