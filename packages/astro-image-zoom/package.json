@@ -20,12 +20,12 @@
   ],
   "exports": {
     ".": "./index.js",
-    "./Zoom.astro": "./Zoom.astro",
+    "./ImageZoom.astro": "./ImageZoom.astro",
     "./zoom.css": "./zoom.css"
   },
   "files": [
     "index.js",
-    "Zoom.astro",
+    "ImageZoom.astro",
     "zoom.ts",
     "zoom.css",
     "README.md"
