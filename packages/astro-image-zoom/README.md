@@ -1,26 +1,32 @@
-# 🖼️ astro-image-zoom
+# astro-image-zoom
 
-A beautiful, accessible, and performant zoom component for Astro with Medium-style animations.
+Medium-style image zoom for Astro: a click grows each image from its place on the page to fill the
+screen, and the images of a gallery become a carousel you can swipe.
 
-## ✨ Features
+> **Beta.** The API may still change before 1.0. Feedback and bug reports are welcome in the
+> [issues](https://github.com/antoniohg/astro-image-zoom/issues).
 
-- **🎨 Medium-style animations** - Smooth zoom transitions from source image
-- **♿ Fully accessible** - ARIA labels, keyboard navigation, focus management
-- **⚡ High performance** - CSS transforms, optimized animations, lazy loading
-- **📱 Touch-friendly** - Swipe gestures for mobile devices
-- **🎛️ Highly configurable** - Customizable themes, animations, and behavior
-- **🌙 Dark mode by default** - Beautiful dark overlay like Medium
-- **🖱️ Multiple navigation methods** - Click, keyboard, touch, buttons
-- **📦 Zero dependencies** - Pure TypeScript and CSS
-- **🔌 Works with View Transitions** - Astro 3.0+ compatible
+## Features
 
-## 📦 Installation
+- **Zoom from the page**: FLIP animations with CSS transforms and `clip-path`, from the thumbnail to
+  the full image and back, crops included.
+- **Accessible**: a native modal `<dialog>` that traps and restores focus, keyboard navigation,
+  labelled controls, reduced motion and forced colors.
+- **Galleries**: a native scroll-snap carousel with touch and touchpad swipes, arrow keys, buttons and
+  a counter.
+- **Isolated**: the overlay lives in a shadow root, so the CSS of your site can't break it.
+- **Customizable**: `--zoom-*` CSS variables, per gallery if you want, `::part()` and props.
+- **Light and dark**: follows the color scheme of the page, or the one you set.
+- **No dependencies**: TypeScript and CSS only; without JavaScript, each image links to its full size.
+
+## Installation
 
 ```bash
-npm install astro-image-zoom
+pnpm add astro-image-zoom@beta
+# or: npm install astro-image-zoom@beta
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Basic Usage
 
@@ -146,7 +152,7 @@ const optimizedImage = await getImage({
 > **Note:** Do not pass the `Image` component directly to `data-zoom-src` or call it as a function. The zoom script expects a string URL for the `data-zoom-src` attribute.
 
 
-## ⚙️ Configuration
+## Configuration
 
 ### Component Props
 
@@ -170,10 +176,10 @@ const optimizedImage = await getImage({
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `theme` | `object` | `{}` | Theme configuration object |
-| `theme.backgroundColor` | `string` | `rgba(0, 0, 0, 0.95)` | Overlay background color |
-| `theme.closeButtonColor` | `string` | `#ffffff` | Close button color |
-| `theme.navigationColor` | `string` | `#ffffff` | Navigation arrows color |
-| `animationDuration` | `number` | `300` | Animation duration in milliseconds; overrides `--zoom-animation-duration` |
+| `theme.backgroundColor` | `string` | light or dark, following the page | Overlay background color (`--zoom-bg`) |
+| `theme.closeButtonColor` | `string` | light or dark, following the page | Close button color (`--zoom-close-color`) |
+| `theme.navigationColor` | `string` | light or dark, following the page | Arrows and counter color (`--zoom-nav-color`) |
+| `animationDuration` | `number` | — | Animation duration in milliseconds; overrides `--zoom-animation-duration` (300ms by default) |
 | `keyboardNavigation` | `boolean` | `true` | Enable keyboard shortcuts |
 | `closeOnBackdrop` | `boolean` | `true` | Close when clicking backdrop |
 | `closeOnImage` | `boolean` | `true` | Close when clicking the zoomed image |
@@ -277,7 +283,7 @@ With this order your reset can't break the zoom cursor or the focus ring, and yo
 layer can still customize them. Class names (`.astro-image-zoom-*`) are prefixed, so the styles don't
 clash with the rest of your site.
 
-Or apply custom styles to specific instances:
+To style the images of one gallery on the page, pass a class:
 
 ```astro
 <ImageZoom class="custom-zoom">
@@ -285,52 +291,45 @@ Or apply custom styles to specific instances:
 </ImageZoom>
 
 <style>
-  .custom-zoom img {
+  /* Global: the wrapper is rendered by the component, outside the scope of your page */
+  :global(.custom-zoom img) {
     border-radius: 8px;
-  }
-
-  .custom-zoom img:hover {
-    transform: scale(1.05);
   }
 </style>
 ```
 
-## 🎮 Keyboard Shortcuts
+## Keyboard Shortcuts
 
 - **Escape** - Close zoom
 - **Arrow Left** - Previous image
 - **Arrow Right** - Next image
 - **Tab / Shift+Tab** - Navigate between controls
 
-## 📱 Touch Gestures
+## Touch Gestures
 
-- **Swipe Left** - Next image (also two-finger swipe on a touchpad)
-- **Swipe Right** - Previous image
-- **Tap backdrop** - Close zoom
+- **Swipe left** - Next image (also a two-finger swipe on a touchpad)
+- **Swipe right** - Previous image
+- **Swipe up or down** - Close the zoom and keep scrolling the page
+- **Tap the backdrop** - Close the zoom
 
-## ♿ Accessibility Features
+## Accessibility
 
-- ✅ ARIA labels and roles
-- ✅ Keyboard navigation
-- ✅ Focus trap (Tab key cycles through controls)
-- ✅ Focus restoration (returns to trigger element)
-- ✅ Screen reader announcements
-- ✅ Reduced motion support
-- ✅ High contrast mode support
-- ✅ Keyboard-accessible images (tabindex)
+- A native modal `<dialog>`: focus moves to the close button, stays inside while it is open and
+  returns to the image when it closes.
+- Each image becomes a link, reachable with the keyboard, with a visible focus ring.
+- Labelled buttons; the caption is announced when the image changes.
+- Reduced motion turns the animations off; forced colors (Windows high contrast) keep the controls
+  visible.
 
-## 🚀 Performance Features
+## Performance
 
-- ✅ CSS transforms for smooth animations
-- ✅ `will-change` optimization
-- ✅ Event delegation
-- ✅ Optimized reflows
-- ✅ Lazy loading support
-- ✅ Efficient event listeners cleanup
-- ✅ RequestAnimationFrame for animations
-- ✅ Minimal JavaScript bundle
+- The page loads the images you give it; the full-size version loads only when the zoom opens, and
+  the neighbors of a gallery are preloaded.
+- Animations are CSS only (transforms, `clip-path` and opacity); the script measures positions and
+  waits for them to end.
+- One overlay shared by every gallery on the page, and one delegated click listener per gallery.
 
-## 🔧 Advanced Usage
+## Advanced Usage
 
 ### Multiple Zoom Instances
 
@@ -377,7 +376,10 @@ Or apply custom styles to specific instances:
 </script>
 ```
 
-## 🎨 Examples
+`ZoomClass` reads the options from the `data-*` attributes that `<ImageZoom>` renders; the theme and
+the duration come from the `--zoom-*` variables.
+
+## Examples
 
 ### Blog Post Images
 
@@ -447,29 +449,19 @@ const projects = [
 </style>
 ```
 
-## 🌐 Browser Support
+## Browser Support
 
-- Chrome/Edge (latest)
-- Firefox (latest)
-- Safari (latest)
-- Mobile browsers (iOS Safari, Chrome Mobile)
+Current browsers: the overlay uses `<dialog>`, shadow DOM, `:has()` and `light-dark()` (Chrome and
+Edge 123, Firefox 120, Safari 17.5 and later). During the beta it has been tested in Chromium; reports
+from Firefox and Safari, desktop or mobile, are welcome.
 
-## 📄 License
+## License
 
-MIT © Antonio
+[MIT](https://github.com/antoniohg/astro-image-zoom/blob/main/LICENSE)
 
-## 🤝 Contributing
+## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Found a bug or have an idea? Open an [issue](https://github.com/antoniohg/astro-image-zoom/issues) or
+a pull request.
 
-## 🐛 Issues
-
-Found a bug? Please open an issue on [GitHub](https://github.com/antoniohg/astro-image-zoom/issues).
-
-## 🙏 Credits
-
-Inspired by Medium's beautiful image viewer and built with modern web standards.
-
----
-
-Made with ❤️ for the Astro community
+Inspired by Medium's image viewer.

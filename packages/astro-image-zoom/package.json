@@ -1,13 +1,18 @@
 {
   "name": "astro-image-zoom",
-  "version": "0.1.0",
-  "description": "A Medium-style Zoom component for Astro - accessible, performant, and easy to use",
+  "version": "0.1.0-beta.0",
+  "description": "Medium-style image zoom for Astro: accessible, animated from the page, with swipeable galleries",
   "type": "module",
-  "author": "Antonio <email@antoniohg.com>",
+  "author": "Antonio (https://antoniohg.com)",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/antoniohg/astro-image-zoom"
+    "url": "git+https://github.com/antoniohg/astro-image-zoom.git",
+    "directory": "packages/astro-image-zoom"
+  },
+  "homepage": "https://github.com/antoniohg/astro-image-zoom#readme",
+  "bugs": {
+    "url": "https://github.com/antoniohg/astro-image-zoom/issues"
   },
   "keywords": [
     "astro-component",
