@@ -64,6 +64,9 @@ const WHEEL_HORIZONTAL_GRACE = 250;
 
 const OVERLAY_ID = 'astro-image-zoom-global-overlay';
 
+// The track is out of the tab order (tabindex="-1"; Chrome would make the scroller focusable): the
+// arrow keys and the prev/next buttons already move through the gallery, and a focus stop on it did
+// nothing. axe reports it as scrollable-region-focusable; the keyboard still reaches every image.
 const OVERLAY_HTML = `
 <dialog class="astro-image-zoom-overlay" part="overlay" aria-label="Image zoom overlay">
   <div class="astro-image-zoom-backdrop" part="backdrop" aria-hidden="true"></div>
@@ -73,7 +76,7 @@ const OVERLAY_HTML = `
         <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
       </svg>
     </button>
-    <div class="astro-image-zoom-track" part="track" tabindex="0" role="group" aria-label="Images"></div>
+    <div class="astro-image-zoom-track" part="track" tabindex="-1" role="group" aria-label="Images"></div>
     <div class="astro-image-zoom-bottom">
       <p class="astro-image-zoom-caption" part="caption" aria-live="polite"></p>
       <div class="astro-image-zoom-toolbar" part="toolbar">

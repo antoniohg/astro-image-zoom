@@ -133,12 +133,6 @@
   scroll-behavior: smooth;
 }
 
-/* The track scrolls, so keyboard users can focus it (WCAG 2.1.1); the ring sits inside the edges */
-.astro-image-zoom-track:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: -4px;
-}
-
 .astro-image-zoom-track::-webkit-scrollbar {
   display: none;
 }
