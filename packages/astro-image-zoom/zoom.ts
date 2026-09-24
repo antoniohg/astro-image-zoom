@@ -16,6 +16,13 @@ interface ZoomState {
   images: ZoomImage[];
 }
 
+// One slide of the carousel: the overlay holds a slide per image, scrolled and snapped natively
+interface ZoomSlide {
+  figure: HTMLElement;
+  img: HTMLImageElement;
+  loaded?: Promise<void>;
+}
+
 interface ZoomTheme {
   backgroundColor?: string;
   closeButtonColor?: string;
@@ -24,12 +31,12 @@ interface ZoomTheme {
 
 // The spinner only shows when the image takes longer than this to load
 const SPINNER_DELAY = 200;
-// Minimum horizontal distance, in pixels, of a swipe
-const SWIPE_DISTANCE = 50;
-// Wheel events closer than this (ms) belong to the same touchpad gesture, inertia included
-const WHEEL_GESTURE_GAP = 120;
-// Wheel deltas below this many pixels are ignored
-const WHEEL_NOISE = 3;
+// How long (ms) a requested slide counts as the target while the smooth scroll runs
+const SCROLL_TARGET_TTL = 500;
+// Vertical wheel deltas below this many pixels do not close the overlay
+const WHEEL_CLOSE_DELTA = 4;
+// After a horizontal wheel event (ms), vertical jitter of the same touchpad swipe is ignored
+const WHEEL_HORIZONTAL_GRACE = 250;
 
 const OVERLAY_ID = 'astro-image-zoom-global-overlay';
 
@@ -52,10 +59,8 @@ const OVERLAY_HTML = `
         <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
       </svg>
     </button>
-    <figure class="astro-image-zoom-figure">
-      <img class="astro-image-zoom-image" src="" alt="" loading="eager" />
-      <figcaption class="astro-image-zoom-caption" aria-live="polite"></figcaption>
-    </figure>
+    <div class="astro-image-zoom-track"></div>
+    <p class="astro-image-zoom-caption" aria-live="polite"></p>
   </div>
 </dialog>`;
 
@@ -78,12 +83,12 @@ function getOverlay(): HTMLDialogElement {
 class Zoom {
   private wrapper: HTMLElement;
   private overlay!: HTMLDialogElement;
-  private imageElement!: HTMLImageElement;
+  private track!: HTMLElement;
   private captionElement!: HTMLElement;
   private closeButton!: HTMLButtonElement;
   private prevButton!: HTMLButtonElement | null;
   private nextButton!: HTMLButtonElement | null;
-  private backdrop!: HTMLElement;
+  private slides: ZoomSlide[] = [];
 
   private state: ZoomState = {
     isOpen: false,
@@ -107,13 +112,9 @@ class Zoom {
   private previousFocus: HTMLElement | null = null;
   private touchStartX = 0;
   private touchStartY = 0;
-  // Touchpad swipe: a stream of wheel events, decided once per gesture
-  private wheelAxis: 'x' | 'y' = 'y';
-  private wheelDeltaX = 0;
-  private wheelSwiped = false;
-  private lastWheelTime = 0;
-  private lastWheelDeltaX = 0;
-  private navigationId = 0;
+  private lastHorizontalWheel = 0;
+  private scrollTarget = 0;
+  private scrollTargetUntil = 0;
   private openId = 0;
 
   // Listeners on the page's links live as long as the instance
@@ -150,8 +151,7 @@ class Zoom {
 
     // One overlay is shared by every zoom instance on the page
     this.overlay = getOverlay();
-    this.backdrop = this.overlay.querySelector('.astro-image-zoom-backdrop')!;
-    this.imageElement = this.overlay.querySelector('.astro-image-zoom-image')!;
+    this.track = this.overlay.querySelector('.astro-image-zoom-track')!;
     this.captionElement = this.overlay.querySelector('.astro-image-zoom-caption')!;
     this.closeButton = this.overlay.querySelector('.astro-image-zoom-close')!;
     this.prevButton = this.overlay.querySelector('.astro-image-zoom-prev');
@@ -211,14 +211,21 @@ class Zoom {
       this.nextButton.addEventListener('click', () => this.next(), { signal });
     }
 
-    if (this.options.closeOnBackdrop) {
-      this.backdrop.addEventListener('click', () => this.close(), { signal });
-    }
+    // The slides cover the backdrop, so they receive its clicks. Click on the image closes
+    // (like Medium), click beside it counts as a backdrop click
+    this.track.addEventListener(
+      'click',
+      (e) => {
+        const onImage = (e.target as Element).closest('.astro-image-zoom-image') !== null;
+        if (onImage ? this.options.closeOnImage : this.options.closeOnBackdrop) this.close();
+      },
+      { signal }
+    );
+  }
 
-    // Click on image closes (like Medium)
-    if (this.options.closeOnImage) {
-      this.imageElement.addEventListener('click', () => this.close(), { signal });
-    }
+  // The image of the slide on screen
+  private get imageElement(): HTMLImageElement {
+    return this.slides[this.state.currentIndex].img;
   }
 
   // Zero when the user prefers reduced motion, so animations and their timers finish at once
@@ -251,8 +258,8 @@ class Zoom {
     const sourceImg = this.state.images[index].element.querySelector('img')!;
     const sourceRect = sourceImg.getBoundingClientRect();
 
-    // Update content (image, caption, nav buttons)
-    this.updateContent(index);
+    this.buildSlides();
+    this.renderActive(index);
 
     // Listen to the overlay from now until close(), also while the image is loading
     this.openController = new AbortController();
@@ -265,18 +272,21 @@ class Zoom {
     this.overlay.setAttribute('data-close-image', String(this.options.closeOnImage));
     document.body.style.overflow = 'hidden';
 
-    // Reset styles
-    this.imageElement.style.transform = '';
+    // Show the slide of the image, without letting a swipe move it away while it loads
+    this.track.style.overflowX = 'hidden';
+    this.track.scrollLeft = index * this.track.clientWidth;
 
     // Hidden until the image is ready, so the FLIP animation starts from a clean frame
     this.imageElement.style.opacity = '0';
     this.openPending = true;
-    await this.loadImage();
+    await this.loadSlide(index);
 
     // Closed while loading: close() already restored everything
     if (currentOpenId !== this.openId) return;
     this.openPending = false;
+    this.track.style.overflowX = '';
     this.imageElement.style.opacity = '1';
+    this.preloadNeighbors(index);
 
     // FLIP Animation
     const finalRect = this.imageElement.getBoundingClientRect();
@@ -301,17 +311,14 @@ class Zoom {
       document.addEventListener('keydown', this.handleKeydown, { signal });
     }
 
-    // Add touch listeners for swipe
-    this.overlay.addEventListener('touchstart', this.handleTouchStart, { passive: true, signal });
-    this.overlay.addEventListener('touchend', this.handleTouchEnd, { passive: true, signal });
+    // Horizontal swipes scroll the track natively; the slide on screen follows the scroll
+    this.track.addEventListener('scroll', this.handleScroll, { passive: true, signal });
 
-    // Touchpad swipes arrive as wheel events, so they navigate too. Not passive: horizontal
-    // ones are cancelled to block the browser's swipe-back gesture.
-    this.overlay.addEventListener('wheel', this.handleWheel, { passive: false, signal });
-
-    // Smooth close on scroll/wheel (like Medium - non-blocking)
+    // Smooth close on vertical scroll/wheel (like Medium - non-blocking)
     if (this.options.closeOnScroll) {
+      this.overlay.addEventListener('touchstart', this.handleTouchStart, { passive: true, signal });
       this.overlay.addEventListener('touchmove', this.handleTouchMove, { passive: true, signal });
+      this.overlay.addEventListener('wheel', this.handleWheel, { passive: true, signal });
     }
 
     // The modal dialog traps the focus natively
@@ -324,10 +331,8 @@ class Zoom {
     this.isClosing = true;
     this.state.isOpen = false;
 
-    // Cancel a pending open() that is still waiting for the image to load,
-    // and a pending navigation that would reload the image after the close
+    // Cancel a pending open() that is still waiting for the image to load
     this.openId++;
-    this.navigationId++;
     const openWasPending = this.openPending;
     this.openPending = false;
 
@@ -341,10 +346,13 @@ class Zoom {
 
     // Closed while loading: the opening animation never ran, so close without animating
     if (openWasPending) {
-      this.imageElement.parentElement?.classList.remove('is-loading');
       this.finalizeClose(sourceImg);
       return;
     }
+
+    // Stop a smooth scroll still running, so the image closes from a still position
+    this.scrollTargetUntil = 0;
+    this.track.scrollLeft = this.state.currentIndex * this.track.clientWidth;
 
     this.overlay.classList.remove('is-open', 'is-opening');
     this.overlay.classList.add('is-closing');
@@ -372,51 +380,100 @@ class Zoom {
   }
 
   private next(): void {
-    if (this.state.currentIndex < this.state.images.length - 1) {
-      this.navigateTo(this.state.currentIndex + 1);
-    }
+    this.scrollToSlide(this.slideIndex + 1);
   }
 
   private prev(): void {
-    if (this.state.currentIndex > 0) {
-      this.navigateTo(this.state.currentIndex - 1);
+    this.scrollToSlide(this.slideIndex - 1);
+  }
+
+  // Where the slide on screen is heading: quick presses keep adding up while the smooth
+  // scroll of the previous one still runs
+  private get slideIndex(): number {
+    return performance.now() < this.scrollTargetUntil ? this.scrollTarget : this.state.currentIndex;
+  }
+
+  private scrollToSlide(index: number): void {
+    if (!this.slides[index]) return;
+
+    this.scrollTarget = index;
+    this.scrollTargetUntil = performance.now() + SCROLL_TARGET_TTL;
+    this.track.scrollTo({
+      left: index * this.track.clientWidth,
+      behavior: this.duration === 0 ? 'auto' : 'smooth'
+    });
+  }
+
+  private buildSlides(): void {
+    this.slides = this.state.images.map(({ alt }) => {
+      const figure = document.createElement('figure');
+      figure.className = 'astro-image-zoom-slide';
+      const img = document.createElement('img');
+      img.className = 'astro-image-zoom-image';
+      img.alt = alt;
+      figure.append(img);
+      return { figure, img };
+    });
+
+    this.track.replaceChildren(...this.slides.map(({ figure }) => figure));
+  }
+
+  // Loads the image of a slide once; the spinner appears only if the wait is noticeable.
+  // Resolves when the image is decoded, or failed: a broken image is shown as it is.
+  private loadSlide(index: number): Promise<void> {
+    const slide = this.slides[index];
+
+    slide.loaded ??= (async () => {
+      slide.img.src = this.state.images[index].src;
+      const spinner = window.setTimeout(() => slide.figure.classList.add('is-loading'), SPINNER_DELAY);
+
+      try {
+        await slide.img.decode();
+      } catch {
+        // Load error: nothing to do
+      }
+
+      clearTimeout(spinner);
+      slide.figure.classList.remove('is-loading');
+    })();
+
+    return slide.loaded;
+  }
+
+  private preloadNeighbors(index: number): void {
+    for (const neighbor of [index - 1, index + 1]) {
+      if (this.slides[neighbor]) void this.loadSlide(neighbor);
     }
   }
 
-  private async navigateTo(index: number): Promise<void> {
-    const currentId = ++this.navigationId;
+  // The scroll moved another slide to the center of the overlay
+  private handleScroll = (): void => {
+    const width = this.track.clientWidth;
+    if (!width) return;
+
+    const index = Math.round(this.track.scrollLeft / width);
+    if (index === this.state.currentIndex || !this.slides[index]) return;
 
     // Only the thumbnail of the image on screen stays hidden
     this.showThumbnail(this.getThumbnail(this.state.currentIndex));
     this.hideThumbnail(this.getThumbnail(index));
-    this.state.currentIndex = index;
 
-    // Fade out the current image and wait for it (no transition, e.g. reduced motion: no wait)
-    this.imageElement.style.opacity = '0';
-    await Promise.allSettled(this.imageElement.getAnimations().map((animation) => animation.finished));
-    if (currentId !== this.navigationId) return;
-
-    this.updateContent(index);
-    await this.loadImage();
-    if (currentId !== this.navigationId) return;
-
-    this.imageElement.style.opacity = '1';
+    this.renderActive(index);
+    void this.loadSlide(index);
+    this.preloadNeighbors(index);
   }
 
-  // Resolves once the image is decoded, or failed: a broken image is shown as it is.
-  // The spinner appears only if the wait is noticeable.
-  private async loadImage(): Promise<void> {
-    const figure = this.imageElement.parentElement;
-    const spinner = window.setTimeout(() => figure?.classList.add('is-loading'), SPINNER_DELAY);
+  // Marks the slide on screen and updates what depends on it: caption and buttons
+  private renderActive(index: number): void {
+    this.state.currentIndex = index;
 
-    try {
-      await this.imageElement.decode();
-    } catch {
-      // Load error, or the source changed meanwhile: the callers check for the latter
-    }
+    this.slides.forEach(({ figure }, i) => {
+      figure.classList.toggle('is-active', i === index);
+      figure.setAttribute('aria-hidden', String(i !== index));
+    });
 
-    clearTimeout(spinner);
-    figure?.classList.remove('is-loading');
+    this.captionElement.textContent = this.state.images[index].caption || '';
+    this.updateNavigationButtons();
   }
 
   private updateNavigationButtons(): void {
@@ -471,57 +528,17 @@ class Zoom {
     this.touchStartY = e.touches[0].clientY;
   }
 
-  private handleTouchEnd = (e: TouchEvent): void => {
-    // Ignore if it was a multi-touch gesture or if touches still remain
-    if (e.changedTouches.length > 1 || e.touches.length > 0) return;
-
-    const deltaX = e.changedTouches[0].clientX - this.touchStartX;
-    const deltaY = e.changedTouches[0].clientY - this.touchStartY;
-
-    // Check if horizontal swipe is larger than vertical
-    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_DISTANCE) {
-      deltaX > 0 ? this.prev() : this.next();
-    }
-  }
-
   private handleWheel = (e: WheelEvent): void => {
-    const { deltaX, deltaY } = e;
-    // The tail of the touchpad inertia sends tiny deltas: neither a gesture nor a scroll
-    if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < WHEEL_NOISE) return;
-
-    // A new gesture starts after a pause, or in the middle of the previous inertia when
-    // the deltas stop decaying (a new push) or change direction
-    const abs = Math.abs(deltaX);
-    const isNewGesture =
-      e.timeStamp - this.lastWheelTime > WHEEL_GESTURE_GAP ||
-      (this.wheelAxis === 'x' &&
-        (Math.sign(deltaX) !== Math.sign(this.wheelDeltaX) || abs > this.lastWheelDeltaX * 1.5 + 1));
-    this.lastWheelTime = e.timeStamp;
-    this.lastWheelDeltaX = abs;
-
-    // The first event of a gesture decides its axis, so vertical jitter during a horizontal
-    // swipe does not close the overlay
-    if (isNewGesture) {
-      this.wheelAxis = abs > Math.abs(deltaY) ? 'x' : 'y';
-      this.wheelDeltaX = 0;
-      this.wheelSwiped = false;
-    }
-
-    if (this.wheelAxis === 'y') {
-      if (this.options.closeOnScroll) this.close(true);
+    // Horizontal gestures scroll the track natively; the vertical jitter of a touchpad
+    // swipe must not close the overlay
+    if (Math.abs(e.deltaX) * 2 >= Math.abs(e.deltaY)) {
+      this.lastHorizontalWheel = e.timeStamp;
       return;
     }
 
-    // Also blocks the browser's swipe-back gesture
-    e.preventDefault();
-
-    // One navigation per gesture: the inertia tail keeps sending events
-    if (this.wheelSwiped) return;
-    this.wheelDeltaX += deltaX;
-    if (Math.abs(this.wheelDeltaX) > SWIPE_DISTANCE) {
-      this.wheelSwiped = true;
-      this.wheelDeltaX > 0 ? this.next() : this.prev();
-    }
+    if (Math.abs(e.deltaY) < WHEEL_CLOSE_DELTA) return;
+    if (e.timeStamp - this.lastHorizontalWheel < WHEEL_HORIZONTAL_GRACE) return;
+    this.close(true);
   }
 
   private handleTouchMove = (e: TouchEvent): void => {
@@ -536,19 +553,6 @@ class Zoom {
     if (deltaY > deltaX && deltaY > 10) {
       this.close(true);
     }
-  }
-
-  private updateContent(index: number): void {
-    const { src, alt, caption } = this.state.images[index];
-
-    // Update image
-    this.imageElement.src = src;
-    this.imageElement.alt = alt;
-
-    // Update caption
-    this.captionElement.textContent = caption || '';
-
-    this.updateNavigationButtons();
   }
 
   private calculateFlipTransform(sourceRect: DOMRect, finalRect: DOMRect): { x: number, y: number, scale: number, clipPath: string } {
@@ -608,9 +612,6 @@ class Zoom {
 
   private animateScrollClose(startRect: DOMRect, targetRect: DOMRect, sourceImg: HTMLImageElement): void {
     // Use transform + clip-path instead of animating size to handle different aspect ratios
-    const originalParent = this.imageElement.parentElement;
-    const originalNextSibling = this.imageElement.nextSibling;
-
     const scrollTop = window.scrollY;
     const scrollLeft = window.scrollX;
 
@@ -647,27 +648,10 @@ class Zoom {
     });
 
     animation.onfinish = () => {
-      // Cancel animation to remove fill: forwards effects
-      animation.cancel();
-
-      // Restore to original parent
-      if (originalParent) {
-        if (originalNextSibling) {
-          originalParent.insertBefore(this.imageElement, originalNextSibling);
-        } else {
-          originalParent.appendChild(this.imageElement);
-        }
-      }
-
+      // finalizeClose() discards the slides, so the image does not go back to its slide
+      this.imageElement.remove();
       this.finalizeClose(sourceImg);
     };
-  }
-
-  private resetImageStyles(): void {
-    Object.assign(this.imageElement.style, {
-      transform: '', animation: '', opacity: '', zIndex: '',
-      position: '', top: '', left: '', width: '', height: '', margin: ''
-    });
   }
 
   private setAnimationVariables(transform: { x: number, y: number, scale: number, clipPath: string }): void {
@@ -701,17 +685,18 @@ class Zoom {
   }
 
   private finalizeClose(sourceImg: HTMLImageElement): void {
-    // Hide overlay image and restore thumbnail instantly - same frame
-    this.imageElement.style.opacity = '0';
+    // Restore the thumbnail as the overlay goes away - same frame
     this.showThumbnail(sourceImg);
 
     this.overlay.close();
     this.overlay.classList.remove('is-closing');
     document.body.style.overflow = '';
 
-    this.resetImageStyles();
-    this.imageElement.src = '';
-    this.imageElement.alt = '';
+    // The slides belong to the instance that opened the overlay: discard them
+    this.track.replaceChildren();
+    this.track.style.overflowX = '';
+    this.captionElement.textContent = '';
+    this.slides = [];
 
     // Restore focus
     if (this.previousFocus) {

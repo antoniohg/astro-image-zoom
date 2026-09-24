@@ -242,7 +242,7 @@ Or apply custom styles to specific instances:
 
 ## 📱 Touch Gestures
 
-- **Swipe Left** - Next image
+- **Swipe Left** - Next image (also two-finger swipe on a touchpad)
 - **Swipe Right** - Previous image
 - **Tap backdrop** - Close zoom
 
