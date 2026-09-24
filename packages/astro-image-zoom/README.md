@@ -157,7 +157,6 @@ const optimizedImage = await getImage({
   closeOnBackdrop={true}
   showNavigation={true}
   class="my-custom-class"
-  id="my-zoom"
 />
 ```
 
@@ -176,7 +175,6 @@ const optimizedImage = await getImage({
 | `closeOnScroll` | `boolean` | `true` | Close when scrolling/wheeling |
 | `showNavigation` | `boolean` | `true` | Show navigation arrows |
 | `class` | `string` | `''` | Custom CSS class |
-| `id` | `string` | `'astro-image-zoom'` | Unique zoom ID |
 
 ### Custom Styling
 
@@ -188,7 +186,6 @@ You can override the default styles using CSS variables:
   --zoom-close-color: #ff6b6b;
   --zoom-nav-color: #4ecdc4;
   --zoom-animation-duration: 400ms;
-  --zoom-z-index: 9999;
 
   /* Focus ring drawn on the image when its link has keyboard focus */
   --zoom-focus-outline: 3px solid rebeccapurple; /* default: 2px solid currentColor */
@@ -276,12 +273,12 @@ Or apply custom styles to specific instances:
 ### Multiple Zoom Instances
 
 ```astro
-<ImageZoom id="gallery-1">
+<ImageZoom>
   <img src="/gallery1-image1.jpg" alt="Gallery 1" />
   <img src="/gallery1-image2.jpg" alt="Gallery 1" />
 </ImageZoom>
 
-<ImageZoom id="gallery-2">
+<ImageZoom>
   <img src="/gallery2-image1.jpg" alt="Gallery 2" />
   <img src="/gallery2-image2.jpg" alt="Gallery 2" />
 </ImageZoom>
@@ -305,12 +302,12 @@ Or apply custom styles to specific instances:
 ### Programmatic Control (Advanced)
 
 ```astro
-<ImageZoom id="my-gallery" />
+<ImageZoom class="my-gallery" />
 
 <script>
   import { ZoomClass } from 'astro-image-zoom';
 
-  const wrapper = document.querySelector('[data-zoom-id="my-gallery"]');
+  const wrapper = document.querySelector('.my-gallery');
   const zoom = new ZoomClass(wrapper);
 
   // Later, if needed:

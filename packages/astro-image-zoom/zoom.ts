@@ -92,7 +92,6 @@ class Zoom {
     theme: {}
   };
 
-  private focusableElements: HTMLElement[] = [];
   private isClosing = false;
   private closedByScroll = false;
   private navigationId = 0;
@@ -144,7 +143,7 @@ class Zoom {
 
   private collectImages(): void {
     const links = this.wrapper.querySelectorAll<HTMLAnchorElement>(
-      'a[data-zoom-generated], a[data-zoom], a:has(img):not(.astro-image-zoom-overlay *)'
+      'a[data-zoom-generated], a[data-zoom], a:has(img)'
     );
 
     this.state.images = Array.from(links)
@@ -298,8 +297,7 @@ class Zoom {
       this.overlay.addEventListener('touchmove', this.handleTouchMove, { passive: true, signal });
     }
 
-    // Focus management
-    this.setupFocusTrap();
+    // The modal dialog traps the focus natively
     this.closeButton.focus();
   }
 
@@ -490,9 +488,6 @@ class Zoom {
 
     const shouldShowNav = this.options.showNavigation && this.state.images.length > 1;
 
-    // Toggle visibility class
-    this.overlay.classList.toggle('nav-hidden', !shouldShowNav);
-
     if (!shouldShowNav) {
       this.prevButton.hidden = true;
       this.nextButton.hidden = true;
@@ -525,9 +520,6 @@ class Zoom {
       case 'ArrowRight':
         e.preventDefault();
         this.next();
-        break;
-      case 'Tab':
-        this.handleTabKey(e);
         break;
     }
   }
@@ -580,44 +572,11 @@ class Zoom {
     }
   }
 
-  private setupFocusTrap(): void {
-    // Get all focusable elements within the overlay
-    this.focusableElements = Array.from(
-      this.overlay.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      )
-    ).filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
-  }
-
-  private handleTabKey(e: KeyboardEvent): void {
-    if (this.focusableElements.length === 0) return;
-
-    const firstElement = this.focusableElements[0];
-    const lastElement = this.focusableElements[this.focusableElements.length - 1];
-
-    if (e.shiftKey) {
-      // Shift + Tab
-      if (document.activeElement === firstElement) {
-        e.preventDefault();
-        lastElement.focus();
-      }
-    } else {
-      // Tab
-      if (document.activeElement === lastElement) {
-        e.preventDefault();
-        firstElement.focus();
-      }
-    }
-  }
-
   private updateContent(index: number): void {
     const { src, alt, caption } = this.state.images[index];
 
     // Update image
     this.imageElement.src = src;
-    this.imageElement.srcset = '';
-    this.imageElement.sizes = '';
-    this.imageElement.loading = 'eager';
     this.imageElement.alt = alt;
 
     // Update caption

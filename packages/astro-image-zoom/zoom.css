@@ -15,8 +15,6 @@
     --zoom-nav-color-light: rgba(0, 0, 0, 0.9);
     --zoom-close-bg-light: rgba(255, 255, 255, 0.7);
     --zoom-nav-bg-light: rgba(255, 255, 255, 0.7);
-    --zoom-z-index: 999999;
-    /* Very high to ensure it's always on top */
   }
 
   /* Dark mode defaults */
@@ -28,6 +26,11 @@
       --zoom-close-bg-dark: rgba(255, 255, 255, 0.12);
       --zoom-nav-bg-dark: rgba(255, 255, 255, 0.12);
     }
+  }
+
+  /* The element only groups its content, it must not add a box */
+  astro-image-zoom {
+    display: contents;
   }
 
   /* Wrapper - makes images clickable */
@@ -64,8 +67,6 @@
     max-width: 100%;
     max-height: 100%;
     overflow: hidden;
-    z-index: var(--zoom-z-index);
-    display: none;
     align-items: center;
     justify-content: center;
     background-color: transparent;
@@ -230,18 +231,6 @@
     }
   }
 
-  @keyframes astro-image-zoom-loader-in {
-    from {
-      opacity: 0;
-      transform: translate(-50%, -50%) scale(0.9);
-    }
-
-    to {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
-    }
-  }
-
   /* Opening animation - zoom in from thumbnail */
   .astro-image-zoom-overlay.is-opening .astro-image-zoom-image {
     animation: astro-image-zoom-in var(--zoom-animation-duration, 400ms) cubic-bezier(0.2, 0, 0.2, 1) forwards;
@@ -299,13 +288,6 @@
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .astro-image-zoom-caption {
-      color: rgba(255, 255, 255, 1);
-      background-color: rgba(0, 0, 0, 0.92);
-    }
   }
 
   @keyframes astro-image-zoom-caption-in {
@@ -374,11 +356,6 @@
     width: 20px;
     height: 20px;
     display: block;
-    color: inherit;
-  }
-
-  .astro-image-zoom-close svg path {
-    stroke: currentColor;
   }
 
   /* Navigation Buttons */
@@ -441,16 +418,11 @@
     width: 24px;
     height: 24px;
     display: block;
-    color: inherit;
   }
 
-  .astro-image-zoom-nav svg path {
-    stroke: currentColor;
-  }
-
-  .astro-image-zoom-overlay.nav-hidden .astro-image-zoom-nav {
-    display: none !important;
-    visibility: hidden;
+  /* display: flex above would beat the [hidden] of the user agent */
+  .astro-image-zoom-nav[hidden] {
+    display: none;
   }
 
   .astro-image-zoom-prev {
@@ -527,26 +499,11 @@
     }
   }
 
-  /* High DPI Displays */
-  @media (-webkit-min-device-pixel-ratio: 2),
-  (min-resolution: 192dpi) {
-    .astro-image-zoom-image {
-      image-rendering: -webkit-optimize-contrast;
-    }
-  }
-
-
   /* Print - hide zoom */
   @media print {
     .astro-image-zoom-overlay {
       display: none !important;
     }
-  }
-
-  /* Focus Styles for Accessibility */
-  .astro-image-zoom-wrapper img:focus-visible {
-    outline: 2px solid currentColor;
-    outline-offset: 2px;
   }
 
   /* Prevent text selection during interaction */

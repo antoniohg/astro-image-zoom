@@ -52,11 +52,6 @@ export interface Props {
    * Custom CSS class for the zoom container
    */
   class?: string;
-
-  /**
-   * Unique ID for this zoom instance
-   */
-  id?: string;
 }
 
 const {
@@ -68,7 +63,6 @@ const {
   closeOnScroll = true,
   showNavigation = true,
   class: className = "",
-  id = "astro-image-zoom",
 } = Astro.props;
 
 // Store theme config as data attributes to be read by JS
@@ -83,7 +77,6 @@ const slotContent = wrapImages(await Astro.slots.render("default"));
 
 <astro-image-zoom
   class={wrapperClasses}
-  data-zoom-id={id}
   data-keyboard={keyboardNavigation ? "true" : "false"}
   data-close-backdrop={closeOnBackdrop ? "true" : "false"}
   data-close-image={closeOnImage ? "true" : "false"}
