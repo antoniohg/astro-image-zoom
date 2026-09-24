@@ -309,8 +309,10 @@ class Zoom {
     this.isClosing = true;
     this.state.isOpen = false;
 
-    // Cancel a pending open() that is still waiting for the image to load
+    // Cancel a pending open() that is still waiting for the image to load,
+    // and a pending navigation that would reload the image after the close
     this.openId++;
+    this.navigationId++;
     const isLoading = this.imageElement.parentElement?.classList.contains('is-loading') ?? false;
 
     // Release the shared overlay: no listener of this instance survives the close
