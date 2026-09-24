@@ -3,7 +3,8 @@
  * Medium-style zoom with accessibility and performance optimizations
  */
 
-import { overlayStyles } from './overlayStyles';
+/// <reference path="./env.d.ts" />
+import overlayStyles from './overlay.css?inline';
 
 interface ZoomImage {
   src: string;
@@ -23,12 +24,6 @@ interface ZoomSlide {
   figure: HTMLElement;
   img: HTMLImageElement;
   loaded?: Promise<void>;
-}
-
-interface ZoomTheme {
-  backgroundColor?: string;
-  closeButtonColor?: string;
-  navigationColor?: string;
 }
 
 // The custom properties of the overlay. When it opens, it takes the values set around the
@@ -57,10 +52,9 @@ const ZOOM_VARIABLES = [
 const CAPTION_POSITIONS = ['bottom', 'top'];
 const NAVIGATION_LAYOUTS = ['bar', 'sides'];
 
-// Animation duration (ms) when neither the prop nor --zoom-animation-duration sets one
-const DEFAULT_DURATION = 300;
-// The spinner only shows when the image takes longer than this to load
-const SPINNER_DELAY = 200;
+// The CSS animations of the overlay that open() and close() wait for
+const OPEN_ANIMATIONS = ['astro-image-zoom-in', 'astro-image-zoom-backdrop-in'];
+const CLOSE_ANIMATIONS = ['astro-image-zoom-out', 'astro-image-zoom-backdrop-out'];
 // How long (ms) a requested slide counts as the target while the smooth scroll runs
 const SCROLL_TARGET_TTL = 500;
 // Vertical wheel deltas below this many pixels do not close the overlay
@@ -99,13 +93,13 @@ const OVERLAY_HTML = `
   </div>
 </dialog>`;
 
-// Milliseconds of a CSS time such as `400ms` or `0.4s`; null when it is not one
-function parseDuration(value: string): number | null {
-  const match = /^([\d.]+)(m?s)$/.exec(value.trim());
-  if (!match) return null;
-
-  const duration = Number.parseFloat(match[1]) * (match[2] === 's' ? 1000 : 1);
-  return Number.isFinite(duration) ? duration : null;
+// Resolves when the named CSS animations of the element or its descendants end or are cancelled,
+// and at once when none runs. The durations live in CSS only: with reduced motion they are 0s.
+function animationsFinished(element: Element, names: string[]): Promise<unknown> {
+  const animations = element
+    .getAnimations({ subtree: true })
+    .filter((animation) => animation instanceof CSSAnimation && names.includes(animation.animationName));
+  return Promise.allSettled(animations.map(({ finished }) => finished));
 }
 
 /**
@@ -132,6 +126,8 @@ function getOverlay(): HTMLDialogElement {
 
 class Zoom {
   private wrapper: HTMLElement;
+  // The element that holds the overlay's shadow root, and its --zoom-* variables
+  private host!: HTMLElement;
   private overlay!: HTMLDialogElement;
   private track!: HTMLElement;
   private captionElement!: HTMLElement;
@@ -153,10 +149,7 @@ class Zoom {
     closeOnBackdrop: true,
     closeOnImage: true,
     closeOnScroll: true,
-    showNavigation: true,
-    // null: the duration comes from --zoom-animation-duration
-    animationDuration: null as number | null,
-    theme: {} as ZoomTheme
+    showNavigation: true
   };
 
   private isClosing = false;
@@ -185,25 +178,9 @@ class Zoom {
     this.options.closeOnScroll = wrapper.dataset.closeScroll !== 'false';
     this.options.showNavigation = wrapper.dataset.showNav !== 'false';
 
-    // Get animation duration from data attribute
-    const duration = wrapper.dataset.animationDuration;
-    const parsedDuration = Number.parseInt(duration ?? '', 10);
-    if (Number.isFinite(parsedDuration)) {
-      this.options.animationDuration = parsedDuration;
-    }
-
-    // Store theme config to apply when opening
-    const themeConfig = wrapper.dataset.themeConfig;
-    if (themeConfig && themeConfig !== '{}') {
-      try {
-        this.options.theme = JSON.parse(themeConfig);
-      } catch (e) {
-        console.error('Failed to parse theme config:', e);
-      }
-    }
-
     // One overlay is shared by every zoom instance on the page
     this.overlay = getOverlay();
+    this.host = (this.overlay.getRootNode() as ShadowRoot).host as HTMLElement;
     this.track = this.overlay.querySelector('.astro-image-zoom-track')!;
     this.captionElement = this.overlay.querySelector('.astro-image-zoom-caption')!;
     this.closeButton = this.overlay.querySelector('.astro-image-zoom-close')!;
@@ -283,16 +260,6 @@ class Zoom {
     return this.slides[this.state.currentIndex].img;
   }
 
-  // Zero when the user prefers reduced motion, so animations and their timers finish at once.
-  // Otherwise the animationDuration prop, or else the --zoom-animation-duration variable
-  private get duration(): number {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
-    if (this.options.animationDuration !== null) return this.options.animationDuration;
-
-    const value = getComputedStyle(this.overlay).getPropertyValue('--zoom-animation-duration');
-    return parseDuration(value) ?? DEFAULT_DURATION;
-  }
-
   private async open(index: number): Promise<void> {
     if (this.state.isOpen) return;
 
@@ -306,12 +273,8 @@ class Zoom {
     this.state.isOpen = true;
     this.state.currentIndex = index;
 
-    // The variables of this gallery, then its theme prop, which wins over them
+    // The variables of this gallery (the theme and animationDuration props among them)
     this.inheritVariables();
-    this.applyTheme();
-
-    // Pin the duration on the overlay, so the CSS animations and the JS timers agree
-    this.overlay.style.setProperty('--zoom-animation-duration', `${this.duration}ms`);
 
     // Get source image and position
     const sourceImg = this.state.images[index].element.querySelector('img')!;
@@ -319,6 +282,9 @@ class Zoom {
 
     this.buildSlides();
     this.renderActive(index);
+    // Hidden until the image is ready, so the FLIP animation starts from a clean frame. Before any
+    // layout, so its opacity transition does not run: it would show the image for a frame
+    this.imageElement.style.opacity = '0';
 
     // Listen to the overlay from now until close(), also while the image is loading
     this.openController = new AbortController();
@@ -346,10 +312,8 @@ class Zoom {
 
     // Show the slide of the image, without letting a swipe move it away while it loads
     this.track.style.overflowX = 'hidden';
-    this.track.scrollLeft = index * this.track.clientWidth;
+    this.jumpToSlide(index);
 
-    // Hidden until the image is ready, so the FLIP animation starts from a clean frame
-    this.imageElement.style.opacity = '0';
     this.openPending = true;
     await this.loadSlide(index);
 
@@ -371,12 +335,12 @@ class Zoom {
     this.hideThumbnail(sourceImg);
     this.overlay.classList.add('is-opening');
 
-    // After animation completes, switch to is-open state
-    setTimeout(() => {
+    // After the animation, switch to the is-open state
+    void animationsFinished(this.overlay, OPEN_ANIMATIONS).then(() => {
       if (currentOpenId !== this.openId) return;
       this.overlay.classList.remove('is-opening');
       this.overlay.classList.add('is-open');
-    }, this.duration);
+    });
 
     // Add keyboard listener
     if (this.options.keyboardNavigation) {
@@ -424,7 +388,7 @@ class Zoom {
 
     // Stop a smooth scroll still running, so the image closes from a still position
     this.scrollTargetUntil = 0;
-    this.track.scrollLeft = this.state.currentIndex * this.track.clientWidth;
+    this.jumpToSlide(this.state.currentIndex);
 
     this.overlay.classList.remove('is-open', 'is-opening');
     this.overlay.classList.add('is-closing');
@@ -441,13 +405,9 @@ class Zoom {
     // If closed by scroll, unlock scroll immediately and use special animation
     if (byScroll) {
       document.body.style.overflow = '';
-      this.animateScrollClose(startRect, targetRect, sourceImg);
+      this.animateScrollClose(startRect, sourceImg);
     } else {
-      // Normal close: cleanup after animation completes (closing animation is 75% of duration)
-      const closeDuration = this.duration * 0.75;
-      setTimeout(() => {
-        this.finalizeClose(sourceImg);
-      }, closeDuration);
+      void animationsFinished(this.overlay, CLOSE_ANIMATIONS).then(() => this.finalizeClose(sourceImg));
     }
   }
 
@@ -470,10 +430,13 @@ class Zoom {
 
     this.scrollTarget = index;
     this.scrollTargetUntil = performance.now() + SCROLL_TARGET_TTL;
-    this.track.scrollTo({
-      left: index * this.track.clientWidth,
-      behavior: this.duration === 0 ? 'auto' : 'smooth'
-    });
+    // Smooth, unless the user prefers reduced motion: the track's scroll-behavior decides
+    this.track.scrollTo({ left: index * this.track.clientWidth });
+  }
+
+  // Shows a slide without the smooth scroll
+  private jumpToSlide(index: number): void {
+    this.track.scrollTo({ left: index * this.track.clientWidth, behavior: 'instant' });
   }
 
   private buildSlides(): void {
@@ -499,7 +462,8 @@ class Zoom {
 
     slide.loaded ??= (async () => {
       slide.img.src = this.state.images[index].src;
-      const spinner = window.setTimeout(() => slide.figure.classList.add('is-loading'), SPINNER_DELAY);
+      // The CSS shows the spinner only if the wait lasts
+      slide.figure.classList.add('is-loading');
 
       try {
         await slide.img.decode();
@@ -507,7 +471,6 @@ class Zoom {
         // Load error: nothing to do
       }
 
-      clearTimeout(spinner);
       slide.figure.classList.remove('is-loading');
     })();
 
@@ -655,78 +618,41 @@ class Zoom {
     }
   }
 
-  // Copies the --zoom-* values around the wrapper to the overlay, which lives in <body> and would
-  // otherwise only see the ones set on :root. A previous opening's values are cleared too.
+  // Copies the --zoom-* values around the wrapper to the overlay's host, which lives in <body> and
+  // would otherwise only see the ones set on :root. A previous opening's values are cleared too.
+  // On the host, they also reach the image that leaves the dialog when a scroll closes it.
   private inheritVariables(): void {
     const styles = getComputedStyle(this.wrapper);
 
     for (const name of ZOOM_VARIABLES) {
       const value = styles.getPropertyValue(name).trim();
       if (value) {
-        this.overlay.style.setProperty(name, value);
+        this.host.style.setProperty(name, value);
       } else {
-        this.overlay.style.removeProperty(name);
+        this.host.style.removeProperty(name);
       }
     }
   }
 
-  private applyTheme(): void {
-    const { backgroundColor, closeButtonColor, navigationColor } = this.options.theme;
-    const variables = {
-      '--zoom-bg': backgroundColor,
-      '--zoom-close-color': closeButtonColor,
-      '--zoom-nav-color': navigationColor
-    };
+  // The image shrinks back to the thumbnail with the closing animation (its variables are set),
+  // but out of the dialog and positioned on the page, so it scrolls away with it
+  private animateScrollClose(startRect: DOMRect, sourceImg: HTMLImageElement): void {
+    const image = this.imageElement;
+    image.style.top = `${startRect.top + window.scrollY}px`;
+    image.style.left = `${startRect.left + window.scrollX}px`;
+    image.style.width = `${startRect.width}px`;
+    image.style.height = `${startRect.height}px`;
+    image.classList.add('is-detached');
 
-    // Only the colors it sets: inheritVariables() already reset the rest
-    for (const [name, value] of Object.entries(variables)) {
-      if (value) this.overlay.style.setProperty(name, value);
-    }
-  }
+    // It stays in the shadow root: it keeps the overlay styles and the CSS of the page still
+    // cannot reach it
+    this.overlay.getRootNode().appendChild(image);
 
-  private animateScrollClose(startRect: DOMRect, targetRect: DOMRect, sourceImg: HTMLImageElement): void {
-    // Use transform + clip-path instead of animating size to handle different aspect ratios
-    const scrollTop = window.scrollY;
-    const scrollLeft = window.scrollX;
-
-    // Calculate the FLIP transform (same logic as normal close)
-    const transform = this.calculateFlipTransform(targetRect, startRect);
-
-    // Position image absolutely at its current visual position
-    this.imageElement.style.position = 'absolute';
-    this.imageElement.style.top = `${startRect.top + scrollTop}px`;
-    this.imageElement.style.left = `${startRect.left + scrollLeft}px`;
-    this.imageElement.style.width = `${startRect.width}px`;
-    this.imageElement.style.height = `${startRect.height}px`;
-    this.imageElement.style.margin = '0';
-    this.imageElement.style.animation = 'none';
-    this.imageElement.style.zIndex = '9999999';
-
-    // Out of the dialog, so it scrolls with the page. It stays in the shadow root: it keeps the
-    // overlay styles and the CSS of the page still cannot reach it
-    this.overlay.getRootNode().appendChild(this.imageElement);
-
-    // Animate using transform + clip-path (maintains aspect ratio)
-    const animation = this.imageElement.animate([
-      {
-        transform: 'translate(0, 0) scale(1)',
-        clipPath: 'inset(0px)'
-      },
-      {
-        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-        clipPath: transform.clipPath
-      }
-    ], {
-      duration: this.duration * 0.75,
-      easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
-      fill: 'forwards'
-    });
-
-    animation.onfinish = () => {
+    void animationsFinished(image, CLOSE_ANIMATIONS).then(() => {
       // finalizeClose() discards the slides, so the image does not go back to its slide
-      this.imageElement.remove();
+      image.remove();
       this.finalizeClose(sourceImg);
-    };
+    });
   }
 
   private setAnimationVariables(transform: { x: number, y: number, scale: number, clipPath: string }): void {

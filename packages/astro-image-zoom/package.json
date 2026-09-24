@@ -27,7 +27,8 @@
     "index.js",
     "ImageZoom.astro",
     "zoom.ts",
-    "overlayStyles.ts",
+    "overlay.css",
+    "env.d.ts",
     "wrapImages.ts",
     "zoom.css",
     "README.md"

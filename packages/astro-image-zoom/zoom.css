@@ -1,7 +1,7 @@
 /*
  * astro-image-zoom page styles: the images on the page, not the zoom overlay.
  *
- * The overlay lives in a shadow root and brings its own styles (overlayStyles.ts), so no CSS of
+ * The overlay lives in a shadow root and brings its own styles (overlay.css), so no CSS of
  * the page can reach it. Style it with the --zoom-* custom properties or with ::part().
  *
  * These page styles live in the `astro-image-zoom` cascade layer, so any unlayered CSS on the page

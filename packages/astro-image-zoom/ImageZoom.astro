@@ -90,8 +90,17 @@ const {
   class: className = "",
 } = Astro.props;
 
-// Store theme config as data attributes to be read by JS
-const themeConfig = Object.keys(theme).length ? JSON.stringify(theme) : undefined;
+// The theme and the duration become --zoom-* variables on the element, which the overlay copies
+// when it opens: they win over the variables of the site, set on this element or around it
+const variables = Object.entries({
+  "--zoom-bg": theme.backgroundColor,
+  "--zoom-close-color": theme.closeButtonColor,
+  "--zoom-nav-color": theme.navigationColor,
+  "--zoom-animation-duration": animationDuration === undefined ? undefined : `${animationDuration}ms`,
+})
+  .filter(([, value]) => value)
+  .map(([name, value]) => `${name}: ${value}`)
+  .join("; ");
 const wrapperClasses = ["astro-image-zoom-wrapper", className]
   .filter(Boolean)
   .join(" ");
@@ -111,8 +120,7 @@ const slotContent = wrapImages(await Astro.slots.render("default"));
   data-show-counter={showCounter ? "true" : "false"}
   data-show-caption={showCaption ? "true" : "false"}
   data-caption-position={captionPosition}
-  data-theme-config={themeConfig}
-  data-animation-duration={animationDuration}
+  style={variables || undefined}
 >
   <Fragment set:html={slotContent} />
 </astro-image-zoom>

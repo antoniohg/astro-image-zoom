@@ -25,7 +25,12 @@ npm install astro-image-zoom
 ### Basic Usage
 
 Wrap your images in `<ImageZoom>`. You can mix Astro's `<Image>` and `<Picture>` with plain `<img>`
-tags, local or remote:
+tags, local or remote.
+
+`<Image>` and `<Picture>` are recommended for performance: Astro resizes and compresses them, so the
+page loads light images and the zoom fetches the full size only when it opens (see
+[Which image the zoom shows](#which-image-the-zoom-shows)). Plain `<img>` tags work too, but they ship
+whatever file you give them.
 
 ```astro
 ---

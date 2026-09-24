@@ -1,11 +1,11 @@
 /**
  * Styles of the zoom overlay, applied inside its shadow root: the CSS of the page cannot reach
- * them, and they cannot leak out. Sites customize the overlay through the --zoom-* custom
+ * them, and they cannot leak out. zoom.ts imports this file with ?inline, so Vite hands it over
+ * as a string, minified in production builds. Sites customize the overlay through the --zoom-* custom
  * properties, which cross the shadow boundary, and through the parts exposed with ::part().
  *
  * Lengths are in px, not rem: rem follows the font size of the page's <html>.
  */
-export const overlayStyles = `
 /*
  * The host resets every inherited property, so the page cannot change the overlay through
  * inheritance either. Only the font family comes through: the caption uses the site's font.
@@ -129,6 +129,8 @@ export const overlayStyles = `
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   touch-action: pan-x pan-y pinch-zoom;
+  /* The arrows and keys glide to the next slide; swipes keep their own inertia */
+  scroll-behavior: smooth;
 }
 
 /* The track scrolls, so keyboard users can focus it (WCAG 2.1.1); the ring sits inside the edges */
@@ -176,9 +178,15 @@ export const overlayStyles = `
   will-change: transform, opacity;
 }
 
-/* Loading state - hide the image and show the spinner */
+/* Loading state: after 200ms, the partly loaded image is hidden and the spinner shows */
 .astro-image-zoom-slide.is-loading .astro-image-zoom-image {
-  opacity: 0 !important;
+  animation: astro-image-zoom-hide 0s 200ms forwards;
+}
+
+@keyframes astro-image-zoom-hide {
+  to {
+    opacity: 0;
+  }
 }
 
 .astro-image-zoom-slide.is-loading::after {
@@ -192,7 +200,16 @@ export const overlayStyles = `
   border: 4px solid light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.1));
   border-left-color: light-dark(rgba(0, 0, 0, 0.8), rgba(255, 255, 255, 0.9));
   border-radius: 50%;
-  animation: astro-image-zoom-spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  visibility: hidden;
+  animation:
+    astro-image-zoom-spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite,
+    astro-image-zoom-reveal 0s 200ms forwards;
+}
+
+@keyframes astro-image-zoom-reveal {
+  to {
+    visibility: visible;
+  }
 }
 
 @keyframes astro-image-zoom-spin {
@@ -212,6 +229,17 @@ export const overlayStyles = `
 
 /* Closing animation - zoom out to thumbnail */
 .astro-image-zoom-overlay.is-closing .astro-image-zoom-slide.is-active .astro-image-zoom-image {
+  animation: astro-image-zoom-out calc(var(--zoom-animation-duration, 300ms) * 0.75) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/*
+ * Closed by a scroll: the image leaves the dialog for the shadow root, positioned on the page
+ * (zoom.ts sets its box), so it scrolls away with the page while it shrinks to the thumbnail
+ */
+.astro-image-zoom-image.is-detached {
+  position: absolute;
+  z-index: 9999999;
+  margin: 0;
   animation: astro-image-zoom-out calc(var(--zoom-animation-duration, 300ms) * 0.75) cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
@@ -459,6 +487,16 @@ export const overlayStyles = `
     transition: none;
   }
 
+  /* The zoom animations run in no time: zoom.ts still waits for their end, which comes at once */
+  .astro-image-zoom-backdrop,
+  .astro-image-zoom-image {
+    animation-duration: 0s !important;
+  }
+
+  .astro-image-zoom-track {
+    scroll-behavior: auto;
+  }
+
   /* The entrance animation is off, so show the caption in its final state */
   .astro-image-zoom-caption {
     animation: none;
@@ -472,4 +510,3 @@ export const overlayStyles = `
     display: none !important;
   }
 }
-`;
