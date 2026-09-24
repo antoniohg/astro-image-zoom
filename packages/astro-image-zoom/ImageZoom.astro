@@ -66,7 +66,7 @@ const {
 } = Astro.props;
 
 // Store theme config as data attributes to be read by JS
-const themeConfig = JSON.stringify(theme);
+const themeConfig = Object.keys(theme).length ? JSON.stringify(theme) : undefined;
 const wrapperClasses = ["astro-image-zoom-wrapper", className]
   .filter(Boolean)
   .join(" ");

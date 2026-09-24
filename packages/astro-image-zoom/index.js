@@ -4,4 +4,4 @@
  */
 
 // Export the TypeScript module
-export { initZoom, Zoom as ZoomClass } from './zoom';
+export { Zoom as ZoomClass } from './zoom';

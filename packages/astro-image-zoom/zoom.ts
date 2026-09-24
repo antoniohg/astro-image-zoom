@@ -14,10 +14,22 @@ interface ZoomState {
   isOpen: boolean;
   currentIndex: number;
   images: ZoomImage[];
-  previousFocus: HTMLElement | null;
-  touchStartX: number;
-  touchStartY: number;
 }
+
+interface ZoomTheme {
+  backgroundColor?: string;
+  closeButtonColor?: string;
+  navigationColor?: string;
+}
+
+// The spinner only shows when the image takes longer than this to load
+const SPINNER_DELAY = 200;
+// Minimum horizontal distance, in pixels, of a swipe
+const SWIPE_DISTANCE = 50;
+// Wheel events closer than this (ms) belong to the same touchpad gesture, inertia included
+const WHEEL_GESTURE_GAP = 120;
+// Wheel deltas below this many pixels are ignored
+const WHEEL_NOISE = 3;
 
 const OVERLAY_ID = 'astro-image-zoom-global-overlay';
 
@@ -76,10 +88,7 @@ class Zoom {
   private state: ZoomState = {
     isOpen: false,
     currentIndex: 0,
-    images: [],
-    previousFocus: null,
-    touchStartX: 0,
-    touchStartY: 0
+    images: []
   };
 
   private options = {
@@ -89,11 +98,21 @@ class Zoom {
     closeOnScroll: true,
     showNavigation: true,
     animationDuration: 300,
-    theme: {}
+    theme: {} as ZoomTheme
   };
 
   private isClosing = false;
-  private closedByScroll = false;
+  // True from open() until the image is ready and the opening animation starts
+  private openPending = false;
+  private previousFocus: HTMLElement | null = null;
+  private touchStartX = 0;
+  private touchStartY = 0;
+  // Touchpad swipe: a stream of wheel events, decided once per gesture
+  private wheelAxis: 'x' | 'y' = 'y';
+  private wheelDeltaX = 0;
+  private wheelSwiped = false;
+  private lastWheelTime = 0;
+  private lastWheelDeltaX = 0;
   private navigationId = 0;
   private openId = 0;
 
@@ -114,8 +133,9 @@ class Zoom {
 
     // Get animation duration from data attribute
     const duration = wrapper.dataset.animationDuration;
-    if (duration) {
-      this.options.animationDuration = parseInt(duration, 10);
+    const parsedDuration = Number.parseInt(duration ?? '', 10);
+    if (Number.isFinite(parsedDuration)) {
+      this.options.animationDuration = parsedDuration;
     }
 
     // Store theme config to apply when opening
@@ -137,7 +157,6 @@ class Zoom {
     this.prevButton = this.overlay.querySelector('.astro-image-zoom-prev');
     this.nextButton = this.overlay.querySelector('.astro-image-zoom-next');
 
-    this.collectImages();
     this.setupEventListeners();
   }
 
@@ -160,18 +179,24 @@ class Zoom {
   }
 
   private setupEventListeners(): void {
-    // Click listeners for links containing images
+    // One delegated listener: links added later are picked up when clicked.
     // Links already handle keyboard navigation natively (Enter key)
-    this.state.images.forEach((image, index) => {
-      image.element.addEventListener(
-        'click',
-        (e) => {
-          e.preventDefault();
-          this.open(index);
-        },
-        { signal: this.controller.signal }
-      );
-    });
+    this.wrapper.addEventListener(
+      'click',
+      (e) => {
+        // Let the browser handle "open in new tab" and similar clicks
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+        this.collectImages();
+        const link = (e.target as Element).closest('a');
+        const index = this.state.images.findIndex(({ element }) => element === link);
+        if (index === -1) return;
+
+        e.preventDefault();
+        this.open(index);
+      },
+      { signal: this.controller.signal }
+    );
   }
 
   // The overlay is shared, so only the instance that has it open may listen to it
@@ -210,7 +235,7 @@ class Zoom {
     const currentOpenId = ++this.openId;
 
     // Store current focused element
-    this.state.previousFocus = document.activeElement as HTMLElement;
+    this.previousFocus = document.activeElement as HTMLElement;
 
     // Update state
     this.state.isOpen = true;
@@ -243,26 +268,15 @@ class Zoom {
     // Reset styles
     this.imageElement.style.transform = '';
 
-    // Check if image is already loaded (cached)
-    if (this.imageElement.complete && this.imageElement.naturalWidth > 0) {
-      // Image is ready, show immediately
-      this.imageElement.style.opacity = '1';
-    } else {
-      // Image needs loading, show spinner
-      this.imageElement.parentElement?.classList.add('is-loading');
+    // Hidden until the image is ready, so the FLIP animation starts from a clean frame
+    this.imageElement.style.opacity = '0';
+    this.openPending = true;
+    await this.loadImage();
 
-      await new Promise<void>((resolve) => {
-        this.imageElement.onload = () => resolve();
-        this.imageElement.onerror = () => resolve();
-      });
-
-      // Closed while loading: close() already restored everything
-      if (currentOpenId !== this.openId) return;
-
-      // Remove loading state and show image
-      this.imageElement.parentElement?.classList.remove('is-loading');
-      this.imageElement.style.opacity = '1';
-    }
+    // Closed while loading: close() already restored everything
+    if (currentOpenId !== this.openId) return;
+    this.openPending = false;
+    this.imageElement.style.opacity = '1';
 
     // FLIP Animation
     const finalRect = this.imageElement.getBoundingClientRect();
@@ -291,9 +305,12 @@ class Zoom {
     this.overlay.addEventListener('touchstart', this.handleTouchStart, { passive: true, signal });
     this.overlay.addEventListener('touchend', this.handleTouchEnd, { passive: true, signal });
 
+    // Touchpad swipes arrive as wheel events, so they navigate too. Not passive: horizontal
+    // ones are cancelled to block the browser's swipe-back gesture.
+    this.overlay.addEventListener('wheel', this.handleWheel, { passive: false, signal });
+
     // Smooth close on scroll/wheel (like Medium - non-blocking)
     if (this.options.closeOnScroll) {
-      this.overlay.addEventListener('wheel', this.handleWheel, { passive: true, signal });
       this.overlay.addEventListener('touchmove', this.handleTouchMove, { passive: true, signal });
     }
 
@@ -301,7 +318,7 @@ class Zoom {
     this.closeButton.focus();
   }
 
-  private close(): void {
+  private close(byScroll = false): void {
     if (!this.state.isOpen || this.isClosing) return;
 
     this.isClosing = true;
@@ -311,7 +328,8 @@ class Zoom {
     // and a pending navigation that would reload the image after the close
     this.openId++;
     this.navigationId++;
-    const isLoading = this.imageElement.parentElement?.classList.contains('is-loading') ?? false;
+    const openWasPending = this.openPending;
+    this.openPending = false;
 
     // Release the shared overlay: no listener of this instance survives the close
     this.openController?.abort();
@@ -322,9 +340,8 @@ class Zoom {
     const sourceImg = sourceElement.querySelector('img')!;
 
     // Closed while loading: the opening animation never ran, so close without animating
-    if (isLoading) {
+    if (openWasPending) {
       this.imageElement.parentElement?.classList.remove('is-loading');
-      this.closedByScroll = false;
       this.finalizeClose(sourceImg);
       return;
     }
@@ -342,9 +359,8 @@ class Zoom {
     this.setAnimationVariables(transform);
 
     // If closed by scroll, unlock scroll immediately and use special animation
-    if (this.closedByScroll) {
+    if (byScroll) {
       document.body.style.overflow = '';
-      this.closedByScroll = false;
       this.animateScrollClose(startRect, targetRect, sourceImg);
     } else {
       // Normal close: cleanup after animation completes (closing animation is 75% of duration)
@@ -375,112 +391,32 @@ class Zoom {
     this.hideThumbnail(this.getThumbnail(index));
     this.state.currentIndex = index;
 
-    // Fade out current image
+    // Fade out the current image and wait for it (no transition, e.g. reduced motion: no wait)
     this.imageElement.style.opacity = '0';
-
-    // Wait for fade out to complete
-    await this.waitForTransition(this.imageElement);
-
-    // Check if navigation was superseded
+    await Promise.allSettled(this.imageElement.getAnimations().map((animation) => animation.finished));
     if (currentId !== this.navigationId) return;
 
-    const img = this.imageElement;
-    let resolveImageLoad: () => void;
-
-    // Create a promise that resolves when image loads
-    // We create this BEFORE setting src to ensure we don't miss events
-    const imageLoadPromise = new Promise<void>((resolve) => {
-      resolveImageLoad = resolve;
-    });
-
-    // Setup handlers
-    const handleLoad = () => {
-      if (resolveImageLoad) resolveImageLoad();
-    };
-
-    img.onload = handleLoad;
-    img.onerror = handleLoad;
-
-    // Now set the src
     this.updateContent(index);
-
-    // Check if already complete (e.g. cached)
-    if (img.complete && img.naturalWidth > 0) {
-      handleLoad();
-    }
-
-    // Race between image load and a small delay for the spinner
-    // If image loads within 50ms, we don't show spinner at all
-    let showSpinner = true;
-
-    const spinnerDelayPromise = new Promise<void>((resolve) => {
-      setTimeout(() => {
-        // Only show spinner if this is still the active navigation
-        if (showSpinner && currentId === this.navigationId) {
-          img.parentElement?.classList.add('is-loading');
-        }
-        resolve();
-      }, 200);
-    });
-
-    // Wait for image to load
-    await Promise.race([
-      imageLoadPromise.then(() => {
-        showSpinner = false; // Image loaded fast, cancel spinner
-      }),
-      spinnerDelayPromise // Wait for spinner delay if needed
-    ]);
-
-    // Check if navigation was superseded
+    await this.loadImage();
     if (currentId !== this.navigationId) return;
 
-    // If spinner was shown, we need to wait for image load to finish if it hasn't already
-    if (showSpinner) {
-      await imageLoadPromise;
-      if (currentId === this.navigationId) {
-        img.parentElement?.classList.remove('is-loading');
-      }
-    }
-
-    // Show image
-    if (currentId === this.navigationId) {
-      img.style.opacity = '1';
-    }
+    this.imageElement.style.opacity = '1';
   }
 
-  private waitForTransition(element: HTMLElement): Promise<void> {
-    return new Promise((resolve) => {
-      const duration = parseFloat(getComputedStyle(element).transitionDuration) * 1000;
+  // Resolves once the image is decoded, or failed: a broken image is shown as it is.
+  // The spinner appears only if the wait is noticeable.
+  private async loadImage(): Promise<void> {
+    const figure = this.imageElement.parentElement;
+    const spinner = window.setTimeout(() => figure?.classList.add('is-loading'), SPINNER_DELAY);
 
-      // If no transition or very short, resolve immediately
-      if (!duration || duration < 10) {
-        resolve();
-        return;
-      }
+    try {
+      await this.imageElement.decode();
+    } catch {
+      // Load error, or the source changed meanwhile: the callers check for the latter
+    }
 
-      let resolved = false;
-
-      const onTransitionEnd = (e: TransitionEvent) => {
-        if (e.target === element && e.propertyName === 'opacity') {
-          if (!resolved) {
-            resolved = true;
-            element.removeEventListener('transitionend', onTransitionEnd);
-            resolve();
-          }
-        }
-      };
-
-      element.addEventListener('transitionend', onTransitionEnd);
-
-      // Safety fallback: resolve after duration + buffer if event doesn't fire
-      setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          element.removeEventListener('transitionend', onTransitionEnd);
-          resolve();
-        }
-      }, duration + 50);
-    });
+    clearTimeout(spinner);
+    figure?.classList.remove('is-loading');
   }
 
   private updateNavigationButtons(): void {
@@ -531,27 +467,60 @@ class Zoom {
     // Ignore multi-touch (pinch to zoom)
     if (e.touches.length > 1) return;
 
-    this.state.touchStartX = e.touches[0].clientX;
-    this.state.touchStartY = e.touches[0].clientY;
+    this.touchStartX = e.touches[0].clientX;
+    this.touchStartY = e.touches[0].clientY;
   }
 
   private handleTouchEnd = (e: TouchEvent): void => {
     // Ignore if it was a multi-touch gesture or if touches still remain
     if (e.changedTouches.length > 1 || e.touches.length > 0) return;
 
-    const deltaX = e.changedTouches[0].clientX - this.state.touchStartX;
-    const deltaY = e.changedTouches[0].clientY - this.state.touchStartY;
+    const deltaX = e.changedTouches[0].clientX - this.touchStartX;
+    const deltaY = e.changedTouches[0].clientY - this.touchStartY;
 
-    // Check if horizontal swipe is larger than vertical (min 50px)
-    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+    // Check if horizontal swipe is larger than vertical
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_DISTANCE) {
       deltaX > 0 ? this.prev() : this.next();
     }
   }
 
-  private handleWheel = (): void => {
-    if (!this.isClosing) {
-      this.closedByScroll = true;
-      this.close();
+  private handleWheel = (e: WheelEvent): void => {
+    const { deltaX, deltaY } = e;
+    // The tail of the touchpad inertia sends tiny deltas: neither a gesture nor a scroll
+    if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < WHEEL_NOISE) return;
+
+    // A new gesture starts after a pause, or in the middle of the previous inertia when
+    // the deltas stop decaying (a new push) or change direction
+    const abs = Math.abs(deltaX);
+    const isNewGesture =
+      e.timeStamp - this.lastWheelTime > WHEEL_GESTURE_GAP ||
+      (this.wheelAxis === 'x' &&
+        (Math.sign(deltaX) !== Math.sign(this.wheelDeltaX) || abs > this.lastWheelDeltaX * 1.5 + 1));
+    this.lastWheelTime = e.timeStamp;
+    this.lastWheelDeltaX = abs;
+
+    // The first event of a gesture decides its axis, so vertical jitter during a horizontal
+    // swipe does not close the overlay
+    if (isNewGesture) {
+      this.wheelAxis = abs > Math.abs(deltaY) ? 'x' : 'y';
+      this.wheelDeltaX = 0;
+      this.wheelSwiped = false;
+    }
+
+    if (this.wheelAxis === 'y') {
+      if (this.options.closeOnScroll) this.close(true);
+      return;
+    }
+
+    // Also blocks the browser's swipe-back gesture
+    e.preventDefault();
+
+    // One navigation per gesture: the inertia tail keeps sending events
+    if (this.wheelSwiped) return;
+    this.wheelDeltaX += deltaX;
+    if (Math.abs(this.wheelDeltaX) > SWIPE_DISTANCE) {
+      this.wheelSwiped = true;
+      this.wheelDeltaX > 0 ? this.next() : this.prev();
     }
   }
 
@@ -560,13 +529,12 @@ class Zoom {
     if (e.touches.length > 1) return;
 
     const touch = e.touches[0];
-    const deltaX = Math.abs(touch.clientX - this.state.touchStartX);
-    const deltaY = Math.abs(touch.clientY - this.state.touchStartY);
+    const deltaX = Math.abs(touch.clientX - this.touchStartX);
+    const deltaY = Math.abs(touch.clientY - this.touchStartY);
 
     // Only trigger close on vertical scroll (not horizontal swipes)
-    if (deltaY > deltaX && deltaY > 10 && !this.isClosing) {
-      this.closedByScroll = true;
-      this.close();
+    if (deltaY > deltaX && deltaY > 10) {
+      this.close(true);
     }
   }
 
@@ -622,24 +590,20 @@ class Zoom {
   }
 
   private applyTheme(): void {
-    const theme = this.options.theme as any;
-
-    const themeMap: Record<string, string[]> = {
-      backgroundColor: ['--zoom-bg'],
-      closeButtonColor: ['--zoom-close-color'],
-      navigationColor: ['--zoom-nav-color']
+    const { backgroundColor, closeButtonColor, navigationColor } = this.options.theme;
+    const variables = {
+      '--zoom-bg': backgroundColor,
+      '--zoom-close-color': closeButtonColor,
+      '--zoom-nav-color': navigationColor
     };
 
-    Object.entries(themeMap).forEach(([key, vars]) => {
-      const value = theme[key];
-      vars.forEach(cssVar => {
-        if (value) {
-          this.overlay.style.setProperty(cssVar, value);
-        } else {
-          this.overlay.style.removeProperty(cssVar);
-        }
-      });
-    });
+    for (const [name, value] of Object.entries(variables)) {
+      if (value) {
+        this.overlay.style.setProperty(name, value);
+      } else {
+        this.overlay.style.removeProperty(name);
+      }
+    }
   }
 
   private animateScrollClose(startRect: DOMRect, targetRect: DOMRect, sourceImg: HTMLImageElement): void {
@@ -750,18 +714,13 @@ class Zoom {
     this.imageElement.alt = '';
 
     // Restore focus
-    if (this.state.previousFocus) {
-      this.state.previousFocus.focus({ preventScroll: true });
-      this.state.previousFocus = null;
+    if (this.previousFocus) {
+      this.previousFocus.focus({ preventScroll: true });
+      this.previousFocus = null;
     }
 
     this.isClosing = false;
   }
-}
-
-// Export initialization function
-export function initZoom(wrapper: HTMLElement): Zoom {
-  return new Zoom(wrapper);
 }
 
 // Export class for advanced usage
