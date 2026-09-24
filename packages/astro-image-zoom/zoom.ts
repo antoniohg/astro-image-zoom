@@ -500,12 +500,10 @@ class Zoom {
 
     // Update prev button state
     const isFirst = this.state.currentIndex === 0;
-    this.prevButton.classList.toggle('disabled', isFirst);
     this.prevButton.setAttribute('aria-disabled', String(isFirst));
 
     // Update next button state
     const isLast = this.state.currentIndex === this.state.images.length - 1;
-    this.nextButton.classList.toggle('disabled', isLast);
     this.nextButton.setAttribute('aria-disabled', String(isLast));
   }
 
@@ -581,7 +579,6 @@ class Zoom {
 
     // Update caption
     this.captionElement.textContent = caption || '';
-    this.captionElement.style.display = caption ? 'block' : 'none';
 
     this.updateNavigationButtons();
   }
