@@ -1,4 +1,4 @@
-# 🖼️ Astro Zoom
+# 🖼️ astro-image-zoom
 
 A beautiful, accessible, and performant zoom component for Astro with Medium-style animations.
 
@@ -24,23 +24,51 @@ npm install astro-image-zoom
 
 ### Basic Usage
 
+Wrap your images in `<ImageZoom>`. You can mix Astro's `<Image>` and `<Picture>` with plain `<img>`
+tags, local or remote:
+
 ```astro
 ---
-import Zoom from 'astro-image-zoom/Zoom.astro';
-import 'astro-image-zoom/zoom.css';
+import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
+import { Image, getImage } from 'astro:assets';
+import photo from '../assets/photo.jpg';
+
+// Full-size version for the zoom (see "Which image the zoom shows")
+const fullSize = await getImage({ src: photo, width: 1920 });
 ---
 
-<Zoom>
-  <img src="/image1.jpg" alt="Beautiful landscape" />
-  <img src="/image2.jpg" alt="City skyline" />
-  <img src="/image3.jpg" alt="Mountain view" />
-</Zoom>
+<ImageZoom>
+  <!-- Optimized Astro image -->
+  <Image src={photo} alt="Mountain landscape at sunset" width={400} data-zoom-src={fullSize.src} />
+
+  <!-- Plain image from public/ -->
+  <img src="/photos/city.jpg" alt="City skyline at night" />
+
+  <!-- Remote image -->
+  <img src="https://example.com/photos/forest.jpg" alt="Misty forest at dawn" />
+</ImageZoom>
 ```
+
+### Which image the zoom shows
+
+The zoom opens, in this order:
+
+1. The URL in `data-zoom-src`, if the image has it.
+2. The `href` of a link around the image (`<a href="…" data-zoom>`).
+3. The image's own `src`.
+
+Plain images work out of the box: `<img src="/photo.jpg">` opens that same file, at full size.
+
+> **Warning: resized images look blurry when zoomed.** If the image on the page is a smaller
+> version (a thumbnail, or Astro's `<Image width={400}>`, which generates a 400 px file), the zoom
+> enlarges that small file. Add `data-zoom-src` with the full-size version, as shown in
+> [High-Resolution Images](#high-resolution-images) and
+> [Using with Astro Assets](#using-with-astro-assets-optimized-images).
 
 ### With Custom Captions
 
 ```astro
-<Zoom>
+<ImageZoom>
   <img
     src="/image1.jpg"
     alt="Beautiful landscape"
@@ -51,20 +79,20 @@ import 'astro-image-zoom/zoom.css';
     alt="City skyline"
     data-zoom-caption="Downtown at night"
   />
-</Zoom>
+</ImageZoom>
 ```
 
 ### Gallery with Links
 
 ```astro
-<Zoom>
+<ImageZoom>
   <a href="/full-res-image1.jpg" data-zoom>
     <img src="/thumbnail1.jpg" alt="Thumbnail 1" />
   </a>
   <a href="/full-res-image2.jpg" data-zoom>
     <img src="/thumbnail2.jpg" alt="Thumbnail 2" />
   </a>
-</Zoom>
+</ImageZoom>
 ```
 
 ### High-Resolution Images
@@ -72,13 +100,13 @@ import 'astro-image-zoom/zoom.css';
 Use `data-zoom-src` to load higher resolution images in the zoom:
 
 ```astro
-<Zoom>
+<ImageZoom>
   <img
     src="/thumbnail.jpg"
     data-zoom-src="/full-resolution.jpg"
     alt="High quality image"
   />
-</Zoom>
+</ImageZoom>
 ```
 
 ### Using with Astro Assets (Optimized Images)
@@ -88,8 +116,7 @@ To use optimized Astro images, you can use the `<Image />` component. For the zo
 ```astro
 ---
 import { Image, getImage } from 'astro:assets';
-import Zoom from 'astro-image-zoom/Zoom.astro';
-import 'astro-image-zoom/zoom.css';
+import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
 
 import myImage from '../assets/my-image.jpg';
 
@@ -101,14 +128,14 @@ const optimizedImage = await getImage({
 });
 ---
 
-<Zoom>
+<ImageZoom>
   <Image
     src={myImage}
     alt="A beautiful optimized image"
     width={600}
     data-zoom-src={optimizedImage.src}
   />
-</Zoom>
+</ImageZoom>
 ```
 
 > **Note:** Do not pass the `Image` component directly to `data-zoom-src` or call it as a function. The zoom script expects a string URL for the `data-zoom-src` attribute.
@@ -119,7 +146,7 @@ const optimizedImage = await getImage({
 ### Component Props
 
 ```astro
-<Zoom
+<ImageZoom
   theme={{
     backgroundColor: 'rgba(0, 0, 0, 0.95)',
     closeButtonColor: '#ffffff',
@@ -162,15 +189,41 @@ You can override the default styles using CSS variables:
   --zoom-nav-color: #4ecdc4;
   --zoom-animation-duration: 400ms;
   --zoom-z-index: 9999;
+
+  /* Focus ring drawn on the image when its link has keyboard focus */
+  --zoom-focus-outline: 3px solid rebeccapurple; /* default: 2px solid currentColor */
+  --zoom-focus-offset: 3px; /* use a negative value if a parent with overflow: hidden clips it */
 }
 ```
+
+The component loads its own stylesheet, so you don't need to import `zoom.css` yourself. Import
+`astro-image-zoom/zoom.css` directly only if you use `ZoomClass` without the `<ImageZoom>` component.
+
+#### Cascade layer
+
+All the component styles live in the `astro-image-zoom` [cascade layer](https://developer.mozilla.org/en-US/docs/Web/CSS/@layer).
+Any unlayered CSS on your page overrides them, with no specificity tricks or `!important`.
+
+If your site uses its own layers, add `astro-image-zoom` to your layer order so you decide what wins.
+Declare the order before any stylesheet loads (for example, in an inline `<style>` at the top of
+`<head>`), because the first time a layer appears fixes its position:
+
+```html
+<style is:inline>
+  @layer reset, base, astro-image-zoom, components;
+</style>
+```
+
+With this order your reset can't break the zoom overlay, and your `components` layer can still
+customize it. Class names (`.astro-image-zoom-*`) and animation names are prefixed, so the styles
+don't clash with the rest of your site.
 
 Or apply custom styles to specific instances:
 
 ```astro
-<Zoom class="custom-zoom">
+<ImageZoom class="custom-zoom">
   <!-- Your images -->
-</Zoom>
+</ImageZoom>
 
 <style>
   .custom-zoom img {
@@ -223,21 +276,21 @@ Or apply custom styles to specific instances:
 ### Multiple Zoom Instances
 
 ```astro
-<Zoom id="gallery-1">
+<ImageZoom id="gallery-1">
   <img src="/gallery1-image1.jpg" alt="Gallery 1" />
   <img src="/gallery1-image2.jpg" alt="Gallery 1" />
-</Zoom>
+</ImageZoom>
 
-<Zoom id="gallery-2">
+<ImageZoom id="gallery-2">
   <img src="/gallery2-image1.jpg" alt="Gallery 2" />
   <img src="/gallery2-image2.jpg" alt="Gallery 2" />
-</Zoom>
+</ImageZoom>
 ```
 
 ### Custom Theme
 
 ```astro
-<Zoom
+<ImageZoom
   theme={{
     backgroundColor: 'rgba(26, 32, 44, 0.95)',
     closeButtonColor: '#f7fafc',
@@ -246,13 +299,13 @@ Or apply custom styles to specific instances:
   animationDuration={400}
 >
   <img src="/image.jpg" alt="Custom themed image" />
-</Zoom>
+</ImageZoom>
 ```
 
 ### Programmatic Control (Advanced)
 
 ```astro
-<Zoom id="my-gallery" />
+<ImageZoom id="my-gallery" />
 
 <script>
   import { ZoomClass } from 'astro-image-zoom';
@@ -271,15 +324,14 @@ Or apply custom styles to specific instances:
 
 ```astro
 ---
-import Zoom from 'astro-image-zoom/Zoom.astro';
-import 'astro-image-zoom/zoom.css';
+import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
 ---
 
 <article>
   <h1>My Blog Post</h1>
   <p>Check out these amazing photos from my trip:</p>
 
-  <Zoom>
+  <ImageZoom>
     <figure>
       <img
         src="/trip-photo-1.jpg"
@@ -297,7 +349,7 @@ import 'astro-image-zoom/zoom.css';
       />
       <figcaption>Lake reflection</figcaption>
     </figure>
-  </Zoom>
+  </ImageZoom>
 </article>
 ```
 
@@ -305,8 +357,7 @@ import 'astro-image-zoom/zoom.css';
 
 ```astro
 ---
-import Zoom from 'astro-image-zoom/Zoom.astro';
-import 'astro-image-zoom/zoom.css';
+import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
 
 const projects = [
   { thumb: '/thumb1.jpg', full: '/full1.jpg', title: 'Project 1' },
@@ -315,7 +366,7 @@ const projects = [
 ];
 ---
 
-<Zoom>
+<ImageZoom>
   <div class="portfolio-grid">
     {projects.map(project => (
       <img
@@ -326,7 +377,7 @@ const projects = [
       />
     ))}
   </div>
-</Zoom>
+</ImageZoom>
 
 <style>
   .portfolio-grid {
