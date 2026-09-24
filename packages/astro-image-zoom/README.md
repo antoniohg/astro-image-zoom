@@ -200,10 +200,11 @@ You can override the default styles using CSS variables:
   --zoom-image-radius: 0; /* corners of the zoomed image */
   --zoom-button-size: 44px; /* arrows and close button */
   --zoom-button-radius: 999px; /* shape of the buttons and the navigation bar */
-  --zoom-controls-offset: 1.25rem; /* distance from the controls and the caption to the edges */
+  --zoom-controls-offset: 20px; /* distance from the controls and the caption to the edges */
   --zoom-caption-max-width: 70%; /* 90% on phones */
-  --zoom-caption-font: inherit;
-  --zoom-caption-font-size: 0.8125rem;
+  --zoom-caption-font: inherit; /* the font of your site */
+  --zoom-caption-font-size: 13px;
+  --zoom-color-scheme: light dark; /* set "dark" or "light" to follow your own theme toggle */
   --zoom-caption-radius: 6px;
 
   /* Focus ring drawn on the image when its link has keyboard focus */
@@ -223,12 +224,38 @@ the variables.
 }
 ```
 
+#### Parts
+
+The zoom overlay lives in a [shadow root](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM),
+so the CSS of your site can't break it: rules such as `button { all: unset }` or `svg { width: 1em }`
+never reach it. The variables above cross into it. For anything they don't cover, style the exposed
+parts with `::part()`:
+
+```css
+astro-image-zoom-overlay::part(caption) {
+  text-transform: uppercase;
+}
+```
+
+| Part | Element |
+|------|---------|
+| `overlay` | The `<dialog>` |
+| `backdrop` | The background behind the image |
+| `track` | The carousel that holds the slides |
+| `slide`, `image` | Each slide of the carousel and its image |
+| `caption` | The caption |
+| `close` | The close button |
+| `toolbar` | The navigation bar |
+| `nav`, `prev`, `next` | The arrows (`nav` matches both) |
+| `counter` | The position in the gallery |
+
 The component loads its own stylesheet, so you don't need to import `zoom.css` yourself. Import
 `astro-image-zoom/zoom.css` directly only if you use `ZoomClass` without the `<ImageZoom>` component.
 
 #### Cascade layer
 
-All the component styles live in the `astro-image-zoom` [cascade layer](https://developer.mozilla.org/en-US/docs/Web/CSS/@layer).
+The styles for the images on your page (the zoom cursor and the focus ring) live in the
+`astro-image-zoom` [cascade layer](https://developer.mozilla.org/en-US/docs/Web/CSS/@layer).
 Any unlayered CSS on your page overrides them, with no specificity tricks or `!important`.
 
 If your site uses its own layers, add `astro-image-zoom` to your layer order so you decide what wins.
@@ -241,9 +268,9 @@ Declare the order before any stylesheet loads (for example, in an inline `<style
 </style>
 ```
 
-With this order your reset can't break the zoom overlay, and your `components` layer can still
-customize it. Class names (`.astro-image-zoom-*`) and animation names are prefixed, so the styles
-don't clash with the rest of your site.
+With this order your reset can't break the zoom cursor or the focus ring, and your `components`
+layer can still customize them. Class names (`.astro-image-zoom-*`) are prefixed, so the styles don't
+clash with the rest of your site.
 
 Or apply custom styles to specific instances:
 

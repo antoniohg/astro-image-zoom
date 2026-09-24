@@ -1,0 +1,475 @@
+/**
+ * Styles of the zoom overlay, applied inside its shadow root: the CSS of the page cannot reach
+ * them, and they cannot leak out. Sites customize the overlay through the --zoom-* custom
+ * properties, which cross the shadow boundary, and through the parts exposed with ::part().
+ *
+ * Lengths are in px, not rem: rem follows the font size of the page's <html>.
+ */
+export const overlayStyles = `
+/*
+ * The host resets every inherited property, so the page cannot change the overlay through
+ * inheritance either. Only the font family comes through: the caption uses the site's font.
+ */
+:host {
+  all: initial;
+  display: contents;
+  font-family: inherit;
+}
+
+/* Overlay container: a modal <dialog>, so it lives in the top layer */
+.astro-image-zoom-overlay {
+  color-scheme: var(--zoom-color-scheme, light dark);
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.astro-image-zoom-overlay[open] {
+  display: flex;
+}
+
+/* Native backdrop - make transparent to use our custom one */
+.astro-image-zoom-overlay::backdrop {
+  background: transparent;
+}
+
+/* Backdrop */
+.astro-image-zoom-backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: var(--zoom-bg, light-dark(rgba(255, 255, 255, 0.98), rgba(0, 0, 0, 0.95)));
+  opacity: 0;
+  will-change: opacity;
+}
+
+/* The slides cover the backdrop, so they show its cursor: default when closing is disabled */
+.astro-image-zoom-overlay[data-close-backdrop="false"] .astro-image-zoom-slide,
+.astro-image-zoom-overlay[data-close-image="false"] .astro-image-zoom-image {
+  cursor: default;
+}
+
+/* Nothing can be swiped or clicked while the overlay closes */
+.astro-image-zoom-overlay.is-closing {
+  pointer-events: none;
+}
+
+.astro-image-zoom-overlay.is-opening .astro-image-zoom-backdrop {
+  animation: astro-image-zoom-backdrop-in var(--zoom-animation-duration, 300ms) ease-out forwards;
+}
+
+.astro-image-zoom-overlay.is-open .astro-image-zoom-backdrop {
+  opacity: 1;
+}
+
+.astro-image-zoom-overlay.is-closing .astro-image-zoom-backdrop {
+  animation: astro-image-zoom-backdrop-out calc(var(--zoom-animation-duration, 300ms) * 0.75) ease-out forwards;
+}
+
+@keyframes astro-image-zoom-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes astro-image-zoom-backdrop-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+/* Content container: lets clicks reach the backdrop, interactive children opt back in */
+.astro-image-zoom-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.astro-image-zoom-content>* {
+  pointer-events: auto;
+}
+
+/*
+ * Carousel: one slide per image, scrolled and snapped natively, so touchpad and touch swipes
+ * come with inertia for free. overscroll-behavior-x stops the browser's swipe-back gesture.
+ * The vertical axis stays free: a vertical swipe closes the overlay (closeOnScroll) and the
+ * same gesture, inertia included, must go on scrolling the page. Containing it would hold the
+ * page still until the next gesture.
+ */
+.astro-image-zoom-track {
+  /* Scrolls from left to right whatever the page direction, like the nav buttons */
+  direction: ltr;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
+/* The track scrolls, so keyboard users can focus it (WCAG 2.1.1); the ring sits inside the edges */
+.astro-image-zoom-track:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -4px;
+}
+
+.astro-image-zoom-track::-webkit-scrollbar {
+  display: none;
+}
+
+.astro-image-zoom-slide {
+  position: relative;
+  flex: 0 0 100%;
+  height: 100%;
+  /* Border box: the padding must not widen the slide, or the carousel loses its step */
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--zoom-padding, 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+  scroll-snap-align: center;
+  /* A fast swipe cannot skip images */
+  scroll-snap-stop: always;
+}
+
+/* Image - animated from the thumbnail position */
+.astro-image-zoom-image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--zoom-image-radius, 0);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  cursor: zoom-out;
+  transition: opacity 0.15s ease;
+  will-change: transform, opacity;
+}
+
+/* Loading state - hide the image and show the spinner */
+.astro-image-zoom-slide.is-loading .astro-image-zoom-image {
+  opacity: 0 !important;
+}
+
+.astro-image-zoom-slide.is-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 48px;
+  border: 4px solid light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.1));
+  border-left-color: light-dark(rgba(0, 0, 0, 0.8), rgba(255, 255, 255, 0.9));
+  border-radius: 50%;
+  animation: astro-image-zoom-spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes astro-image-zoom-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* Opening animation - zoom in from thumbnail */
+.astro-image-zoom-overlay.is-opening .astro-image-zoom-slide.is-active .astro-image-zoom-image {
+  animation: astro-image-zoom-in var(--zoom-animation-duration, 300ms) cubic-bezier(0.2, 0, 0.2, 1) forwards;
+}
+
+/* Closing animation - zoom out to thumbnail */
+.astro-image-zoom-overlay.is-closing .astro-image-zoom-slide.is-active .astro-image-zoom-image {
+  animation: astro-image-zoom-out calc(var(--zoom-animation-duration, 300ms) * 0.75) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes astro-image-zoom-in {
+  from {
+    transform: translate(var(--tx-from, 0), var(--ty-from, 0)) scale(var(--scale-from, 0.5));
+    clip-path: var(--clip-from, inset(0));
+  }
+
+  to {
+    transform: translate(0, 0) scale(1);
+    clip-path: var(--clip-to, inset(0));
+  }
+}
+
+@keyframes astro-image-zoom-out {
+  from {
+    transform: translate(0, 0) scale(1);
+    clip-path: var(--clip-to, inset(0));
+  }
+
+  to {
+    transform: translate(var(--tx-from, 0), var(--ty-from, 0)) scale(var(--scale-from, 0.5));
+    clip-path: var(--clip-from, inset(0));
+  }
+}
+
+/*
+ * Bottom stack: the caption and, below it, the navigation bar. Clicks beside them reach the
+ * slides, so they still close the zoom.
+ */
+.astro-image-zoom-bottom {
+  position: fixed;
+  inset-inline: 0;
+  bottom: var(--zoom-controls-offset, 20px);
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-inline: 16px;
+  pointer-events: none;
+}
+
+.astro-image-zoom-bottom > * {
+  pointer-events: auto;
+}
+
+/* Caption - above the navigation bar, or at the top of the screen; hidden while empty */
+.astro-image-zoom-caption {
+  max-width: var(--zoom-caption-max-width, 70%);
+  margin: 0;
+  padding: 14px 20px;
+  color: var(--zoom-caption-color, #fff);
+  font-family: var(--zoom-caption-font, inherit);
+  font-size: var(--zoom-caption-font-size, 13px);
+  font-weight: 500;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  text-align: center;
+  background-color: var(--zoom-caption-bg, rgba(0, 0, 0, 0.9));
+  border-radius: var(--zoom-caption-radius, 6px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  animation: astro-image-zoom-caption-in 0.3s ease 0.1s forwards;
+}
+
+.astro-image-zoom-caption:empty,
+.astro-image-zoom-overlay[data-show-caption="false"] .astro-image-zoom-caption {
+  display: none;
+}
+
+/* At the top, the caption stays clear of the close button in the corner */
+.astro-image-zoom-overlay[data-caption-position="top"] .astro-image-zoom-caption {
+  position: fixed;
+  top: var(--zoom-controls-offset, 20px);
+  inset-inline: 0;
+  width: fit-content;
+  max-width: min(
+    var(--zoom-caption-max-width, 70%),
+    100% - 2 * (var(--zoom-button-size, 44px) + 2 * var(--zoom-controls-offset, 20px))
+  );
+  margin-inline: auto;
+}
+
+@keyframes astro-image-zoom-caption-in {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/*
+ * Controls: the close button in the corner, and the navigation bar (previous, counter, next).
+ * Every color, size and shape comes from a --zoom-* variable.
+ */
+.astro-image-zoom-close,
+.astro-image-zoom-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--zoom-button-size, 44px);
+  height: var(--zoom-button-size, 44px);
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: var(--zoom-button-radius, 999px);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.astro-image-zoom-close svg,
+.astro-image-zoom-nav svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+
+.astro-image-zoom-close:focus-visible,
+.astro-image-zoom-nav:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* The surfaces: the close button, the bar, and in "sides" layout each arrow and the counter */
+.astro-image-zoom-close,
+.astro-image-zoom-toolbar,
+.astro-image-zoom-overlay[data-navigation-layout="sides"] :is(.astro-image-zoom-nav, .astro-image-zoom-counter) {
+  border: 1px solid light-dark(rgba(0, 0, 0, 0.08), rgba(255, 255, 255, 0.14));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.astro-image-zoom-close {
+  position: absolute;
+  top: var(--zoom-controls-offset, 20px);
+  right: var(--zoom-controls-offset, 20px);
+  z-index: 11;
+  color: var(--zoom-close-color, light-dark(rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.92)));
+  background-color: var(--zoom-close-bg, light-dark(rgba(255, 255, 255, 0.9), rgba(30, 30, 32, 0.85)));
+}
+
+.astro-image-zoom-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  color: var(--zoom-nav-color, light-dark(rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.92)));
+  background-color: var(--zoom-nav-bg, light-dark(rgba(255, 255, 255, 0.9), rgba(30, 30, 32, 0.85)));
+  border-radius: calc(var(--zoom-button-radius, 999px) + 4px);
+}
+
+/* display: flex above would beat the [hidden] of the user agent */
+.astro-image-zoom-toolbar[hidden] {
+  display: none;
+}
+
+/* Hover tints whatever background the button has, so custom colors keep working */
+.astro-image-zoom-close:hover,
+.astro-image-zoom-nav:hover {
+  --astro-image-zoom-tint: light-dark(rgba(0, 0, 0, 0.08), rgba(255, 255, 255, 0.16));
+  background-image: linear-gradient(var(--astro-image-zoom-tint), var(--astro-image-zoom-tint));
+}
+
+.astro-image-zoom-nav[aria-disabled="true"] {
+  opacity: 0.35;
+  pointer-events: none;
+  cursor: default;
+}
+
+.astro-image-zoom-counter {
+  min-width: 4.5ch;
+  padding-inline: 6px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.astro-image-zoom-overlay[data-show-counter="false"] .astro-image-zoom-counter {
+  display: none;
+}
+
+/* "sides" layout: the arrows move to the screen edges, the counter stays at the bottom */
+.astro-image-zoom-overlay[data-navigation-layout="sides"] .astro-image-zoom-toolbar {
+  display: contents;
+}
+
+.astro-image-zoom-overlay[data-navigation-layout="sides"] .astro-image-zoom-toolbar[hidden] {
+  display: none;
+}
+
+.astro-image-zoom-overlay[data-navigation-layout="sides"] .astro-image-zoom-nav {
+  position: fixed;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--zoom-nav-color, light-dark(rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.92)));
+  background-color: var(--zoom-nav-bg, light-dark(rgba(255, 255, 255, 0.9), rgba(30, 30, 32, 0.85)));
+}
+
+.astro-image-zoom-overlay[data-navigation-layout="sides"] .astro-image-zoom-prev {
+  left: var(--zoom-controls-offset, 20px);
+}
+
+.astro-image-zoom-overlay[data-navigation-layout="sides"] .astro-image-zoom-next {
+  right: var(--zoom-controls-offset, 20px);
+}
+
+.astro-image-zoom-overlay[data-navigation-layout="sides"] .astro-image-zoom-counter {
+  padding: 8px 12px;
+  color: var(--zoom-nav-color, light-dark(rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.92)));
+  background-color: var(--zoom-nav-bg, light-dark(rgba(255, 255, 255, 0.9), rgba(30, 30, 32, 0.85)));
+  border-radius: var(--zoom-button-radius, 999px);
+}
+
+/* Windows high contrast: the surfaces lose their backgrounds, so they get an outline */
+@media (forced-colors: active) {
+  .astro-image-zoom-close,
+  .astro-image-zoom-toolbar,
+  .astro-image-zoom-caption {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .astro-image-zoom-caption {
+    max-width: var(--zoom-caption-max-width, 90%);
+    padding: 12px 16px;
+  }
+}
+
+/* Accessibility - Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+
+  .astro-image-zoom-overlay,
+  .astro-image-zoom-image {
+    transition: none;
+  }
+
+  /* The entrance animation is off, so show the caption in its final state */
+  .astro-image-zoom-caption {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* Print - hide zoom */
+@media print {
+  .astro-image-zoom-overlay {
+    display: none !important;
+  }
+}
+`;

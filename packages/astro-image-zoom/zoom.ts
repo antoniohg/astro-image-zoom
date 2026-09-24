@@ -3,6 +3,8 @@
  * Medium-style zoom with accessibility and performance optimizations
  */
 
+import { overlayStyles } from './overlayStyles';
+
 interface ZoomImage {
   src: string;
   alt: string;
@@ -48,7 +50,8 @@ const ZOOM_VARIABLES = [
   '--zoom-image-radius',
   '--zoom-button-size',
   '--zoom-button-radius',
-  '--zoom-animation-duration'
+  '--zoom-animation-duration',
+  '--zoom-color-scheme'
 ];
 
 const CAPTION_POSITIONS = ['bottom', 'top'];
@@ -68,25 +71,25 @@ const WHEEL_HORIZONTAL_GRACE = 250;
 const OVERLAY_ID = 'astro-image-zoom-global-overlay';
 
 const OVERLAY_HTML = `
-<dialog id="${OVERLAY_ID}" class="astro-image-zoom-overlay" aria-label="Image zoom overlay">
-  <div class="astro-image-zoom-backdrop" aria-hidden="true"></div>
+<dialog class="astro-image-zoom-overlay" part="overlay" aria-label="Image zoom overlay">
+  <div class="astro-image-zoom-backdrop" part="backdrop" aria-hidden="true"></div>
   <div class="astro-image-zoom-content" role="document">
-    <button class="astro-image-zoom-close" aria-label="Close zoom overlay" type="button">
+    <button class="astro-image-zoom-close" part="close" aria-label="Close zoom overlay" type="button">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
       </svg>
     </button>
-    <div class="astro-image-zoom-track"></div>
+    <div class="astro-image-zoom-track" part="track" tabindex="0" role="group" aria-label="Images"></div>
     <div class="astro-image-zoom-bottom">
-      <p class="astro-image-zoom-caption" aria-live="polite"></p>
-      <div class="astro-image-zoom-toolbar">
-        <button class="astro-image-zoom-nav astro-image-zoom-prev" aria-label="Previous image" type="button">
+      <p class="astro-image-zoom-caption" part="caption" aria-live="polite"></p>
+      <div class="astro-image-zoom-toolbar" part="toolbar">
+        <button class="astro-image-zoom-nav astro-image-zoom-prev" part="nav prev" aria-label="Previous image" type="button">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
           </svg>
         </button>
-        <span class="astro-image-zoom-counter"></span>
-        <button class="astro-image-zoom-nav astro-image-zoom-next" aria-label="Next image" type="button">
+        <span class="astro-image-zoom-counter" part="counter"></span>
+        <button class="astro-image-zoom-nav astro-image-zoom-next" part="nav next" aria-label="Next image" type="button">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
           </svg>
@@ -111,14 +114,20 @@ function parseDuration(value: string): number | null {
  * <ImageZoom> components it has; without JavaScript the links simply open the image.
  */
 function getOverlay(): HTMLDialogElement {
-  const existing = document.getElementById(OVERLAY_ID);
-  if (existing instanceof HTMLDialogElement) return existing;
+  const existing = document.getElementById(OVERLAY_ID)?.shadowRoot?.querySelector('dialog');
+  if (existing) return existing;
 
+  // The dialog lives in the shadow root of a host element: the CSS of the page cannot reach it
+  const host = document.createElement('astro-image-zoom-overlay');
+  host.id = OVERLAY_ID;
+  const root = host.attachShadow({ mode: 'open' });
+  const style = document.createElement('style');
+  style.textContent = overlayStyles;
   const template = document.createElement('template');
   template.innerHTML = OVERLAY_HTML.trim();
-  const overlay = template.content.firstElementChild as HTMLDialogElement;
-  document.body.append(overlay);
-  return overlay;
+  root.append(style, template.content);
+  document.body.append(host);
+  return root.querySelector('dialog')!;
 }
 
 class Zoom {
@@ -471,8 +480,10 @@ class Zoom {
     this.slides = this.state.images.map(({ alt }) => {
       const figure = document.createElement('figure');
       figure.className = 'astro-image-zoom-slide';
+      figure.part.add('slide');
       const img = document.createElement('img');
       img.className = 'astro-image-zoom-image';
+      img.part.add('image');
       img.alt = alt;
       figure.append(img);
       return { figure, img };
@@ -691,8 +702,9 @@ class Zoom {
     this.imageElement.style.animation = 'none';
     this.imageElement.style.zIndex = '9999999';
 
-    // Move to body so it scrolls with the page
-    document.body.appendChild(this.imageElement);
+    // Out of the dialog, so it scrolls with the page. It stays in the shadow root: it keeps the
+    // overlay styles and the CSS of the page still cannot reach it
+    this.overlay.getRootNode().appendChild(this.imageElement);
 
     // Animate using transform + clip-path (maintains aspect ratio)
     const animation = this.imageElement.animate([
