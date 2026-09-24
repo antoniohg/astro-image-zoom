@@ -19,6 +19,50 @@ interface ZoomState {
   touchStartY: number;
 }
 
+const OVERLAY_ID = 'astro-image-zoom-global-overlay';
+
+const OVERLAY_HTML = `
+<dialog id="${OVERLAY_ID}" class="astro-image-zoom-overlay" aria-label="Image zoom overlay">
+  <div class="astro-image-zoom-backdrop" aria-hidden="true"></div>
+  <div class="astro-image-zoom-content" role="document">
+    <button class="astro-image-zoom-close" aria-label="Close zoom overlay" type="button">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+      </svg>
+    </button>
+    <button class="astro-image-zoom-nav astro-image-zoom-prev" aria-label="Previous image" type="button">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    </button>
+    <button class="astro-image-zoom-nav astro-image-zoom-next" aria-label="Next image" type="button">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    </button>
+    <figure class="astro-image-zoom-figure">
+      <img class="astro-image-zoom-image" src="" alt="" loading="eager" />
+      <figcaption class="astro-image-zoom-caption" aria-live="polite"></figcaption>
+    </figure>
+  </div>
+</dialog>`;
+
+/**
+ * Returns the overlay shared by every zoom instance, creating it on first use.
+ * Built on the client so the page HTML never repeats its id, however many
+ * <ImageZoom> components it has; without JavaScript the links simply open the image.
+ */
+function getOverlay(): HTMLDialogElement {
+  const existing = document.getElementById(OVERLAY_ID);
+  if (existing instanceof HTMLDialogElement) return existing;
+
+  const template = document.createElement('template');
+  template.innerHTML = OVERLAY_HTML.trim();
+  const overlay = template.content.firstElementChild as HTMLDialogElement;
+  document.body.append(overlay);
+  return overlay;
+}
+
 class Zoom {
   private wrapper: HTMLElement;
   private overlay!: HTMLDialogElement;
@@ -54,6 +98,11 @@ class Zoom {
   private navigationId = 0;
   private openId = 0;
 
+  // Listeners on the page's links live as long as the instance
+  private controller = new AbortController();
+  // Listeners on the shared overlay live only while this instance has it open
+  private openController: AbortController | null = null;
+
   constructor(wrapper: HTMLElement) {
     this.wrapper = wrapper;
 
@@ -80,15 +129,8 @@ class Zoom {
       }
     }
 
-    // Use global overlay
-    const overlay = document.getElementById('astro-image-zoom-global-overlay') as HTMLDialogElement;
-
-    if (!overlay) {
-      console.error('Zoom global overlay not found');
-      return;
-    }
-
-    this.overlay = overlay;
+    // One overlay is shared by every zoom instance on the page
+    this.overlay = getOverlay();
     this.backdrop = this.overlay.querySelector('.astro-image-zoom-backdrop')!;
     this.imageElement = this.overlay.querySelector('.astro-image-zoom-image')!;
     this.captionElement = this.overlay.querySelector('.astro-image-zoom-caption')!;
@@ -122,30 +164,44 @@ class Zoom {
     // Click listeners for links containing images
     // Links already handle keyboard navigation natively (Enter key)
     this.state.images.forEach((image, index) => {
-      image.element.addEventListener('click', (e) => {
-        e.preventDefault();
-        this.open(index);
-      });
+      image.element.addEventListener(
+        'click',
+        (e) => {
+          e.preventDefault();
+          this.open(index);
+        },
+        { signal: this.controller.signal }
+      );
     });
+  }
 
-    // Close button
-    this.closeButton.addEventListener('click', () => this.close());
+  // The overlay is shared, so only the instance that has it open may listen to it
+  private bindOverlayListeners(signal: AbortSignal): void {
+    // Handle native dialog cancel (Escape key), also while the image is loading
+    this.overlay.addEventListener('cancel', this.handleCancel, { signal });
 
-    // Navigation buttons
+    this.closeButton.addEventListener('click', () => this.close(), { signal });
+
     if (this.prevButton && this.nextButton && this.options.showNavigation) {
-      this.prevButton.addEventListener('click', () => this.prev());
-      this.nextButton.addEventListener('click', () => this.next());
+      this.prevButton.addEventListener('click', () => this.prev(), { signal });
+      this.nextButton.addEventListener('click', () => this.next(), { signal });
     }
 
-    // Backdrop click
     if (this.options.closeOnBackdrop) {
-      this.backdrop.addEventListener('click', () => this.close());
+      this.backdrop.addEventListener('click', () => this.close(), { signal });
     }
 
     // Click on image closes (like Medium)
     if (this.options.closeOnImage) {
-      this.imageElement.addEventListener('click', () => this.close());
+      this.imageElement.addEventListener('click', () => this.close(), { signal });
     }
+  }
+
+  // Zero when the user prefers reduced motion, so animations and their timers finish at once
+  private get duration(): number {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 0
+      : this.options.animationDuration;
   }
 
   private async open(index: number): Promise<void> {
@@ -165,7 +221,7 @@ class Zoom {
     this.applyTheme();
 
     // Apply animation duration
-    this.overlay.style.setProperty('--zoom-animation-duration', `${this.options.animationDuration}ms`);
+    this.overlay.style.setProperty('--zoom-animation-duration', `${this.duration}ms`);
 
     // Get source image and position
     const sourceImg = this.state.images[index].element.querySelector('img')!;
@@ -174,8 +230,10 @@ class Zoom {
     // Update content (image, caption, nav buttons)
     this.updateContent(index);
 
-    // Handle native dialog cancel (Escape key), also while the image is loading
-    this.overlay.addEventListener('cancel', this.handleCancel);
+    // Listen to the overlay from now until close(), also while the image is loading
+    this.openController = new AbortController();
+    const { signal } = this.openController;
+    this.bindOverlayListeners(signal);
 
     // Show overlay and prevent body scroll
     this.overlay.showModal();
@@ -215,9 +273,7 @@ class Zoom {
     this.setAnimationVariables(transform);
 
     // Hide thumbnail instantly and trigger CSS animation simultaneously
-    sourceImg.style.transition = 'none';
-    sourceImg.style.opacity = '0';
-    sourceImg.style.pointerEvents = 'none';
+    this.hideThumbnail(sourceImg);
     this.overlay.classList.add('is-opening');
 
     // After animation completes, switch to is-open state
@@ -225,21 +281,21 @@ class Zoom {
       if (currentOpenId !== this.openId) return;
       this.overlay.classList.remove('is-opening');
       this.overlay.classList.add('is-open');
-    }, this.options.animationDuration);
+    }, this.duration);
 
     // Add keyboard listener
     if (this.options.keyboardNavigation) {
-      document.addEventListener('keydown', this.handleKeydown);
+      document.addEventListener('keydown', this.handleKeydown, { signal });
     }
 
     // Add touch listeners for swipe
-    this.overlay.addEventListener('touchstart', this.handleTouchStart, { passive: true });
-    this.overlay.addEventListener('touchend', this.handleTouchEnd, { passive: true });
+    this.overlay.addEventListener('touchstart', this.handleTouchStart, { passive: true, signal });
+    this.overlay.addEventListener('touchend', this.handleTouchEnd, { passive: true, signal });
 
     // Smooth close on scroll/wheel (like Medium - non-blocking)
     if (this.options.closeOnScroll) {
-      this.overlay.addEventListener('wheel', this.handleWheel, { passive: true });
-      this.overlay.addEventListener('touchmove', this.handleTouchMove, { passive: true });
+      this.overlay.addEventListener('wheel', this.handleWheel, { passive: true, signal });
+      this.overlay.addEventListener('touchmove', this.handleTouchMove, { passive: true, signal });
     }
 
     // Focus management
@@ -257,15 +313,9 @@ class Zoom {
     this.openId++;
     const isLoading = this.imageElement.parentElement?.classList.contains('is-loading') ?? false;
 
-    // Remove listeners
-    document.removeEventListener('keydown', this.handleKeydown);
-    this.overlay.removeEventListener('touchstart', this.handleTouchStart);
-    this.overlay.removeEventListener('touchend', this.handleTouchEnd);
-    this.overlay.removeEventListener('cancel', this.handleCancel);
-    if (this.options.closeOnScroll) {
-      this.overlay.removeEventListener('wheel', this.handleWheel);
-      this.overlay.removeEventListener('touchmove', this.handleTouchMove);
-    }
+    // Release the shared overlay: no listener of this instance survives the close
+    this.openController?.abort();
+    this.openController = null;
 
     // Get source image BEFORE any DOM changes
     const sourceElement = this.state.images[this.state.currentIndex].element;
@@ -298,7 +348,7 @@ class Zoom {
       this.animateScrollClose(startRect, targetRect, sourceImg);
     } else {
       // Normal close: cleanup after animation completes (closing animation is 75% of duration)
-      const closeDuration = this.options.animationDuration * 0.75;
+      const closeDuration = this.duration * 0.75;
       setTimeout(() => {
         this.finalizeClose(sourceImg);
       }, closeDuration);
@@ -319,6 +369,10 @@ class Zoom {
 
   private async navigateTo(index: number): Promise<void> {
     const currentId = ++this.navigationId;
+
+    // Only the thumbnail of the image on screen stays hidden
+    this.showThumbnail(this.getThumbnail(this.state.currentIndex));
+    this.hideThumbnail(this.getThumbnail(index));
     this.state.currentIndex = index;
 
     // Fade out current image
@@ -600,13 +654,10 @@ class Zoom {
 
 
   public destroy(): void {
-    // Remove event listeners from images
-    this.state.images.forEach((image) => {
-      const clonedElement = image.element.cloneNode(true);
-      image.element.parentNode?.replaceChild(clonedElement, image.element);
-    });
+    // Remove the listeners on the page's links
+    this.controller.abort();
 
-    // Close if open
+    // Close if open (also releases the overlay listeners)
     if (this.state.isOpen) {
       this.close();
     }
@@ -668,7 +719,7 @@ class Zoom {
         clipPath: transform.clipPath
       }
     ], {
-      duration: this.options.animationDuration * 0.75,
+      duration: this.duration * 0.75,
       easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
       fill: 'forwards'
     });
@@ -705,15 +756,32 @@ class Zoom {
     this.imageElement.style.setProperty('--clip-to', 'inset(0px)');
   }
 
+  private getThumbnail(index: number): HTMLImageElement | null {
+    return this.state.images[index]?.element.querySelector('img') ?? null;
+  }
+
+  // The thumbnail is hidden while its image is shown in the overlay
+  private hideThumbnail(img: HTMLImageElement | null): void {
+    if (!img) return;
+    img.style.transition = 'none';
+    img.style.opacity = '0';
+    img.style.pointerEvents = 'none';
+  }
+
+  private showThumbnail(img: HTMLImageElement | null): void {
+    if (!img) return;
+    img.style.opacity = '';
+    img.style.pointerEvents = '';
+
+    // Force reflow then restore transition, so the thumbnail reappears without fading
+    void img.offsetHeight;
+    img.style.transition = '';
+  }
+
   private finalizeClose(sourceImg: HTMLImageElement): void {
     // Hide overlay image and restore thumbnail instantly - same frame
     this.imageElement.style.opacity = '0';
-    sourceImg.style.opacity = '';
-    sourceImg.style.pointerEvents = '';
-
-    // Force reflow then restore transition
-    void sourceImg.offsetHeight;
-    sourceImg.style.transition = '';
+    this.showThumbnail(sourceImg);
 
     this.overlay.close();
     this.overlay.classList.remove('is-closing');

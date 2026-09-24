@@ -27,6 +27,7 @@
     "index.js",
     "ImageZoom.astro",
     "zoom.ts",
+    "wrapImages.ts",
     "zoom.css",
     "README.md"
   ],

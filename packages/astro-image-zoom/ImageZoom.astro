@@ -1,8 +1,12 @@
 ---
 /**
- * Zoom Component for Astro
+ * ImageZoom component for Astro
  * Medium-style zoom overlay with accessibility and performance features
  */
+
+// Global stylesheet: selectors are prefixed and live in @layer astro-image-zoom
+import "./zoom.css";
+import { wrapImages } from "./wrapImages";
 
 export interface Props {
   /**
@@ -73,61 +77,8 @@ const wrapperClasses = ["astro-image-zoom-wrapper", className]
   .filter(Boolean)
   .join(" ");
 
-// Read an attribute from an <img> tag string. The value may contain the other
-// quote type (alt="Antonio's photo"); double quotes are escaped so it can be
-// written back inside a double-quoted attribute.
-const getAttribute = (tag: string, name: string): string | undefined => {
-  const match = tag.match(new RegExp(`\\s${name}=(["'])(.*?)\\1`, "i"));
-  return match?.[2].replaceAll('"', "&quot;");
-};
-
-// Process slot content to wrap images in accessible links
-let slotContent = await Astro.slots.render("default");
-
-// Split by <img tags and process each
-const parts = slotContent.split(/(<img[^>]*>)/i);
-let processedContent = "";
-
-for (let i = 0; i < parts.length; i++) {
-  const part = parts[i];
-
-  // Check if this part is an <img> tag
-  if (part.match(/^<img/i)) {
-    // Count how many <a> and </a> tags are before this
-    const beforeThis = parts.slice(0, i).join("");
-    const openACount = (beforeThis.match(/<a[\s>]/gi) || []).length;
-    const closeACount = (beforeThis.match(/<\/a>/gi) || []).length;
-
-    // If inside an <a> tag (more opens than closes), don't wrap
-    if (openACount > closeACount) {
-      processedContent += part;
-      continue;
-    }
-
-    // Extract attributes for the link
-    const src = getAttribute(part, "src");
-    const zoomSrc = getAttribute(part, "data-zoom-src");
-    const captionText = getAttribute(part, "data-zoom-caption");
-    const altText = getAttribute(part, "alt");
-
-    if (!src) {
-      processedContent += part;
-      continue;
-    }
-
-    const href = zoomSrc || src;
-    const caption = captionText ? ` data-zoom-caption="${captionText}"` : "";
-
-    // The link is named after the image so screen readers announce what opens
-    const ariaLabel = altText ? `Enlarge image: ${altText}` : "Enlarge image";
-
-    processedContent += `<a href="${href}" data-zoom-generated${caption} aria-label="${ariaLabel}">${part}</a>`;
-  } else {
-    processedContent += part;
-  }
-}
-
-slotContent = processedContent;
+// Wrap the slot's images in accessible links
+const slotContent = wrapImages(await Astro.slots.render("default"));
 ---
 
 <astro-image-zoom
@@ -144,113 +95,15 @@ slotContent = processedContent;
   <Fragment set:html={slotContent} />
 </astro-image-zoom>
 
-<!-- Global Zoom Overlay (shared across all zoom instances) -->
-<dialog
-  id="astro-image-zoom-global-overlay"
-  class="astro-image-zoom-overlay"
-  aria-label="Image zoom overlay"
->
-  <div class="astro-image-zoom-backdrop" aria-hidden="true"></div>
-  <div class="astro-image-zoom-content" role="document">
-    <button
-      class="astro-image-zoom-close"
-      aria-label="Close zoom overlay"
-      type="button"
-    >
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        aria-hidden="true"
-      >
-        <path
-          d="M18 6L6 18M6 6L18 18"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"></path>
-      </svg>
-    </button>
-    <button
-      class="astro-image-zoom-nav astro-image-zoom-prev"
-      aria-label="Previous image"
-      type="button"
-    >
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        aria-hidden="true"
-      >
-        <path
-          d="M15 18L9 12L15 6"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"></path>
-      </svg>
-    </button>
-    <button
-      class="astro-image-zoom-nav astro-image-zoom-next"
-      aria-label="Next image"
-      type="button"
-    >
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        aria-hidden="true"
-      >
-        <path
-          d="M9 18L15 12L9 6"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"></path>
-      </svg>
-    </button>
-    <figure class="astro-image-zoom-figure">
-      <img class="astro-image-zoom-image" src="" alt="" loading="eager" />
-      <figcaption class="astro-image-zoom-caption" aria-live="polite"></figcaption>
-    </figure>
-  </div>
-</dialog>
-
 <script>
   import { Zoom } from "./zoom";
 
-  // Ensure overlay is at the end of body and remove any duplicates
-  function initGlobalOverlay() {
-    const overlays = document.querySelectorAll("#astro-image-zoom-global-overlay");
-    if (overlays.length === 0) return;
-    
-    // Keep only the first overlay, move to body end
-    const [firstOverlay, ...duplicates] = Array.from(overlays);
-    
-    if (firstOverlay.parentElement !== document.body) {
-      document.body.appendChild(firstOverlay);
-    }
-    
-    // Remove duplicates efficiently
-    for (const overlay of duplicates) {
-      overlay.remove();
-    }
-  }
-
-  // Run on initial load
-  initGlobalOverlay();
-
-  // Define custom element for astro-image-zoom
+  // Each <astro-image-zoom> gets its own Zoom instance; they share one overlay,
+  // which zoom.ts creates on first use.
   class AstroImageZoomElement extends HTMLElement {
     private zoom: Zoom | null = null;
 
     connectedCallback() {
-      // Ensure overlay is ready before initializing
-      if (!document.getElementById("astro-image-zoom-global-overlay")) {
-        initGlobalOverlay();
-      }
       this.zoom = new Zoom(this);
     }
 
@@ -265,7 +118,3 @@ slotContent = processedContent;
     customElements.define("astro-image-zoom", AstroImageZoomElement);
   }
 </script>
-
-<style>
-  @import "./zoom.css";
-</style>

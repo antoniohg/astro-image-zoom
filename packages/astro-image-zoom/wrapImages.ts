@@ -1,0 +1,85 @@
+/**
+ * Wraps the images of a rendered HTML string in accessible zoom links.
+ * Runs on the server, so without JavaScript the links still open the full-size image.
+ */
+
+// Comments (skipped) or tags; quoted attribute values may contain ">"
+const TOKEN = /<!--[\s\S]*?-->|<(\/?)([a-zA-Z][\w:-]*)((?:"[^"]*"|'[^']*'|[^'">])*)>/g;
+const ATTRIBUTE = /([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+
+type Attributes = Map<string, string>;
+
+function parseAttributes(source: string): Attributes {
+  const attributes: Attributes = new Map();
+  for (const [, name, double, single, bare] of source.matchAll(ATTRIBUTE)) {
+    // First occurrence wins, like in a browser
+    const key = name.toLowerCase();
+    if (!attributes.has(key)) attributes.set(key, double ?? single ?? bare ?? '');
+  }
+  return attributes;
+}
+
+// Values keep their original entities; only the quote that delimits the new attribute needs escaping
+const escapeQuotes = (value: string): string => value.replaceAll('"', '&quot;');
+
+// The link is named after the image so screen readers announce what opens
+function wrap(html: string, image: Attributes): string {
+  const src = image.get('data-zoom-src') || image.get('src');
+  if (!src) return html;
+
+  const caption = image.get('data-zoom-caption');
+  const alt = image.get('alt');
+
+  const captionAttribute = caption ? ` data-zoom-caption="${escapeQuotes(caption)}"` : '';
+  const label = alt ? `Enlarge image: ${alt}` : 'Enlarge image';
+
+  return `<a href="${escapeQuotes(src)}" data-zoom-generated${captionAttribute} aria-label="${escapeQuotes(label)}">${html}</a>`;
+}
+
+export function wrapImages(html: string): string {
+  let output = '';
+  let cursor = 0;
+  let anchorDepth = 0;
+  // A <picture> is wrapped as a whole: <a> is not valid inside it
+  let picture: { start: number; image?: Attributes } | null = null;
+
+  for (const match of html.matchAll(TOKEN)) {
+    const [tag, closing, rawName, rawAttributes] = match;
+    if (!rawName) continue; // comment
+
+    const name = rawName.toLowerCase();
+    const start = match.index;
+    const end = start + tag.length;
+
+    if (name === 'a') {
+      anchorDepth = Math.max(0, anchorDepth + (closing ? -1 : 1));
+      continue;
+    }
+
+    // Images that already live inside a link are left alone
+    if (anchorDepth > 0) continue;
+
+    if (name === 'picture') {
+      if (!closing) {
+        picture = { start };
+      } else if (picture) {
+        const { start: pictureStart, image } = picture;
+        picture = null;
+        if (image?.get('data-zoom-src') || image?.get('src')) {
+          output += html.slice(cursor, pictureStart) + wrap(html.slice(pictureStart, end), image);
+          cursor = end;
+        }
+      }
+    } else if (name === 'img' && !closing) {
+      const image = parseAttributes(rawAttributes);
+      if (picture) {
+        picture.image ??= image;
+      } else if (image.get('data-zoom-src') || image.get('src')) {
+        output += html.slice(cursor, start) + wrap(tag, image);
+        cursor = end;
+      }
+    }
+  }
+
+  return output + html.slice(cursor);
+}
