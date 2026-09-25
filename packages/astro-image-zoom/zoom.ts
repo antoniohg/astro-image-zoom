@@ -46,6 +46,8 @@ const ZOOM_VARIABLES = [
   '--zoom-button-size',
   '--zoom-button-radius',
   '--zoom-animation-duration',
+  '--zoom-slide-duration',
+  '--zoom-slide-easing',
   '--zoom-color-scheme'
 ];
 
@@ -64,8 +66,13 @@ const WHEEL_HORIZONTAL_GRACE = 250;
 
 const OVERLAY_ID = 'astro-image-zoom-global-overlay';
 
+// The caption and the navigation bar live inside the track, after the slides: fixed, so they do not
+// scroll with it, and a scrollable region with focusable controls needs no Tab stop of its own
+// (WCAG 2.1.1). tabindex="-1" keeps the track itself out of the tab order: Firefox makes any
+// scroller focusable, even with controls inside, and that stop did nothing. The dialog has
+// tabindex="-1" too: Safari makes it a Tab stop of its own, with nothing visible focused.
 const OVERLAY_HTML = `
-<dialog class="astro-image-zoom-overlay" part="overlay" aria-label="Image zoom overlay">
+<dialog class="astro-image-zoom-overlay" part="overlay" tabindex="-1" aria-label="Image zoom overlay">
   <div class="astro-image-zoom-backdrop" part="backdrop" aria-hidden="true"></div>
   <div class="astro-image-zoom-content" role="document">
     <button class="astro-image-zoom-close" part="close" aria-label="Close zoom overlay" type="button">
@@ -73,21 +80,22 @@ const OVERLAY_HTML = `
         <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
       </svg>
     </button>
-    <div class="astro-image-zoom-track" part="track" tabindex="0" role="group" aria-label="Images"></div>
-    <div class="astro-image-zoom-bottom">
-      <p class="astro-image-zoom-caption" part="caption" aria-live="polite"></p>
-      <div class="astro-image-zoom-toolbar" part="toolbar">
-        <button class="astro-image-zoom-nav astro-image-zoom-prev" part="nav prev" aria-label="Previous image" type="button">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-          </svg>
-        </button>
-        <span class="astro-image-zoom-counter" part="counter"></span>
-        <button class="astro-image-zoom-nav astro-image-zoom-next" part="nav next" aria-label="Next image" type="button">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-          </svg>
-        </button>
+    <div class="astro-image-zoom-track" part="track" tabindex="-1" role="group" aria-label="Images">
+      <div class="astro-image-zoom-bottom">
+        <p class="astro-image-zoom-caption" part="caption" aria-live="polite"></p>
+        <div class="astro-image-zoom-toolbar" part="toolbar">
+          <button class="astro-image-zoom-nav astro-image-zoom-prev" part="nav prev" aria-label="Previous image" type="button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </button>
+          <span class="astro-image-zoom-counter" part="counter"></span>
+          <button class="astro-image-zoom-nav astro-image-zoom-next" part="nav next" aria-label="Next image" type="button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -124,6 +132,37 @@ function getOverlay(): HTMLDialogElement {
   return root.querySelector('dialog')!;
 }
 
+// A box on the screen, such as the one getBoundingClientRect() returns
+type Box = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
+
+interface FlipTransform {
+  x: number;
+  y: number;
+  scale: number;
+  clipPath: string;
+}
+
+/**
+ * The FLIP transform that lays an element with the `final` box over the `source` box: the
+ * translation between their centers, the scale that makes it cover the source box, and the
+ * clip-path (in the element's own, unscaled pixels) that trims what overflows it. A thumbnail
+ * cropped with object-fit: cover so grows into the whole image.
+ */
+export function flipTransform(source: Box, final: Box): FlipTransform {
+  // Cover the source box, as object-fit: cover does
+  const scale = Math.max(source.width / final.width, source.height / final.height);
+
+  const x = source.left + source.width / 2 - (final.left + final.width / 2);
+  const y = source.top + source.height / 2 - (final.top + final.height / 2);
+
+  // What overflows the source box once scaled, on each side, back in unscaled pixels
+  const insetX = (final.width * scale - source.width) / 2 / scale;
+  const insetY = (final.height * scale - source.height) / 2 / scale;
+  const clipPath = `inset(${insetY}px ${insetX}px ${insetY}px ${insetX}px)`;
+
+  return { x, y, scale, clipPath };
+}
+
 class Zoom {
   private wrapper: HTMLElement;
   // The element that holds the overlay's shadow root, and its --zoom-* variables
@@ -158,7 +197,8 @@ class Zoom {
   private previousFocus: HTMLElement | null = null;
   private touchStartX = 0;
   private touchStartY = 0;
-  private lastHorizontalWheel = 0;
+  // timeStamp of the last horizontal wheel event; none yet, so the first vertical one always counts
+  private lastHorizontalWheel = -Infinity;
   private scrollTarget = 0;
   private scrollTargetUntil = 0;
   private openId = 0;
@@ -244,10 +284,12 @@ class Zoom {
     }
 
     // The slides cover the backdrop, so they receive its clicks. Click on the image closes
-    // (like Medium), click beside it counts as a backdrop click
+    // (like Medium), click beside it counts as a backdrop click. The caption and the controls
+    // live in the track too: their clicks are theirs
     this.track.addEventListener(
       'click',
       (e) => {
+        if ((e.target as Element).closest('.astro-image-zoom-bottom')) return;
         const onImage = (e.target as Element).closest('.astro-image-zoom-image') !== null;
         if (onImage ? this.options.closeOnImage : this.options.closeOnBackdrop) this.close();
       },
@@ -266,12 +308,15 @@ class Zoom {
     // Identifies this opening; close() increments it to cancel a pending open
     const currentOpenId = ++this.openId;
 
-    // Store current focused element
-    this.previousFocus = document.activeElement as HTMLElement;
+    // Focus goes back to the link that opened the zoom. Not document.activeElement: Safari does not
+    // focus a link on click, so it would be <body>
+    this.previousFocus = this.state.images[index].element;
 
     // Update state
     this.state.isOpen = true;
     this.state.currentIndex = index;
+    // The grace period after a horizontal wheel belongs to one opening, not to the previous one
+    this.lastHorizontalWheel = -Infinity;
 
     // The variables of this gallery (the theme and animationDuration props among them)
     this.inheritVariables();
@@ -326,7 +371,7 @@ class Zoom {
 
     // FLIP Animation
     const finalRect = this.imageElement.getBoundingClientRect();
-    const transform = this.calculateFlipTransform(sourceRect, finalRect);
+    const transform = flipTransform(sourceRect, finalRect);
 
     // Set CSS variables for animation
     this.setAnimationVariables(transform);
@@ -386,8 +431,9 @@ class Zoom {
       return;
     }
 
-    // Stop a smooth scroll still running, so the image closes from a still position
+    // Stop a slide still gliding, so the image closes from a still position
     this.scrollTargetUntil = 0;
+    this.setSlideOffset(0, false);
     this.jumpToSlide(this.state.currentIndex);
 
     this.overlay.classList.remove('is-open', 'is-opening');
@@ -397,7 +443,7 @@ class Zoom {
     const targetRect = sourceImg.getBoundingClientRect();
 
     // Calculate transform for closing animation
-    const transform = this.calculateFlipTransform(targetRect, startRect);
+    const transform = flipTransform(targetRect, startRect);
 
     // Set CSS variables for closing animation
     this.setAnimationVariables(transform);
@@ -430,8 +476,32 @@ class Zoom {
 
     this.scrollTarget = index;
     this.scrollTargetUntil = performance.now() + SCROLL_TARGET_TTL;
-    // Smooth, unless the user prefers reduced motion: the track's scroll-behavior decides
-    this.track.scrollTo({ left: index * this.track.clientWidth });
+
+    // The track jumps to the slide at once; the images then glide from where they were on
+    // screen (a CSS transition, see overlay.css). An image still gliding goes on from its spot
+    const from = this.track.scrollLeft - this.currentSlideOffset();
+    this.jumpToSlide(index);
+    this.setSlideOffset(this.track.scrollLeft - from, false);
+    this.setSlideOffset(0, true);
+  }
+
+  // How far the images are from their place, in px, while they glide
+  private currentSlideOffset(): number {
+    const image = this.slides[0]?.img;
+    return image ? Number.parseFloat(getComputedStyle(image).translate) || 0 : 0;
+  }
+
+  // Moves the images of the slides by `offset` px, gliding there when `animate`, at once otherwise
+  private setSlideOffset(offset: number, animate: boolean): void {
+    if (!animate) {
+      this.track.classList.remove('is-sliding');
+      this.track.style.setProperty('--astro-image-zoom-slide-offset', `${offset}px`);
+      // Commit the offset before the transition starts from it
+      void this.track.offsetWidth;
+      return;
+    }
+    this.track.classList.add('is-sliding');
+    this.track.style.setProperty('--astro-image-zoom-slide-offset', `${offset}px`);
   }
 
   // Shows a slide without the smooth scroll
@@ -452,7 +522,13 @@ class Zoom {
       return { figure, img };
     });
 
-    this.track.replaceChildren(...this.slides.map(({ figure }) => figure));
+    // Before the caption and the controls, which stay in the track
+    this.removeSlides();
+    this.track.prepend(...this.slides.map(({ figure }) => figure));
+  }
+
+  private removeSlides(): void {
+    for (const slide of this.track.querySelectorAll('.astro-image-zoom-slide')) slide.remove();
   }
 
   // Loads the image of a slide once; the spinner appears only if the wait is noticeable.
@@ -580,34 +656,6 @@ class Zoom {
     }
   }
 
-  private calculateFlipTransform(sourceRect: DOMRect, finalRect: DOMRect): { x: number, y: number, scale: number, clipPath: string } {
-    const scaleX = sourceRect.width / finalRect.width;
-    const scaleY = sourceRect.height / finalRect.height;
-    const scale = Math.max(scaleX, scaleY); // Use max to fill thumbnail
-
-    const translateX = sourceRect.left + sourceRect.width / 2 - (finalRect.left + finalRect.width / 2);
-    const translateY = sourceRect.top + sourceRect.height / 2 - (finalRect.top + finalRect.height / 2);
-
-    // Calculate clip-path to hide parts that extend beyond the thumbnail
-    // The scaled image is larger than the thumbnail, so we clip the excess
-    const scaledWidth = finalRect.width * scale;
-    const scaledHeight = finalRect.height * scale;
-
-    const clipX = (scaledWidth - sourceRect.width) / 2;
-    const clipY = (scaledHeight - sourceRect.height) / 2;
-
-    // Inset values relative to the element's own dimensions
-    const insetTop = clipY / scale;
-    const insetRight = clipX / scale;
-    const insetBottom = clipY / scale;
-    const insetLeft = clipX / scale;
-
-    const clipPath = `inset(${insetTop}px ${insetRight}px ${insetBottom}px ${insetLeft}px)`;
-
-    return { x: translateX, y: translateY, scale, clipPath };
-  }
-
-
   public destroy(): void {
     // Remove the listeners on the page's links
     this.controller.abort();
@@ -655,7 +703,7 @@ class Zoom {
     });
   }
 
-  private setAnimationVariables(transform: { x: number, y: number, scale: number, clipPath: string }): void {
+  private setAnimationVariables(transform: FlipTransform): void {
     this.imageElement.style.setProperty('--tx-from', `${transform.x}px`);
     this.imageElement.style.setProperty('--ty-from', `${transform.y}px`);
     this.imageElement.style.setProperty('--scale-from', transform.scale.toString());
@@ -694,8 +742,10 @@ class Zoom {
     document.body.style.overflow = '';
 
     // The slides belong to the instance that opened the overlay: discard them
-    this.track.replaceChildren();
+    this.removeSlides();
     this.track.style.overflowX = '';
+    this.track.classList.remove('is-sliding');
+    this.track.style.removeProperty('--astro-image-zoom-slide-offset');
     this.captionElement.textContent = '';
     this.slides = [];
 

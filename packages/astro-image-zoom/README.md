@@ -205,6 +205,8 @@ You can override the default styles using CSS variables:
   --zoom-caption-color: #fff;
   --zoom-caption-bg: rgba(0, 0, 0, 0.9);
   --zoom-animation-duration: 400ms; /* ms or s; the animationDuration prop wins over it */
+  --zoom-slide-duration: 400ms; /* arrows and keys: the glide to the next image */
+  --zoom-slide-easing: cubic-bezier(0.2, 0, 0, 1);
 
   /* Layout */
   --zoom-padding: 0; /* space between the zoomed image and the screen edges */

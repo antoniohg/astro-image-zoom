@@ -129,14 +129,6 @@
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   touch-action: pan-x pan-y pinch-zoom;
-  /* The arrows and keys glide to the next slide; swipes keep their own inertia */
-  scroll-behavior: smooth;
-}
-
-/* The track scrolls, so keyboard users can focus it (WCAG 2.1.1); the ring sits inside the edges */
-.astro-image-zoom-track:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: -4px;
 }
 
 .astro-image-zoom-track::-webkit-scrollbar {
@@ -158,6 +150,22 @@
   scroll-snap-align: center;
   /* A fast swipe cannot skip images */
   scroll-snap-stop: always;
+}
+
+/*
+ * The arrows and keys move the track at once, then slide the images from where they were:
+ * zoom.ts sets the offset, this transition glides it back to 0. The same speed in every browser
+ * (their own smooth scroll lasts from about 180ms in Safari to 480ms in Chrome). The images
+ * move, not the slides: the browser would snap the track to moved slides. Swipes stay native.
+ */
+.astro-image-zoom-track .astro-image-zoom-image {
+  translate: var(--astro-image-zoom-slide-offset, 0px) 0;
+}
+
+.astro-image-zoom-track.is-sliding .astro-image-zoom-image {
+  transition:
+    opacity 0.15s ease,
+    translate var(--zoom-slide-duration, 400ms) var(--zoom-slide-easing, cubic-bezier(0.2, 0, 0, 1));
 }
 
 /* Image - animated from the thumbnail position */
@@ -493,8 +501,9 @@
     animation-duration: 0s !important;
   }
 
-  .astro-image-zoom-track {
-    scroll-behavior: auto;
+  /* The arrows and keys change the image at once */
+  .astro-image-zoom-track.is-sliding .astro-image-zoom-image {
+    transition: none;
   }
 
   /* The entrance animation is off, so show the caption in its final state */
