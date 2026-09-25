@@ -30,6 +30,7 @@
   "exports": {
     ".": "./index.js",
     "./ImageZoom.astro": "./ImageZoom.astro",
+    "./integration": "./integration.js",
     "./zoom.css": "./zoom.css"
   },
   "files": [
@@ -39,6 +40,9 @@
     "overlay.css",
     "env.d.ts",
     "wrapImages.ts",
+    "labels.ts",
+    "config.js",
+    "integration.js",
     "zoom.css",
     "README.md"
   ],
