@@ -45,7 +45,7 @@ test.describe('open and close', () => {
     await expectClosed(page);
   });
 
-  test('closes with the wheel and lets the page scroll', async ({ page }) => {
+  test('closes with a vertical wheel', async ({ page }) => {
     await openZoom(page, 'single');
     await page.mouse.move(640, 360);
     await page.mouse.wheel(0, 400);
@@ -62,6 +62,23 @@ test.describe('open and close', () => {
 
     await page.keyboard.press('Escape');
     await expectClosed(page);
+  });
+
+  test('each <ImageZoom> is its own gallery, with its own options, on the shared overlay', async ({ page }) => {
+    // A gallery that closes on a click on the image, opened and closed first
+    await openZoom(page, 'gallery');
+    await expect(counter(page)).toHaveText('1 / 3');
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+
+    // Then one that does not: the shared overlay takes the slides and the options of this one
+    await openZoom(page, 'no-close');
+    await expect(page.locator('.astro-image-zoom-slide')).toHaveCount(1);
+    await expect(counter(page)).toBeHidden();
+    await zoomedImage(page).click();
+    await expect(dialog(page)).toHaveClass(/is-open/);
+    await page.keyboard.press('ArrowRight');
+    await expect(zoomedImage(page)).toHaveAttribute('src', /portrait\.svg$/);
   });
 
   test('opens data-zoom-src and the href of a link', async ({ page }) => {
@@ -85,9 +102,15 @@ test.describe('open and close', () => {
 
     await links(page, 'single').first().click();
     await expect(dialog(page)).toHaveAttribute('open');
-    // The spinner shows after a short wait
-    await expect(page.locator('.astro-image-zoom-slide.is-loading')).toHaveCount(1);
     await expect(dialog(page)).not.toHaveClass(/is-opening|is-open/);
+    // The spinner shows once the wait lasts
+    await expect
+      .poll(() =>
+        page
+          .locator('.astro-image-zoom-slide.is-active')
+          .evaluate((slide) => getComputedStyle(slide, '::after').visibility)
+      )
+      .toBe('visible');
 
     await page.keyboard.press('Escape');
     await expectClosed(page);
@@ -102,21 +125,17 @@ test.describe('open and close', () => {
 test.describe('focus', () => {
   test('moves to the close button, cycles through the controls and returns to the image', async ({
     page,
-    browserName,
   }) => {
     await openZoom(page, 'gallery');
     expect(await focusedLabel(page)).toBe('Close zoom overlay');
 
-    // WebKit on macOS only tabs to buttons with the full keyboard access setting
-    if (browserName !== 'webkit') {
-      await page.keyboard.press('Tab');
-      expect(await focusedLabel(page)).toBe('Previous image');
-      await page.keyboard.press('Tab');
-      expect(await focusedLabel(page)).toBe('Next image');
-      await page.keyboard.press('Shift+Tab');
-      await page.keyboard.press('Shift+Tab');
-      expect(await focusedLabel(page)).toBe('Close zoom overlay');
-    }
+    await page.keyboard.press('Tab');
+    expect(await focusedLabel(page)).toBe('Previous image');
+    await page.keyboard.press('Tab');
+    expect(await focusedLabel(page)).toBe('Next image');
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Shift+Tab');
+    expect(await focusedLabel(page)).toBe('Close zoom overlay');
 
     await page.keyboard.press('Escape');
     await expectClosed(page);

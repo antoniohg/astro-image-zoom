@@ -18,7 +18,6 @@ const cases = {
   gallery: 'a gallery',
   layout: 'caption at the top, arrows at the sides',
   hidden: 'no caption, no counter',
-  theme: 'the theme prop',
 };
 
 for (const colorScheme of ['light', 'dark'] as const) {
