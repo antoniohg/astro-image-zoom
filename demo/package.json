@@ -1,0 +1,23 @@
+{
+  "name": "astro-image-zoom-demo",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@iconify-json/lucide": "^1.2.136",
+    "astro": "^7.3.3",
+    "astro-icon": "^1.2.0",
+    "astro-image-zoom": "workspace:*",
+    "sharp": "^0.35.4"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "typescript": "^6.0.3"
+  }
+}
