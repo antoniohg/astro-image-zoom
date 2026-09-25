@@ -1,0 +1,100 @@
+---
+/**
+ * One <ImageZoom> per case, each in a section with a stable id that the tests use. No site CSS and
+ * plain SVG images from public/images/.
+ */
+import ImageZoom from "astro-image-zoom/ImageZoom.astro";
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+const image = (name: string) => `${base}images/${name}.svg`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fixtures · astro-image-zoom</title>
+    <style>
+      img {
+        width: 240px;
+        height: auto;
+      }
+
+      section {
+        margin-block: 2rem;
+      }
+
+      /* Room to scroll, for the scroll-close tests */
+      main {
+        padding-block-end: 150vh;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Fixtures</h1>
+
+      <section id="single">
+        <h2>One image</h2>
+        <ImageZoom>
+          <img src={image("landscape")} alt="Blue landscape" data-zoom-caption="A single image" />
+        </ImageZoom>
+      </section>
+
+      <section id="gallery">
+        <h2>Gallery</h2>
+        <ImageZoom>
+          <img src={image("portrait")} alt="Pink portrait" data-zoom-caption="First" />
+          <img src={image("square")} alt="Green square" data-zoom-caption="Second" />
+          <img src={image("wide")} alt="Orange panorama" data-zoom-caption="Third" />
+        </ImageZoom>
+      </section>
+
+      <section id="sources">
+        <h2>Zoom sources</h2>
+        <ImageZoom>
+          <img src={image("square")} data-zoom-src={image("landscape")} alt="Thumbnail with data-zoom-src" />
+          <a href={image("wide")} data-zoom><img src={image("portrait")} alt="Thumbnail in a link" /></a>
+        </ImageZoom>
+      </section>
+
+      <section id="theme">
+        <h2>Theme and duration props</h2>
+        <ImageZoom theme={{ backgroundColor: "rgb(5, 10, 26)", closeButtonColor: "rgb(142, 203, 255)" }} animationDuration={800}>
+          <img src={image("square")} alt="Themed square" />
+        </ImageZoom>
+      </section>
+
+      <section id="variables" style="--zoom-image-radius: 16px; --zoom-padding: 40px; --zoom-bg: rgb(30, 0, 40);">
+        <h2>Variables around the gallery</h2>
+        <ImageZoom>
+          <img src={image("landscape")} alt="Landscape with variables" />
+        </ImageZoom>
+      </section>
+
+      <section id="no-close">
+        <h2>No close on backdrop or image</h2>
+        <ImageZoom closeOnBackdrop={false} closeOnImage={false} closeOnScroll={false}>
+          <img src={image("portrait")} alt="Portrait that stays open" />
+        </ImageZoom>
+      </section>
+
+      <section id="layout">
+        <h2>Caption at the top, arrows at the sides</h2>
+        <ImageZoom captionPosition="top" navigationLayout="sides">
+          <img src={image("landscape")} alt="Landscape one" data-zoom-caption="Top caption" />
+          <img src={image("square")} alt="Square two" data-zoom-caption="Top caption two" />
+        </ImageZoom>
+      </section>
+
+      <section id="hidden">
+        <h2>No caption, no counter, no keyboard</h2>
+        <ImageZoom showCaption={false} showCounter={false} keyboardNavigation={false}>
+          <img src={image("wide")} alt="Wide one" data-zoom-caption="Hidden caption" />
+          <img src={image("portrait")} alt="Portrait two" data-zoom-caption="Hidden caption two" />
+        </ImageZoom>
+      </section>
+    </main>
+  </body>
+</html>

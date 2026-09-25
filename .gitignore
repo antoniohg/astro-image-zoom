@@ -15,6 +15,10 @@ demo/dist/
 .astro/
 demo/.astro/
 
+# Test reports
+test-results/
+playwright-report/
+
 # Editor / OS
 .DS_Store
 .vscode/
@@ -25,3 +29,4 @@ CLAUDE.md
 AGENTS.md
 .claude/
 .claude-tmp/
+GEMINI.md

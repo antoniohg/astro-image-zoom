@@ -1,6 +1,8 @@
 packages:
   - demo
   - packages/*
+  # The test site of the end-to-end tests of the package
+  - packages/astro-image-zoom/e2e/fixture
 
 # Supply chain: do not install versions published less than 48h ago
 minimumReleaseAge: 2880
