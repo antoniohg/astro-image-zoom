@@ -64,9 +64,9 @@ const WHEEL_HORIZONTAL_GRACE = 250;
 
 const OVERLAY_ID = 'astro-image-zoom-global-overlay';
 
-// The track is out of the tab order (tabindex="-1"; Chrome would make the scroller focusable): the
-// arrow keys and the prev/next buttons already move through the gallery, and a focus stop on it did
-// nothing. axe reports it as scrollable-region-focusable; the keyboard still reaches every image.
+// The caption and the navigation bar live inside the track, after the slides: fixed, so they do not
+// scroll with it, and a scrollable region with focusable controls needs no Tab stop of its own
+// (WCAG 2.1.1). Without them, Chrome would make the track focusable, a stop that did nothing.
 const OVERLAY_HTML = `
 <dialog class="astro-image-zoom-overlay" part="overlay" aria-label="Image zoom overlay">
   <div class="astro-image-zoom-backdrop" part="backdrop" aria-hidden="true"></div>
@@ -76,21 +76,22 @@ const OVERLAY_HTML = `
         <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
       </svg>
     </button>
-    <div class="astro-image-zoom-track" part="track" tabindex="-1" role="group" aria-label="Images"></div>
-    <div class="astro-image-zoom-bottom">
-      <p class="astro-image-zoom-caption" part="caption" aria-live="polite"></p>
-      <div class="astro-image-zoom-toolbar" part="toolbar">
-        <button class="astro-image-zoom-nav astro-image-zoom-prev" part="nav prev" aria-label="Previous image" type="button">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-          </svg>
-        </button>
-        <span class="astro-image-zoom-counter" part="counter"></span>
-        <button class="astro-image-zoom-nav astro-image-zoom-next" part="nav next" aria-label="Next image" type="button">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-          </svg>
-        </button>
+    <div class="astro-image-zoom-track" part="track" role="group" aria-label="Images">
+      <div class="astro-image-zoom-bottom">
+        <p class="astro-image-zoom-caption" part="caption" aria-live="polite"></p>
+        <div class="astro-image-zoom-toolbar" part="toolbar">
+          <button class="astro-image-zoom-nav astro-image-zoom-prev" part="nav prev" aria-label="Previous image" type="button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </button>
+          <span class="astro-image-zoom-counter" part="counter"></span>
+          <button class="astro-image-zoom-nav astro-image-zoom-next" part="nav next" aria-label="Next image" type="button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -161,7 +162,8 @@ class Zoom {
   private previousFocus: HTMLElement | null = null;
   private touchStartX = 0;
   private touchStartY = 0;
-  private lastHorizontalWheel = 0;
+  // timeStamp of the last horizontal wheel event; none yet, so the first vertical one always counts
+  private lastHorizontalWheel = -Infinity;
   private scrollTarget = 0;
   private scrollTargetUntil = 0;
   private openId = 0;
@@ -247,10 +249,12 @@ class Zoom {
     }
 
     // The slides cover the backdrop, so they receive its clicks. Click on the image closes
-    // (like Medium), click beside it counts as a backdrop click
+    // (like Medium), click beside it counts as a backdrop click. The caption and the controls
+    // live in the track too: their clicks are theirs
     this.track.addEventListener(
       'click',
       (e) => {
+        if ((e.target as Element).closest('.astro-image-zoom-bottom')) return;
         const onImage = (e.target as Element).closest('.astro-image-zoom-image') !== null;
         if (onImage ? this.options.closeOnImage : this.options.closeOnBackdrop) this.close();
       },
@@ -269,8 +273,9 @@ class Zoom {
     // Identifies this opening; close() increments it to cancel a pending open
     const currentOpenId = ++this.openId;
 
-    // Store current focused element
-    this.previousFocus = document.activeElement as HTMLElement;
+    // Focus goes back to the link that opened the zoom. Not document.activeElement: Safari does not
+    // focus a link on click, so it would be <body>
+    this.previousFocus = this.state.images[index].element;
 
     // Update state
     this.state.isOpen = true;
@@ -455,7 +460,13 @@ class Zoom {
       return { figure, img };
     });
 
-    this.track.replaceChildren(...this.slides.map(({ figure }) => figure));
+    // Before the caption and the controls, which stay in the track
+    this.removeSlides();
+    this.track.prepend(...this.slides.map(({ figure }) => figure));
+  }
+
+  private removeSlides(): void {
+    for (const slide of this.track.querySelectorAll('.astro-image-zoom-slide')) slide.remove();
   }
 
   // Loads the image of a slide once; the spinner appears only if the wait is noticeable.
@@ -697,7 +708,7 @@ class Zoom {
     document.body.style.overflow = '';
 
     // The slides belong to the instance that opened the overlay: discard them
-    this.track.replaceChildren();
+    this.removeSlides();
     this.track.style.overflowX = '';
     this.captionElement.textContent = '';
     this.slides = [];
