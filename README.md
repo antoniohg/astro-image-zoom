@@ -73,10 +73,6 @@ GitHub Actions runs both suites on every push to `main` and every pull request
 ([`.github/workflows/test.yml`](./.github/workflows/test.yml)). When the end-to-end tests fail, the
 Playwright report is attached to the run.
 
-## Releasing
-
-How to publish a new version to npm and GitHub: [RELEASING.md](./RELEASING.md).
-
 ## License
 
 [MIT](./LICENSE)
