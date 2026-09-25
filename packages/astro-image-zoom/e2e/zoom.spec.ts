@@ -78,6 +78,43 @@ test.describe('open and close', () => {
     await expectClosed(page);
   });
 
+  test('on a scroll close, the image stays above the backdrop that fades out', async ({ page }) => {
+    await openZoom(page, 'single');
+
+    // The moment the image leaves the dialog to scroll away with the page
+    const layers = page.evaluate(
+      () =>
+        new Promise<Record<string, unknown>>((resolve) => {
+          const root = document.querySelector('astro-image-zoom-overlay')!.shadowRoot!;
+          const observer = new MutationObserver(() => {
+            // A direct child of the shadow root: out of the dialog
+            const image = [...root.children].find((child) => child.matches('.astro-image-zoom-image')) as
+              | HTMLElement
+              | undefined;
+            if (!image) return;
+            observer.disconnect();
+            const backdrop = root.querySelector<HTMLElement>('.astro-image-zoom-backdrop')!;
+            resolve({
+              // Out of the dialog (the top layer) together, or the backdrop would cover the image
+              backdropInDialog: backdrop.closest('dialog') !== null,
+              imageAbove: Number(getComputedStyle(image).zIndex) > Number(getComputedStyle(backdrop).zIndex),
+              backdropFading: backdrop.getAnimations().some((a) => (a as CSSAnimation).animationName === 'astro-image-zoom-backdrop-out'),
+            });
+          });
+          observer.observe(root, { childList: true });
+        })
+    );
+
+    await page.mouse.move(640, 360);
+    await page.mouse.wheel(0, 400);
+    expect(await layers).toEqual({ backdropInDialog: false, imageAbove: true, backdropFading: true });
+    await expectClosed(page);
+
+    // The backdrop is back in the dialog for the next opening
+    await openZoom(page, 'single');
+    await expect(page.locator('dialog .astro-image-zoom-backdrop')).toHaveCSS('opacity', '1');
+  });
+
   test('stays open when every close option is off, except Escape', async ({ page }) => {
     await openZoom(page, 'no-close');
     await zoomedImage(page).click();
