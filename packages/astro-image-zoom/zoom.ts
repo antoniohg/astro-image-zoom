@@ -128,6 +128,37 @@ function getOverlay(): HTMLDialogElement {
   return root.querySelector('dialog')!;
 }
 
+// A box on the screen, such as the one getBoundingClientRect() returns
+type Box = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
+
+interface FlipTransform {
+  x: number;
+  y: number;
+  scale: number;
+  clipPath: string;
+}
+
+/**
+ * The FLIP transform that lays an element with the `final` box over the `source` box: the
+ * translation between their centers, the scale that makes it cover the source box, and the
+ * clip-path (in the element's own, unscaled pixels) that trims what overflows it. A thumbnail
+ * cropped with object-fit: cover so grows into the whole image.
+ */
+export function flipTransform(source: Box, final: Box): FlipTransform {
+  // Cover the source box, as object-fit: cover does
+  const scale = Math.max(source.width / final.width, source.height / final.height);
+
+  const x = source.left + source.width / 2 - (final.left + final.width / 2);
+  const y = source.top + source.height / 2 - (final.top + final.height / 2);
+
+  // What overflows the source box once scaled, on each side, back in unscaled pixels
+  const insetX = (final.width * scale - source.width) / 2 / scale;
+  const insetY = (final.height * scale - source.height) / 2 / scale;
+  const clipPath = `inset(${insetY}px ${insetX}px ${insetY}px ${insetX}px)`;
+
+  return { x, y, scale, clipPath };
+}
+
 class Zoom {
   private wrapper: HTMLElement;
   // The element that holds the overlay's shadow root, and its --zoom-* variables
@@ -334,7 +365,7 @@ class Zoom {
 
     // FLIP Animation
     const finalRect = this.imageElement.getBoundingClientRect();
-    const transform = this.calculateFlipTransform(sourceRect, finalRect);
+    const transform = flipTransform(sourceRect, finalRect);
 
     // Set CSS variables for animation
     this.setAnimationVariables(transform);
@@ -405,7 +436,7 @@ class Zoom {
     const targetRect = sourceImg.getBoundingClientRect();
 
     // Calculate transform for closing animation
-    const transform = this.calculateFlipTransform(targetRect, startRect);
+    const transform = flipTransform(targetRect, startRect);
 
     // Set CSS variables for closing animation
     this.setAnimationVariables(transform);
@@ -594,34 +625,6 @@ class Zoom {
     }
   }
 
-  private calculateFlipTransform(sourceRect: DOMRect, finalRect: DOMRect): { x: number, y: number, scale: number, clipPath: string } {
-    const scaleX = sourceRect.width / finalRect.width;
-    const scaleY = sourceRect.height / finalRect.height;
-    const scale = Math.max(scaleX, scaleY); // Use max to fill thumbnail
-
-    const translateX = sourceRect.left + sourceRect.width / 2 - (finalRect.left + finalRect.width / 2);
-    const translateY = sourceRect.top + sourceRect.height / 2 - (finalRect.top + finalRect.height / 2);
-
-    // Calculate clip-path to hide parts that extend beyond the thumbnail
-    // The scaled image is larger than the thumbnail, so we clip the excess
-    const scaledWidth = finalRect.width * scale;
-    const scaledHeight = finalRect.height * scale;
-
-    const clipX = (scaledWidth - sourceRect.width) / 2;
-    const clipY = (scaledHeight - sourceRect.height) / 2;
-
-    // Inset values relative to the element's own dimensions
-    const insetTop = clipY / scale;
-    const insetRight = clipX / scale;
-    const insetBottom = clipY / scale;
-    const insetLeft = clipX / scale;
-
-    const clipPath = `inset(${insetTop}px ${insetRight}px ${insetBottom}px ${insetLeft}px)`;
-
-    return { x: translateX, y: translateY, scale, clipPath };
-  }
-
-
   public destroy(): void {
     // Remove the listeners on the page's links
     this.controller.abort();
@@ -669,7 +672,7 @@ class Zoom {
     });
   }
 
-  private setAnimationVariables(transform: { x: number, y: number, scale: number, clipPath: string }): void {
+  private setAnimationVariables(transform: FlipTransform): void {
     this.imageElement.style.setProperty('--tx-from', `${transform.x}px`);
     this.imageElement.style.setProperty('--ty-from', `${transform.y}px`);
     this.imageElement.style.setProperty('--scale-from', transform.scale.toString());
