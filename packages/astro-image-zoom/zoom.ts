@@ -3,7 +3,6 @@
  * Medium-style zoom with accessibility and performance optimizations
  */
 
-/// <reference path="./env.d.ts" />
 import overlayStyles from './overlay.css?inline';
 
 interface ZoomImage {

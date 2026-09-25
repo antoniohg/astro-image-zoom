@@ -8,6 +8,7 @@
     "dev": "pnpm --filter astro-image-zoom-demo dev",
     "build": "pnpm --filter astro-image-zoom-demo build",
     "preview": "pnpm --filter astro-image-zoom-demo preview",
+    "check": "pnpm --filter astro-image-zoom check",
     "test": "pnpm --filter astro-image-zoom test",
     "test:e2e": "pnpm --filter astro-image-zoom test:e2e"
   },

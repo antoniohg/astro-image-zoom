@@ -27,6 +27,7 @@ The package carries its own tests, as the packages of Astro itself do: unit test
 them are published to npm, and none depend on the demo.
 
 ```bash
+pnpm check       # type check (astro check)
 pnpm test        # unit tests (Vitest)
 pnpm test:e2e    # end-to-end tests (Playwright, in Chromium, Firefox and WebKit)
 ```
@@ -69,7 +70,7 @@ gestures, and a screen reader.
 
 ### Continuous integration
 
-GitHub Actions runs both suites on every push to `main` and every pull request
+GitHub Actions type-checks and runs both suites on every push to `main` and every pull request
 ([`.github/workflows/test.yml`](./.github/workflows/test.yml)). When the end-to-end tests fail, the
 Playwright report is attached to the run.
 

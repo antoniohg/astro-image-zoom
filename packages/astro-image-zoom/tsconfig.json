@@ -1,0 +1,11 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [
+    ".astro/types.d.ts",
+    "env.d.ts",
+    "*.ts",
+    "ImageZoom.astro",
+    "test"
+  ],
+  "exclude": ["**/node_modules", "vitest.config.ts", "e2e"]
+}
