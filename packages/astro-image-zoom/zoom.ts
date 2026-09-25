@@ -168,6 +168,7 @@ class Zoom {
   // The element that holds the overlay's shadow root, and its --zoom-* variables
   private host!: HTMLElement;
   private overlay!: HTMLDialogElement;
+  private backdrop!: HTMLElement;
   private track!: HTMLElement;
   private captionElement!: HTMLElement;
   private closeButton!: HTMLButtonElement;
@@ -221,6 +222,7 @@ class Zoom {
     // One overlay is shared by every zoom instance on the page
     this.overlay = getOverlay();
     this.host = (this.overlay.getRootNode() as ShadowRoot).host as HTMLElement;
+    this.backdrop = this.overlay.querySelector('.astro-image-zoom-backdrop')!;
     this.track = this.overlay.querySelector('.astro-image-zoom-track')!;
     this.captionElement = this.overlay.querySelector('.astro-image-zoom-caption')!;
     this.closeButton = this.overlay.querySelector('.astro-image-zoom-close')!;
@@ -366,7 +368,12 @@ class Zoom {
     if (currentOpenId !== this.openId) return;
     this.openPending = false;
     this.track.style.overflowX = '';
+    // Shown at once, in the frame the thumbnail hides: its opacity transition would fade it in over
+    // an empty spot, a blink. The transition comes back for later changes
+    this.imageElement.style.transition = 'none';
     this.imageElement.style.opacity = '1';
+    void this.imageElement.offsetWidth;
+    this.imageElement.style.transition = '';
     this.preloadNeighbors(index);
 
     // FLIP Animation
@@ -691,14 +698,21 @@ class Zoom {
     image.style.width = `${startRect.width}px`;
     image.style.height = `${startRect.height}px`;
     image.classList.add('is-detached');
+    this.backdrop.classList.add('is-detached');
 
-    // It stays in the shadow root: it keeps the overlay styles and the CSS of the page still
-    // cannot reach it
-    this.overlay.getRootNode().appendChild(image);
+    // The dialog stays open, transparent, until the end: the gesture that closes it goes on over
+    // it. The image and the backdrop stay in the shadow root: they keep the overlay styles and
+    // the CSS of the page still cannot reach them. The backdrop first, so the image covers it
+    (this.overlay.getRootNode() as ShadowRoot).append(this.backdrop, image);
 
-    void animationsFinished(image, CLOSE_ANIMATIONS).then(() => {
+    void Promise.all([
+      animationsFinished(image, CLOSE_ANIMATIONS),
+      animationsFinished(this.backdrop, CLOSE_ANIMATIONS),
+    ]).then(() => {
       // finalizeClose() discards the slides, so the image does not go back to its slide
       image.remove();
+      this.backdrop.classList.remove('is-detached');
+      this.overlay.prepend(this.backdrop);
       this.finalizeClose(sourceImg);
     });
   }

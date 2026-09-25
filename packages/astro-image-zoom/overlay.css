@@ -14,11 +14,12 @@
   all: initial;
   display: contents;
   font-family: inherit;
+  /* On the host, so what leaves the dialog on a scroll close keeps the light or dark scheme */
+  color-scheme: var(--zoom-color-scheme, light dark);
 }
 
 /* Overlay container: a modal <dialog>, so it lives in the top layer */
 .astro-image-zoom-overlay {
-  color-scheme: var(--zoom-color-scheme, light dark);
   position: fixed;
   inset: 0;
   width: 100%;
@@ -241,14 +242,24 @@
 }
 
 /*
- * Closed by a scroll: the image leaves the dialog for the shadow root, positioned on the page
- * (zoom.ts sets its box), so it scrolls away with the page while it shrinks to the thumbnail
+ * Closed by a scroll: the image and the backdrop leave the dialog for the page (the shadow root,
+ * out of the top layer). The image, positioned on the page (zoom.ts sets its box), scrolls away
+ * with it while it shrinks to the thumbnail, above the backdrop that fades out. Left in the dialog,
+ * the backdrop would stay in the top layer, above the image. Neither takes the clicks of the page.
  */
 .astro-image-zoom-image.is-detached {
   position: absolute;
   z-index: 9999999;
   margin: 0;
+  pointer-events: none;
   animation: astro-image-zoom-out calc(var(--zoom-animation-duration, 300ms) * 0.75) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.astro-image-zoom-backdrop.is-detached {
+  position: fixed;
+  z-index: 9999998;
+  pointer-events: none;
+  animation: astro-image-zoom-backdrop-out calc(var(--zoom-animation-duration, 300ms) * 0.75) ease-out forwards;
 }
 
 @keyframes astro-image-zoom-in {
