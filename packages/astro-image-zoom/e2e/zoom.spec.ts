@@ -122,6 +122,37 @@ test.describe('focus', () => {
     await expect(links(page, 'gallery').first()).toBeFocused();
   });
 
+  test('keeps Tab inside the zoom with a single image: only the close button, then the browser', async ({
+    page,
+  }) => {
+    await openZoom(page, 'single');
+
+    // Whatever has the focus: a control of the zoom by its label, "dialog" for the dialog itself,
+    // or "page" for any element of the page behind it. <body> means the browser UI
+    const focused = () =>
+      page.evaluate(() => {
+        const active = document.activeElement;
+        if (active === document.body) return 'browser';
+        const inner = active?.shadowRoot?.activeElement;
+        if (!inner) return 'page';
+        return inner.tagName === 'DIALOG' ? 'dialog' : inner.getAttribute('aria-label');
+      });
+
+    const stops = [await focused()];
+    for (let i = 0; i < 5; i++) {
+      await page.keyboard.press('Tab');
+      stops.push(await focused());
+    }
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press('Shift+Tab');
+      stops.push(await focused());
+    }
+
+    expect(stops[0]).toBe('Close zoom overlay');
+    // Never the page behind, never the dialog itself (Safari made it a stop with no visible focus)
+    for (const stop of stops) expect(['Close zoom overlay', 'browser']).toContain(stop);
+  });
+
   test('opens from the keyboard', async ({ page }) => {
     await links(page, 'single').first().focus();
     await page.keyboard.press('Enter');

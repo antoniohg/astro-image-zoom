@@ -66,9 +66,11 @@ const OVERLAY_ID = 'astro-image-zoom-global-overlay';
 
 // The caption and the navigation bar live inside the track, after the slides: fixed, so they do not
 // scroll with it, and a scrollable region with focusable controls needs no Tab stop of its own
-// (WCAG 2.1.1). Without them, Chrome would make the track focusable, a stop that did nothing.
+// (WCAG 2.1.1). tabindex="-1" keeps the track itself out of the tab order: Firefox makes any
+// scroller focusable, even with controls inside, and that stop did nothing. The dialog has
+// tabindex="-1" too: Safari makes it a Tab stop of its own, with nothing visible focused.
 const OVERLAY_HTML = `
-<dialog class="astro-image-zoom-overlay" part="overlay" aria-label="Image zoom overlay">
+<dialog class="astro-image-zoom-overlay" part="overlay" tabindex="-1" aria-label="Image zoom overlay">
   <div class="astro-image-zoom-backdrop" part="backdrop" aria-hidden="true"></div>
   <div class="astro-image-zoom-content" role="document">
     <button class="astro-image-zoom-close" part="close" aria-label="Close zoom overlay" type="button">
@@ -76,7 +78,7 @@ const OVERLAY_HTML = `
         <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
       </svg>
     </button>
-    <div class="astro-image-zoom-track" part="track" role="group" aria-label="Images">
+    <div class="astro-image-zoom-track" part="track" tabindex="-1" role="group" aria-label="Images">
       <div class="astro-image-zoom-bottom">
         <p class="astro-image-zoom-caption" part="caption" aria-live="polite"></p>
         <div class="astro-image-zoom-toolbar" part="toolbar">
