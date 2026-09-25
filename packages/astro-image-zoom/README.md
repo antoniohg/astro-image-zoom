@@ -189,7 +189,62 @@ const optimizedImage = await getImage({
 | `showCounter` | `boolean` | `true` | Show the position in the gallery, such as "3 / 8" |
 | `showCaption` | `boolean` | `true` | Show the caption of the zoomed image |
 | `captionPosition` | `'bottom' \| 'top'` | `'bottom'` | Where the caption sits on the screen |
+| `locale` | `string` | `Astro.currentLocale` | Language of the page, to pick the [translation of the labels](#translating-the-labels) |
+| `labels` | `Partial<ImageZoomLabels>` | English | Labels for this gallery, over the translation of the locale |
 | `class` | `string` | `''` | Custom CSS class |
+
+### Translating the labels
+
+The only texts the component adds are `aria-label`s, read by screen readers. They are in English.
+Translate them once for the whole site with the integration, by locale:
+
+```js
+// astro.config.mjs
+import { defineConfig } from "astro/config";
+import imageZoom from "astro-image-zoom/integration";
+
+export default defineConfig({
+  i18n: { locales: ["en", "es"], defaultLocale: "en" },
+  integrations: [
+    imageZoom({
+      labels: {
+        es: {
+          overlay: "Zoom de imagen",
+          close: "Cerrar zoom",
+          images: "Imágenes",
+          previous: "Imagen anterior",
+          next: "Imagen siguiente",
+          enlarge: "Ampliar imagen",
+          enlargeNamed: "Ampliar imagen: {alt}",
+        },
+      },
+    }),
+  ],
+});
+```
+
+Each page takes the labels of its locale, `Astro.currentLocale` (Astro's i18n routing). A regional
+locale falls back to its language (`es-MX` reads `es`), and what is not translated stays in
+English. The integration is optional: without it everything works in English.
+
+| Key | Default | Names |
+| --- | --- | --- |
+| `overlay` | `Image zoom overlay` | The dialog |
+| `close` | `Close zoom overlay` | The close button |
+| `images` | `Images` | The group of images |
+| `previous` | `Previous image` | The previous image button |
+| `next` | `Next image` | The next image button |
+| `enlarge` | `Enlarge image` | The link around an image with no alt text |
+| `enlargeNamed` | `Enlarge image: {alt}` | The link around an image; `{alt}` is replaced with its alt text |
+
+Two props of `<ImageZoom>` adjust one gallery:
+
+- `locale` picks the translation when the site does not use Astro's i18n routing:
+  `<ImageZoom locale={lang}>`.
+- `labels` overrides single keys, over the translation of the locale:
+  `<ImageZoom labels={{ close: "Salir" }}>`. It also works with no integration.
+
+The caption is your own text, so it is not translated by the component.
 
 ### Custom Styling
 
