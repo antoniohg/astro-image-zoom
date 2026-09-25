@@ -7,6 +7,8 @@
 // Global stylesheet: selectors are prefixed and live in @layer astro-image-zoom
 import "./zoom.css";
 import { wrapImages } from "./wrapImages";
+import { DEFAULT_LABELS, OVERLAY_LABELS, resolveLabels, type ImageZoomLabels } from "./labels";
+import config from "./config.js";
 
 export interface Props {
   /**
@@ -70,6 +72,18 @@ export interface Props {
   captionPosition?: "bottom" | "top";
 
   /**
+   * Language of the page, to pick the translation of the labels set in the `astro-image-zoom`
+   * integration. Defaults to the locale of the page (`Astro.currentLocale`)
+   */
+  locale?: string;
+
+  /**
+   * Texts read by assistive technology. They win over the translation of the locale, key by key;
+   * the rest stay as the integration or the English defaults have them
+   */
+  labels?: Partial<ImageZoomLabels>;
+
+  /**
    * Custom CSS class for the zoom container
    */
   class?: string;
@@ -87,6 +101,8 @@ const {
   showCounter = true,
   showCaption = true,
   captionPosition = "bottom",
+  locale = Astro.currentLocale,
+  labels: labelOverrides = {},
   class: className = "",
 } = Astro.props;
 
@@ -105,8 +121,18 @@ const wrapperClasses = ["astro-image-zoom-wrapper", className]
   .filter(Boolean)
   .join(" ");
 
+// The labels of the overlay travel as data attributes, read each time it opens; the English
+// defaults are already in the overlay
+const labels = resolveLabels(config.labels, locale, labelOverrides);
+const labelAttributes = Object.fromEntries(
+  OVERLAY_LABELS.filter((name) => labels[name] !== DEFAULT_LABELS[name]).map((name) => [
+    `data-label-${name}`,
+    labels[name],
+  ]),
+);
+
 // Wrap the slot's images in accessible links
-const slotContent = wrapImages(await Astro.slots.render("default"));
+const slotContent = wrapImages(await Astro.slots.render("default"), labels);
 ---
 
 <astro-image-zoom
@@ -121,6 +147,7 @@ const slotContent = wrapImages(await Astro.slots.render("default"));
   data-show-caption={showCaption ? "true" : "false"}
   data-caption-position={captionPosition}
   style={variables || undefined}
+  {...labelAttributes}
 >
   <Fragment set:html={slotContent} />
 </astro-image-zoom>

@@ -3,11 +3,14 @@
  * Runs on the server, so without JavaScript the links still open the full-size image.
  */
 
+import { DEFAULT_LABELS, escapeHtml, type ImageZoomLabels } from './labels';
+
 // Comments (skipped) or tags; quoted attribute values may contain ">"
 const TOKEN = /<!--[\s\S]*?-->|<(\/?)([a-zA-Z][\w:-]*)((?:"[^"]*"|'[^']*'|[^'">])*)>/g;
 const ATTRIBUTE = /([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
 
 type Attributes = Map<string, string>;
+type LinkLabels = Pick<ImageZoomLabels, 'enlarge' | 'enlargeNamed'>;
 
 function parseAttributes(source: string): Attributes {
   const attributes: Attributes = new Map();
@@ -42,7 +45,7 @@ const getSource = (image: Attributes): string | undefined => {
 };
 
 // The link is named after the image so screen readers announce what opens
-function wrap(html: string, image: Attributes): string {
+function wrap(html: string, image: Attributes, labels: LinkLabels): string {
   const src = getSource(image);
   if (!src) return html;
 
@@ -50,12 +53,15 @@ function wrap(html: string, image: Attributes): string {
   const alt = image.get('alt');
 
   const captionAttribute = caption ? ` data-zoom-caption="${escapeQuotes(caption)}"` : '';
-  const label = alt ? `Enlarge image: ${alt}` : 'Enlarge image';
+  // The label is plain text and the alt text keeps its entities, like every attribute value here
+  const label = alt
+    ? escapeHtml(labels.enlargeNamed).split('{alt}').join(alt)
+    : escapeHtml(labels.enlarge);
 
   return `<a href="${escapeQuotes(src)}" data-zoom-generated${captionAttribute} aria-label="${escapeQuotes(label)}">${html}</a>`;
 }
 
-export function wrapImages(html: string): string {
+export function wrapImages(html: string, labels: LinkLabels = DEFAULT_LABELS): string {
   let output = '';
   let cursor = 0;
   let anchorDepth = 0;
@@ -85,7 +91,7 @@ export function wrapImages(html: string): string {
         const { start: pictureStart, image } = picture;
         picture = null;
         if (image && getSource(image)) {
-          output += html.slice(cursor, pictureStart) + wrap(html.slice(pictureStart, end), image);
+          output += html.slice(cursor, pictureStart) + wrap(html.slice(pictureStart, end), image, labels);
           cursor = end;
         }
       }
@@ -94,7 +100,7 @@ export function wrapImages(html: string): string {
       if (picture) {
         picture.image ??= image;
       } else if (getSource(image)) {
-        output += html.slice(cursor, start) + wrap(tag, image);
+        output += html.slice(cursor, start) + wrap(tag, image, labels);
         cursor = end;
       }
     }

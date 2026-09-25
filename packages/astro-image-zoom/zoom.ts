@@ -5,6 +5,7 @@
 
 /// <reference path="./env.d.ts" />
 import overlayStyles from './overlay.css?inline';
+import { DEFAULT_LABELS, OVERLAY_LABELS } from './labels';
 
 interface ZoomImage {
   src: string;
@@ -72,25 +73,25 @@ const OVERLAY_ID = 'astro-image-zoom-global-overlay';
 // scroller focusable, even with controls inside, and that stop did nothing. The dialog has
 // tabindex="-1" too: Safari makes it a Tab stop of its own, with nothing visible focused.
 const OVERLAY_HTML = `
-<dialog class="astro-image-zoom-overlay" part="overlay" tabindex="-1" aria-label="Image zoom overlay">
+<dialog class="astro-image-zoom-overlay" part="overlay" tabindex="-1" aria-label="${DEFAULT_LABELS.overlay}">
   <div class="astro-image-zoom-backdrop" part="backdrop" aria-hidden="true"></div>
   <div class="astro-image-zoom-content" role="document">
-    <button class="astro-image-zoom-close" part="close" aria-label="Close zoom overlay" type="button">
+    <button class="astro-image-zoom-close" part="close" aria-label="${DEFAULT_LABELS.close}" type="button">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
       </svg>
     </button>
-    <div class="astro-image-zoom-track" part="track" tabindex="-1" role="group" aria-label="Images">
+    <div class="astro-image-zoom-track" part="track" tabindex="-1" role="group" aria-label="${DEFAULT_LABELS.images}">
       <div class="astro-image-zoom-bottom">
         <p class="astro-image-zoom-caption" part="caption" aria-live="polite"></p>
         <div class="astro-image-zoom-toolbar" part="toolbar">
-          <button class="astro-image-zoom-nav astro-image-zoom-prev" part="nav prev" aria-label="Previous image" type="button">
+          <button class="astro-image-zoom-nav astro-image-zoom-prev" part="nav prev" aria-label="${DEFAULT_LABELS.previous}" type="button">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>
           </button>
           <span class="astro-image-zoom-counter" part="counter"></span>
-          <button class="astro-image-zoom-nav astro-image-zoom-next" part="nav next" aria-label="Next image" type="button">
+          <button class="astro-image-zoom-nav astro-image-zoom-next" part="nav next" aria-label="${DEFAULT_LABELS.next}" type="button">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>
@@ -234,6 +235,20 @@ class Zoom {
     this.setupEventListeners();
   }
 
+  // The overlay is shared: each opening sets the labels of its gallery, English for the ones it lacks
+  private applyLabels(): void {
+    const targets = {
+      overlay: this.overlay,
+      close: this.closeButton,
+      images: this.track,
+      previous: this.prevButton,
+      next: this.nextButton,
+    };
+    for (const name of OVERLAY_LABELS) {
+      targets[name].setAttribute('aria-label', this.wrapper.getAttribute(`data-label-${name}`) ?? DEFAULT_LABELS[name]);
+    }
+  }
+
   private collectImages(): void {
     const links = this.wrapper.querySelectorAll<HTMLAnchorElement>(
       'a[data-zoom-generated], a[data-zoom], a:has(img)'
@@ -355,6 +370,7 @@ class Zoom {
       'data-navigation-layout',
       NAVIGATION_LAYOUTS.includes(navigationLayout) ? navigationLayout : 'bar'
     );
+    this.applyLabels();
     document.body.style.overflow = 'hidden';
 
     // Show the slide of the image, without letting a swipe move it away while it loads
