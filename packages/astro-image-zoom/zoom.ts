@@ -366,7 +366,12 @@ class Zoom {
     if (currentOpenId !== this.openId) return;
     this.openPending = false;
     this.track.style.overflowX = '';
+    // Shown at once, in the frame the thumbnail hides: its opacity transition would fade it in over
+    // an empty spot, a blink. The transition comes back for later changes
+    this.imageElement.style.transition = 'none';
     this.imageElement.style.opacity = '1';
+    void this.imageElement.offsetWidth;
+    this.imageElement.style.transition = '';
     this.preloadNeighbors(index);
 
     // FLIP Animation

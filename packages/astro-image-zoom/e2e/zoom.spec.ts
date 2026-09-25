@@ -26,6 +26,32 @@ test.describe('open and close', () => {
     await expectClosed(page);
   });
 
+  test('shows the image at full opacity from the first frame, with no blink', async ({ page }) => {
+    // Checks the image the moment the opening animation starts, when the thumbnail hides. A
+    // MutationObserver, not animation frames: those can pause on a busy machine
+    const atStart = page.evaluate(
+      () =>
+        new Promise<{ opacity: string; fading: boolean }>((resolve) => {
+          const dialog = document.querySelector('astro-image-zoom-overlay')!.shadowRoot!.querySelector('dialog')!;
+          const observer = new MutationObserver(() => {
+            if (!dialog.classList.contains('is-opening')) return;
+            observer.disconnect();
+            const image = dialog.querySelector<HTMLElement>('.astro-image-zoom-slide.is-active .astro-image-zoom-image')!;
+            resolve({
+              opacity: getComputedStyle(image).opacity,
+              fading: image
+                .getAnimations()
+                .some((animation) => animation instanceof CSSTransition && animation.transitionProperty === 'opacity'),
+            });
+          });
+          observer.observe(dialog, { attributes: true, attributeFilter: ['class'] });
+        })
+    );
+
+    await openZoom(page, 'single');
+    expect(await atStart).toEqual({ opacity: '1', fading: false });
+  });
+
   test('closes with the close button', async ({ page }) => {
     await openZoom(page, 'single');
     await page.getByRole('button', { name: 'Close zoom overlay' }).click();
