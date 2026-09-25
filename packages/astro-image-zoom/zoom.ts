@@ -315,6 +315,8 @@ class Zoom {
     // Update state
     this.state.isOpen = true;
     this.state.currentIndex = index;
+    // The grace period after a horizontal wheel belongs to one opening, not to the previous one
+    this.lastHorizontalWheel = -Infinity;
 
     // The variables of this gallery (the theme and animationDuration props among them)
     this.inheritVariables();
