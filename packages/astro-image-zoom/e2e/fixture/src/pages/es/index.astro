@@ -1,0 +1,49 @@
+---
+/**
+ * The site's Spanish page: its labels come from the integration, chosen by the locale of the
+ * page. The second gallery overrides one of them and the third is in English, by its locale prop.
+ */
+import ImageZoom from "astro-image-zoom/ImageZoom.astro";
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+const image = (name: string) => `${base}images/${name}.svg`;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fixtures en español · astro-image-zoom</title>
+    <style>
+      img {
+        width: 240px;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Fixtures en español</h1>
+
+      <section id="translated">
+        <ImageZoom>
+          <img src={image("landscape")} alt="Paisaje" />
+          <img src={image("square")} alt="Cuadrado" />
+        </ImageZoom>
+      </section>
+
+      <section id="override">
+        <ImageZoom labels={{ close: "Salir" }}>
+          <img src={image("wide")} alt="Panorama" />
+        </ImageZoom>
+      </section>
+
+      <section id="english">
+        <ImageZoom locale="en">
+          <img src={image("portrait")} alt="Portrait" />
+        </ImageZoom>
+      </section>
+    </main>
+  </body>
+</html>
