@@ -46,6 +46,8 @@ const ZOOM_VARIABLES = [
   '--zoom-button-size',
   '--zoom-button-radius',
   '--zoom-animation-duration',
+  '--zoom-slide-duration',
+  '--zoom-slide-easing',
   '--zoom-color-scheme'
 ];
 
@@ -427,8 +429,9 @@ class Zoom {
       return;
     }
 
-    // Stop a smooth scroll still running, so the image closes from a still position
+    // Stop a slide still gliding, so the image closes from a still position
     this.scrollTargetUntil = 0;
+    this.setSlideOffset(0, false);
     this.jumpToSlide(this.state.currentIndex);
 
     this.overlay.classList.remove('is-open', 'is-opening');
@@ -471,8 +474,32 @@ class Zoom {
 
     this.scrollTarget = index;
     this.scrollTargetUntil = performance.now() + SCROLL_TARGET_TTL;
-    // Smooth, unless the user prefers reduced motion: the track's scroll-behavior decides
-    this.track.scrollTo({ left: index * this.track.clientWidth });
+
+    // The track jumps to the slide at once; the images then glide from where they were on
+    // screen (a CSS transition, see overlay.css). An image still gliding goes on from its spot
+    const from = this.track.scrollLeft - this.currentSlideOffset();
+    this.jumpToSlide(index);
+    this.setSlideOffset(this.track.scrollLeft - from, false);
+    this.setSlideOffset(0, true);
+  }
+
+  // How far the images are from their place, in px, while they glide
+  private currentSlideOffset(): number {
+    const image = this.slides[0]?.img;
+    return image ? Number.parseFloat(getComputedStyle(image).translate) || 0 : 0;
+  }
+
+  // Moves the images of the slides by `offset` px, gliding there when `animate`, at once otherwise
+  private setSlideOffset(offset: number, animate: boolean): void {
+    if (!animate) {
+      this.track.classList.remove('is-sliding');
+      this.track.style.setProperty('--astro-image-zoom-slide-offset', `${offset}px`);
+      // Commit the offset before the transition starts from it
+      void this.track.offsetWidth;
+      return;
+    }
+    this.track.classList.add('is-sliding');
+    this.track.style.setProperty('--astro-image-zoom-slide-offset', `${offset}px`);
   }
 
   // Shows a slide without the smooth scroll
@@ -715,6 +742,8 @@ class Zoom {
     // The slides belong to the instance that opened the overlay: discard them
     this.removeSlides();
     this.track.style.overflowX = '';
+    this.track.classList.remove('is-sliding');
+    this.track.style.removeProperty('--astro-image-zoom-slide-offset');
     this.captionElement.textContent = '';
     this.slides = [];
 

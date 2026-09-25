@@ -7,6 +7,7 @@ import {
   focusedLabel,
   links,
   openZoom,
+  settle,
   zoomedImage,
 } from './helpers';
 
@@ -195,6 +196,40 @@ test.describe('gallery', () => {
     await expect(counter(page)).toHaveText('1 / 3');
   });
 
+  test('slides to the next image in the time set by --zoom-slide-duration, in every browser', async ({
+    page,
+  }) => {
+    await openZoom(page, 'gallery');
+    await page.keyboard.press('ArrowRight');
+
+    // The track is on the next image at once; the images glide there with a CSS transition
+    const transition = await zoomedImage(page).evaluate((image) => {
+      const [glide] = image
+        .getAnimations()
+        .filter((animation) => animation instanceof CSSTransition && animation.transitionProperty === 'translate');
+      return glide && { property: (glide as CSSTransition).transitionProperty, duration: glide.effect?.getComputedTiming().duration };
+    });
+    expect(transition).toEqual({ property: 'translate', duration: 400 });
+
+    await expect(counter(page)).toHaveText('2 / 3');
+    await settle(page);
+    // At rest, exactly on the second image
+    const box = (await zoomedImage(page).boundingBox())!;
+    const viewport = page.viewportSize()!;
+    expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(1);
+  });
+
+  test('keeps gliding from where it is when the arrows are pressed again', async ({ page }) => {
+    await openZoom(page, 'gallery');
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(100);
+    await page.keyboard.press('ArrowRight');
+    await expect(counter(page)).toHaveText('3 / 3');
+    await settle(page);
+    const box = (await zoomedImage(page).boundingBox())!;
+    expect(Math.abs(box.x + box.width / 2 - page.viewportSize()!.width / 2)).toBeLessThan(1);
+  });
+
   test('moves with the buttons', async ({ page }) => {
     await openZoom(page, 'gallery', 1);
     await expect(counter(page)).toHaveText('2 / 3');
@@ -279,7 +314,14 @@ test.describe('reduced motion', () => {
   test('opens and closes without animating', async ({ page }) => {
     await openZoom(page, 'single');
     await expect(zoomedImage(page)).toHaveCSS('animation-duration', '0s');
-    await expect(page.locator('.astro-image-zoom-track')).toHaveCSS('scroll-behavior', 'auto');
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+
+    // The arrows change the image at once, with no slide
+    await openZoom(page, 'gallery');
+    await page.keyboard.press('ArrowRight');
+    await expect(counter(page)).toHaveText('2 / 3');
+    await expect(zoomedImage(page)).toHaveCSS('transition-duration', '0s');
     await page.keyboard.press('Escape');
     await expectClosed(page);
   });
