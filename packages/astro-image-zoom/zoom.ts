@@ -134,6 +134,15 @@ function getOverlay(): HTMLDialogElement {
 // A box on the screen, such as the one getBoundingClientRect() returns
 type Box = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
 
+// How a thumbnail draws its file inside its box: the computed object-fit and object-position of the
+// <img>, and the size of the file
+export interface ThumbnailFit {
+  objectFit: string;
+  objectPosition: string;
+  naturalWidth: number;
+  naturalHeight: number;
+}
+
 interface FlipTransform {
   x: number;
   y: number;
@@ -141,23 +150,91 @@ interface FlipTransform {
   clipPath: string;
 }
 
+function thumbnailFit(img: HTMLImageElement): ThumbnailFit {
+  const { objectFit, objectPosition } = getComputedStyle(img);
+  return { objectFit, objectPosition, naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight };
+}
+
+// Where object-position puts the drawn file along one axis, given the free space of the box
+// (negative when the file overflows it). Browsers compute it as a percentage of that space, a
+// length in px, or calc() of both: "right 10px" is calc(100% - 10px). Anything else, or nothing,
+// centers the file, the default
+function positionOffset(value: string | undefined, free: number): number {
+  const percent = /(-?[\d.]+)%/.exec(value ?? '');
+  const pixels = /([+-]?)\s*(-?[\d.]+)px/.exec(value ?? '');
+  if (!percent && !pixels) return free / 2;
+
+  const offset =
+    (percent ? (free * Number(percent[1])) / 100 : 0) +
+    (pixels ? Number(pixels[2]) * (pixels[1] === '-' ? -1 : 1) : 0);
+  return Number.isFinite(offset) ? offset : free / 2;
+}
+
+// The box where a thumbnail draws its file on the screen, which object-fit can make smaller than
+// its box (contain) or bigger (cover, none). Without a fit, or with fill, it is the box itself.
+// fill also stretches a file of another shape, which one uniform scale cannot follow: such a
+// thumbnail animates as with cover
+function drawnBox(source: Box, fit?: ThumbnailFit): Box {
+  if (!fit || !fit.naturalWidth || !fit.naturalHeight) return source;
+
+  const widthRatio = source.width / fit.naturalWidth;
+  const heightRatio = source.height / fit.naturalHeight;
+  const scales: Record<string, number> = {
+    contain: Math.min(widthRatio, heightRatio),
+    cover: Math.max(widthRatio, heightRatio),
+    none: 1,
+    'scale-down': Math.min(1, widthRatio, heightRatio),
+  };
+  const scale = scales[fit.objectFit];
+  if (scale === undefined) return source;
+
+  const width = fit.naturalWidth * scale;
+  const height = fit.naturalHeight * scale;
+  // One value per axis; a calc() has spaces of its own
+  const [positionX, positionY] = fit.objectPosition.match(/calc\([^)]*\)|\S+/g) ?? [];
+  return {
+    left: source.left + positionOffset(positionX, source.width - width),
+    top: source.top + positionOffset(positionY, source.height - height),
+    width,
+    height,
+  };
+}
+
 /**
- * The FLIP transform that lays an element with the `final` box over the `source` box: the
- * translation between their centers, the scale that makes it cover the source box, and the
- * clip-path (in the element's own, unscaled pixels) that trims what overflows it. A thumbnail
- * cropped with object-fit: cover so grows into the whole image.
+ * The FLIP transform that lays the zoomed image, with the `final` box, over its thumbnail, with the
+ * `source` box: the translation between their centers, the scale, and the clip-path (in the
+ * image's own, unscaled pixels) that trims what the thumbnail does not show.
+ *
+ * `fit` tells how the thumbnail draws its file (object-fit, object-position). That file may also be
+ * cropped from the full image already, as Astro's <Image> does with a width and a height of another
+ * shape: it is taken as a centered crop, so the scale matches what the thumbnail really shows.
+ * Without `fit`, the image covers the source box, as object-fit: cover does.
  */
-export function flipTransform(source: Box, final: Box): FlipTransform {
-  // Cover the source box, as object-fit: cover does
-  const scale = Math.max(source.width / final.width, source.height / final.height);
+export function flipTransform(source: Box, final: Box, fit?: ThumbnailFit): FlipTransform {
+  const drawn = drawnBox(source, fit);
 
-  const x = source.left + source.width / 2 - (final.left + final.width / 2);
-  const y = source.top + source.height / 2 - (final.top + final.height / 2);
+  // The whole image around the drawn file, at the same scale, taking the file as a centered crop
+  const imageRatio = final.width / final.height;
+  const drawnRatio = drawn.width / drawn.height;
+  const width = imageRatio > drawnRatio ? drawn.height * imageRatio : drawn.width;
+  const height = width / imageRatio;
+  const left = drawn.left + (drawn.width - width) / 2;
+  const top = drawn.top + (drawn.height - height) / 2;
+  const scale = width / final.width;
 
-  // What overflows the source box once scaled, on each side, back in unscaled pixels
-  const insetX = (final.width * scale - source.width) / 2 / scale;
-  const insetY = (final.height * scale - source.height) / 2 / scale;
-  const clipPath = `inset(${insetY}px ${insetX}px ${insetY}px ${insetX}px)`;
+  const x = left + width / 2 - (final.left + final.width / 2);
+  const y = top + height / 2 - (final.top + final.height / 2);
+
+  // Only what the thumbnail shows stays visible: the drawn file, cut to the box of the thumbnail
+  const visibleLeft = Math.max(drawn.left, source.left);
+  const visibleTop = Math.max(drawn.top, source.top);
+  const visibleRight = Math.min(drawn.left + drawn.width, source.left + source.width);
+  const visibleBottom = Math.min(drawn.top + drawn.height, source.top + source.height);
+  const insetTop = (visibleTop - top) / scale;
+  const insetRight = (left + width - visibleRight) / scale;
+  const insetBottom = (top + height - visibleBottom) / scale;
+  const insetLeft = (visibleLeft - left) / scale;
+  const clipPath = `inset(${insetTop}px ${insetRight}px ${insetBottom}px ${insetLeft}px)`;
 
   return { x, y, scale, clipPath };
 }
@@ -325,6 +402,7 @@ class Zoom {
     // Get source image and position
     const sourceImg = this.state.images[index].element.querySelector('img')!;
     const sourceRect = sourceImg.getBoundingClientRect();
+    const sourceFit = thumbnailFit(sourceImg);
 
     this.buildSlides();
     this.renderActive(index);
@@ -377,7 +455,7 @@ class Zoom {
 
     // FLIP Animation
     const finalRect = this.imageElement.getBoundingClientRect();
-    const transform = flipTransform(sourceRect, finalRect);
+    const transform = flipTransform(sourceRect, finalRect, sourceFit);
 
     // Set CSS variables for animation
     this.setAnimationVariables(transform);
@@ -449,7 +527,7 @@ class Zoom {
     const targetRect = sourceImg.getBoundingClientRect();
 
     // Calculate transform for closing animation
-    const transform = flipTransform(targetRect, startRect);
+    const transform = flipTransform(targetRect, startRect, thumbnailFit(sourceImg));
 
     // Set CSS variables for closing animation
     this.setAnimationVariables(transform);

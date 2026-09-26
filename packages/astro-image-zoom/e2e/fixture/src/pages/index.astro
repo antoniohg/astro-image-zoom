@@ -88,6 +88,20 @@ const image = (name: string) => `${base}images/${name}.svg`;
         </ImageZoom>
       </section>
 
+      <section id="fit">
+        <h2>Thumbnail cropped twice</h2>
+        <!-- A landscape file of a portrait image, covering a portrait box. The animation is slow so
+             the test can read it while it runs -->
+        <ImageZoom animationDuration={60000}>
+          <img
+            src={image("landscape")}
+            data-zoom-src={image("portrait")}
+            style="width: 150px; height: 200px; object-fit: cover"
+            alt="Landscape thumbnail of a portrait image"
+          />
+        </ImageZoom>
+      </section>
+
       <section id="hidden">
         <h2>No caption, no counter, no keyboard</h2>
         <ImageZoom showCaption={false} showCounter={false} keyboardNavigation={false}>

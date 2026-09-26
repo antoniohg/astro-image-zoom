@@ -335,6 +335,25 @@ test.describe('gallery', () => {
     await expectClosed(page);
   });
 
+  test('starts and ends the animation on what a cropped thumbnail shows', async ({ page }) => {
+    // The width of the whole image when it sits on the thumbnail: the scale the animation starts
+    // from (opening) or ends at (closing), times the width of the zoomed image
+    const widthOnThumbnail = () =>
+      zoomedImage(page).evaluate(
+        (image: HTMLElement) => Number(image.style.getPropertyValue('--scale-from')) * image.offsetWidth
+      );
+
+    // A 1600×1000 file of an 800×1200 image, covering a 150×200 box: the file is drawn 320×200, so
+    // the image around it is 320 px wide. Read while the slow animation of the fixture runs
+    await links(page, 'fit').first().click();
+    await expect(dialog(page)).toHaveClass(/is-opening/);
+    expect(await widthOnThumbnail()).toBeCloseTo(320, 0);
+
+    await page.keyboard.press('Escape');
+    await expect(dialog(page)).toHaveClass(/is-closing/);
+    expect(await widthOnThumbnail()).toBeCloseTo(320, 0);
+  });
+
   test('honors keyboardNavigation, showCaption and showCounter', async ({ page }) => {
     await openZoom(page, 'hidden');
     await expect(counter(page)).toBeHidden();
