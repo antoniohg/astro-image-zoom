@@ -10,7 +10,8 @@ screen, and the images of a gallery become a carousel you can swipe.
 
 - **Zoom from the page**: FLIP animations with CSS transforms and `clip-path`, from the thumbnail to
   the full image and back, crops included: the `object-fit` and `object-position` of the thumbnail,
-  and thumbnail files cropped to another shape, such as Astro's `<Image width height>`.
+  and thumbnail files cropped to another shape, such as Astro's `<Image width height>`. A file
+  stretched to another shape with `object-fit: fill` animates as with `cover`.
 - **Accessible**: a native modal `<dialog>` that traps and restores focus, keyboard navigation,
   labelled controls, reduced motion and forced colors.
 - **Galleries**: a native scroll-snap carousel with touch and touchpad swipes, arrow keys, buttons and
