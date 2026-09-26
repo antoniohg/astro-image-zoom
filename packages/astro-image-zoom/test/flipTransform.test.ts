@@ -1,9 +1,45 @@
 import { describe, expect, it } from 'vitest';
-import { flipTransform } from '../zoom';
+import { flipTransform, type ThumbnailFit } from '../zoom';
+
+type Box = { left: number; top: number; width: number; height: number };
 
 // Numbers of an inset() clip-path, in px
 const insets = (clipPath: string): number[] =>
   [...clipPath.matchAll(/(-?[\d.]+)px/g)].map(([, value]) => Number(value));
+
+// Where the image lands on the screen: its box once scaled around its center and moved (`whole`),
+// and the part of it that stays visible after the clip-path (`visible`)
+function landing(final: Box, transform: ReturnType<typeof flipTransform>): { whole: Box; visible: Box } {
+  const { x, y, scale, clipPath } = transform;
+  const [top, right, bottom, left] = insets(clipPath);
+  const width = final.width * scale;
+  const height = final.height * scale;
+  const wholeLeft = final.left + final.width / 2 + x - width / 2;
+  const wholeTop = final.top + final.height / 2 + y - height / 2;
+  return {
+    whole: { left: wholeLeft, top: wholeTop, width, height },
+    visible: {
+      left: wholeLeft + left * scale,
+      top: wholeTop + top * scale,
+      width: width - (left + right) * scale,
+      height: height - (top + bottom) * scale,
+    },
+  };
+}
+
+function expectBox(actual: Box, expected: Box): void {
+  expect(actual.left).toBeCloseTo(expected.left);
+  expect(actual.top).toBeCloseTo(expected.top);
+  expect(actual.width).toBeCloseTo(expected.width);
+  expect(actual.height).toBeCloseTo(expected.height);
+}
+
+const fit = (
+  objectFit: string,
+  naturalWidth: number,
+  naturalHeight: number,
+  objectPosition = '50% 50%'
+): ThumbnailFit => ({ objectFit, objectPosition, naturalWidth, naturalHeight });
 
 describe('flipTransform', () => {
   it('scales and moves an image with the same shape as its thumbnail, without clipping', () => {
@@ -53,18 +89,86 @@ describe('flipTransform', () => {
   it('lands the clipped, scaled image exactly on the thumbnail', () => {
     const source = { left: 37, top: 912, width: 240, height: 180 };
     const final = { left: 160, top: 40, width: 960, height: 640 };
-    const { x, y, scale, clipPath } = flipTransform(source, final);
-    const [top, right, bottom, left] = insets(clipPath);
 
-    // The visible box after clip-path, scale around the center, then translate
-    const centerX = final.left + final.width / 2 + x;
-    const centerY = final.top + final.height / 2 + y;
-    const visibleWidth = (final.width - left - right) * scale;
-    const visibleHeight = (final.height - top - bottom) * scale;
+    expectBox(landing(final, flipTransform(source, final)).visible, source);
+  });
 
-    expect(centerX - visibleWidth / 2).toBeCloseTo(source.left);
-    expect(centerY - visibleHeight / 2).toBeCloseTo(source.top);
-    expect(visibleWidth).toBeCloseTo(source.width);
-    expect(visibleHeight).toBeCloseTo(source.height);
+  it('keeps the same transform when the file of the thumbnail has the shape of the image', () => {
+    // A 4:3 thumbnail cropped to a square with object-fit: cover, from a 4:3 image
+    const source = { left: 10, top: 20, width: 150, height: 150 };
+    const final = { left: 0, top: 0, width: 800, height: 600 };
+
+    expect(flipTransform(source, final, fit('cover', 400, 300))).toEqual(flipTransform(source, final));
+  });
+
+  it('matches a thumbnail whose file is already cropped to another shape', () => {
+    // A portrait image, 400×800 on screen; the thumbnail file is a 4:3 crop of it (as Astro's
+    // <Image width height> makes), drawn with object-fit: cover in a 150×200 box
+    const source = { left: 0, top: 0, width: 150, height: 200 };
+    const final = { left: 0, top: 0, width: 400, height: 800 };
+    const { whole, visible } = landing(final, flipTransform(source, final, fit('cover', 640, 480)));
+
+    // The file covers the box at 200 px high, so it is 266.67 px wide; the whole image around it
+    // is as wide, and twice as high. Without the fit, it would only be 150 px wide
+    expect(whole.width).toBeCloseTo(266.67, 1);
+    expect(whole.height).toBeCloseTo(533.33, 1);
+    expectBox(visible, source);
+  });
+
+  it('shows the whole image, letterboxed, in a thumbnail with object-fit: contain', () => {
+    // A 2:1 image in a 200×200 box: drawn 200×100, 50 px from the top
+    const source = { left: 0, top: 0, width: 200, height: 200 };
+    const final = { left: 0, top: 0, width: 800, height: 400 };
+    const transform = flipTransform(source, final, fit('contain', 400, 200));
+
+    expect(insets(transform.clipPath)).toEqual([0, 0, 0, 0]);
+    expectBox(landing(final, transform).visible, { left: 0, top: 50, width: 200, height: 100 });
+  });
+
+  it('follows object-position when the crop is not centered', () => {
+    // A 2:1 image covering a square box, aligned to its left edge
+    const source = { left: 0, top: 0, width: 100, height: 100 };
+    const final = { left: 0, top: 0, width: 800, height: 400 };
+    const transform = flipTransform(source, final, fit('cover', 200, 100, '0% 0%'));
+    const { whole, visible } = landing(final, transform);
+
+    expectBox(whole, { left: 0, top: 0, width: 200, height: 100 });
+    expectBox(visible, source);
+  });
+
+  it('reads an object-position computed as calc(), as keywords with offsets give', () => {
+    // "right 10px bottom 20px" computes to calc(100% - 10px) calc(100% - 20px). A 2:1 image
+    // covering a 100 px square is 200 × 100: its right edge 10 px inside the box, at 90, puts its left
+    // edge at -110; its bottom edge 20 px above the bottom of the box puts its top edge at -20
+    const source = { left: 0, top: 0, width: 100, height: 100 };
+    const final = { left: 0, top: 0, width: 800, height: 400 };
+    const transform = flipTransform(
+      source,
+      final,
+      fit('cover', 200, 100, 'calc(100% - 10px) calc(100% - 20px)')
+    );
+
+    expectBox(landing(final, transform).whole, { left: -110, top: -20, width: 200, height: 100 });
+  });
+
+  it('draws the file at its own size with object-fit: none', () => {
+    // A 50×50 file centered in a 100×100 box
+    const source = { left: 0, top: 0, width: 100, height: 100 };
+    const final = { left: 0, top: 0, width: 400, height: 400 };
+
+    expectBox(landing(final, flipTransform(source, final, fit('none', 50, 50))).visible, {
+      left: 25,
+      top: 25,
+      width: 50,
+      height: 50,
+    });
+  });
+
+  it('fills the box when the file size is unknown', () => {
+    // An image that has not loaded, or an SVG without a size: as without a fit
+    const source = { left: 0, top: 0, width: 100, height: 100 };
+    const final = { left: 0, top: 0, width: 800, height: 400 };
+
+    expect(flipTransform(source, final, fit('contain', 0, 0))).toEqual(flipTransform(source, final));
   });
 });
