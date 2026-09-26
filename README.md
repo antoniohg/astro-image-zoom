@@ -47,8 +47,9 @@ With Vitest, for the code that runs without a browser:
 - `ImageZoom.test.ts`: the HTML of the component, rendered with the Astro Container API: each prop
   as its `data-*` attribute, and `theme` and `animationDuration` as `--zoom-*` variables.
 - `flipTransform.test.ts`: the math of the opening and closing animation (scale, translation and
-  clip of a thumbnail, whatever its `object-fit` and `object-position`, even when its file is
-  already cropped from the full image).
+  clip of a thumbnail, following its `object-fit` and `object-position`, even when its file is
+  already cropped from the full image). A file stretched to another shape with `object-fit: fill`
+  animates as with `cover`, since one uniform scale cannot follow it.
 
 ### End-to-end tests
 
