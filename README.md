@@ -58,8 +58,8 @@ case, each in a section with a stable id, with SVG images; `/hostile/` adds aggr
 image optimized by Astro. The tests build the site and serve it with `astro preview` on port 4323.
 
 - `zoom.spec.ts`: opening and closing (Escape, button, image, backdrop, wheel, while the image is
-  still loading), the first and last frames over cropped and letterboxed thumbnails, focus, gallery
-  navigation, every option, theming and reduced motion.
+  still loading), the scale the animation starts and ends at over a cropped thumbnail, focus,
+  gallery navigation, every option, theming and reduced motion.
 - `a11y.spec.ts`: no axe violations, in light and dark mode, with the zoom closed and open in every
   layout: the component must be accessible with no help from the site.
 - `isolation.spec.ts`: the CSS of the page cannot change the overlay.

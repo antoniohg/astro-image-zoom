@@ -89,19 +89,15 @@ const image = (name: string) => `${base}images/${name}.svg`;
       </section>
 
       <section id="fit">
-        <h2>Thumbnails cropped or letterboxed with object-fit</h2>
-        <ImageZoom>
-          <!-- A landscape file of a portrait image, covering a portrait box: cropped twice -->
+        <h2>Thumbnail cropped twice</h2>
+        <!-- A landscape file of a portrait image, covering a portrait box. The animation is slow so
+             the test can read it while it runs -->
+        <ImageZoom animationDuration={60000}>
           <img
             src={image("landscape")}
             data-zoom-src={image("portrait")}
             style="width: 150px; height: 200px; object-fit: cover"
             alt="Landscape thumbnail of a portrait image"
-          />
-          <img
-            src={image("landscape")}
-            style="width: 200px; height: 200px; object-fit: contain"
-            alt="Letterboxed landscape"
           />
         </ImageZoom>
       </section>

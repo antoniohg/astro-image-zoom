@@ -171,7 +171,9 @@ function positionOffset(value: string | undefined, free: number): number {
 }
 
 // The box where a thumbnail draws its file on the screen, which object-fit can make smaller than
-// its box (contain) or bigger (cover, none). Without a fit, or with fill, the file fills the box
+// its box (contain) or bigger (cover, none). Without a fit, or with fill, it is the box itself.
+// fill also stretches a file of another shape, which one uniform scale cannot follow: such a
+// thumbnail animates as with cover
 function drawnBox(source: Box, fit?: ThumbnailFit): Box {
   if (!fit || !fit.naturalWidth || !fit.naturalHeight) return source;
 

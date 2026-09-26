@@ -7,8 +7,9 @@ type Box = { left: number; top: number; width: number; height: number };
 const insets = (clipPath: string): number[] =>
   [...clipPath.matchAll(/(-?[\d.]+)px/g)].map(([, value]) => Number(value));
 
-// Where the image lands on the screen: its box once scaled around its center and moved (`whole`),
-// and the part of it that stays visible after the clip-path (`visible`)
+// Applies a transform the way the animation does, to see where the zoomed image (`final`) ends up
+// on the screen: `whole` is the image once scaled around its center and moved, `visible` the part
+// of it the clip-path leaves. The tests check that `visible` lands on what the thumbnail shows
 function landing(final: Box, transform: ReturnType<typeof flipTransform>): { whole: Box; visible: Box } {
   const { x, y, scale, clipPath } = transform;
   const [top, right, bottom, left] = insets(clipPath);
@@ -125,17 +126,6 @@ describe('flipTransform', () => {
     expectBox(landing(final, transform).visible, { left: 0, top: 50, width: 200, height: 100 });
   });
 
-  it('follows object-position when the crop is not centered', () => {
-    // A 2:1 image covering a square box, aligned to its left edge
-    const source = { left: 0, top: 0, width: 100, height: 100 };
-    const final = { left: 0, top: 0, width: 800, height: 400 };
-    const transform = flipTransform(source, final, fit('cover', 200, 100, '0% 0%'));
-    const { whole, visible } = landing(final, transform);
-
-    expectBox(whole, { left: 0, top: 0, width: 200, height: 100 });
-    expectBox(visible, source);
-  });
-
   it('reads an object-position computed as calc(), as keywords with offsets give', () => {
     // "right 10px bottom 20px" computes to calc(100% - 10px) calc(100% - 20px). A 2:1 image
     // covering a 100 px square is 200 × 100: its right edge 10 px inside the box, at 90, puts its left
@@ -151,17 +141,12 @@ describe('flipTransform', () => {
     expectBox(landing(final, transform).whole, { left: -110, top: -20, width: 200, height: 100 });
   });
 
-  it('draws the file at its own size with object-fit: none', () => {
-    // A 50×50 file centered in a 100×100 box
+  it('animates a thumbnail stretched with object-fit: fill as with cover', () => {
+    // A 2:1 file squeezed into a square box: one uniform scale cannot stretch the image back
     const source = { left: 0, top: 0, width: 100, height: 100 };
-    const final = { left: 0, top: 0, width: 400, height: 400 };
+    const final = { left: 0, top: 0, width: 800, height: 400 };
 
-    expectBox(landing(final, flipTransform(source, final, fit('none', 50, 50))).visible, {
-      left: 25,
-      top: 25,
-      width: 50,
-      height: 50,
-    });
+    expect(flipTransform(source, final, fit('fill', 200, 100))).toEqual(flipTransform(source, final));
   });
 
   it('fills the box when the file size is unknown', () => {

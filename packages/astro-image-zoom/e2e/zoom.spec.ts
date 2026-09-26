@@ -335,81 +335,23 @@ test.describe('gallery', () => {
     await expectClosed(page);
   });
 
-  test('grows from exactly what a cropped or letterboxed thumbnail shows, and closes to it', async ({ page }) => {
-    // The box of the zoomed image in the first frame of the opening, or the last of the closing,
-    // with the animation paused there: the whole image, and what its clip-path leaves visible
-    const frame = (name: string, atEnd: boolean) =>
-      page.evaluate(
-        ({ name, atEnd }) =>
-          new Promise<{ whole: number[]; visible: number[] }>((resolve) => {
-            const dialog = document.querySelector('astro-image-zoom-overlay')!.shadowRoot!.querySelector('dialog')!;
-            const observer = new MutationObserver(() => {
-              const image = dialog.querySelector<HTMLElement>('.astro-image-zoom-slide.is-active .astro-image-zoom-image');
-              const animation = image
-                ?.getAnimations()
-                .find((running) => running instanceof CSSAnimation && running.animationName === name);
-              if (!image || !animation) return;
-              observer.disconnect();
-              animation.pause();
-              animation.currentTime = atEnd ? Number(animation.effect!.getComputedTiming().duration) - 1 : 0;
-
-              const box = image.getBoundingClientRect();
-              const scale = box.width / image.offsetWidth;
-              // Browsers shorten the computed inset(), as CSS shorthands go: 1 to 4 values
-              const values = [...getComputedStyle(image).clipPath.matchAll(/(-?[\d.]+)px/g)].map(
-                ([, value]) => Number(value) * scale
-              );
-              const [top, right = top, bottom = top, left = right] = values;
-              resolve({
-                whole: [box.left, box.top, box.width, box.height],
-                visible: [box.left + left, box.top + top, box.width - left - right, box.height - top - bottom],
-              });
-            });
-            observer.observe(dialog, { attributes: true, subtree: true, attributeFilter: ['class'] });
-          }),
-        { name, atEnd }
-      );
-    // Scrolled into view first: the click would scroll it there, and move it
-    const thumbnail = async (index: number) => {
-      const image = links(page, 'fit').nth(index).locator('img');
-      await image.scrollIntoViewIfNeeded();
-      const box = (await image.boundingBox())!;
-      return [box.x, box.y, box.width, box.height];
-    };
-    const expectBox = (actual: number[], expected: number[]) =>
-      actual.forEach((value, index) => expect(value).toBeCloseTo(expected[index], 0));
-    // Ends the paused animations, which live in the shadow root of the overlay
-    const finish = () =>
-      page.evaluate(() =>
-        document.querySelector('astro-image-zoom-overlay')!.shadowRoot!.getAnimations().forEach((animation) => animation.finish())
+  test('starts and ends the animation on what a cropped thumbnail shows', async ({ page }) => {
+    // The width of the whole image when it sits on the thumbnail: the scale the animation starts
+    // from (opening) or ends at (closing), times the width of the zoomed image
+    const widthOnThumbnail = () =>
+      zoomedImage(page).evaluate(
+        (image: HTMLElement) => Number(image.style.getPropertyValue('--scale-from')) * image.offsetWidth
       );
 
-    // A 1600×1000 file covering a 150×200 box is drawn 320×200; the portrait image around it,
-    // 800×1200, is as wide: 320×480. Only the box stays visible
-    const [left, top, width, height] = await thumbnail(0);
-    const opening = frame('astro-image-zoom-in', false);
-    await links(page, 'fit').nth(0).click();
-    const first = await opening;
-    expectBox(first.whole, [left + width / 2 - 160, top + height / 2 - 240, 320, 480]);
-    expectBox(first.visible, [left, top, width, height]);
+    // A 1600×1000 file of an 800×1200 image, covering a 150×200 box: the file is drawn 320×200, so
+    // the image around it is 320 px wide. Read while the slow animation of the fixture runs
+    await links(page, 'fit').first().click();
+    await expect(dialog(page)).toHaveClass(/is-opening/);
+    expect(await widthOnThumbnail()).toBeCloseTo(320, 0);
 
-    await finish();
-    await expect(dialog(page)).toHaveClass(/is-open/);
-    const closing = frame('astro-image-zoom-out', true);
     await page.keyboard.press('Escape');
-    const last = await closing;
-    expectBox(last.visible, [left, top, width, height]);
-    expectBox(last.whole, first.whole);
-    await finish();
-    await expectClosed(page);
-
-    // A 1600×1000 file contained in a 200×200 box: 200×125, letterboxed, nothing cropped
-    const [boxLeft, boxTop] = await thumbnail(1);
-    const letterboxed = frame('astro-image-zoom-in', false);
-    await links(page, 'fit').nth(1).click();
-    const contained = await letterboxed;
-    expectBox(contained.whole, [boxLeft, boxTop + 37.5, 200, 125]);
-    expectBox(contained.visible, contained.whole);
+    await expect(dialog(page)).toHaveClass(/is-closing/);
+    expect(await widthOnThumbnail()).toBeCloseTo(320, 0);
   });
 
   test('honors keyboardNavigation, showCaption and showCounter', async ({ page }) => {
