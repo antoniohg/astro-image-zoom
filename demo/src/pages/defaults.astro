@@ -1,0 +1,165 @@
+---
+/**
+ * The component with its default styles: no layout, no site CSS, no variables. What a site gets
+ * before styling anything.
+ */
+import { Image, getImage } from "astro:assets";
+import ImageZoom from "astro-image-zoom/ImageZoom.astro";
+import { photos } from "@data/photos";
+
+const single = photos.earthSmiled;
+const gallery = [photos.twinJet, photos.veil];
+
+// Full-size versions for the zoom
+const full = async (src: ImageMetadata) =>
+  (await getImage({ src, width: src.width, format: "webp" })).src;
+const singleFull = await full(single.src);
+const galleryFull = await Promise.all(gallery.map(({ src }) => full(src)));
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+const caption = ({
+  caption,
+  mission,
+  year,
+}: {
+  caption: string;
+  mission: string;
+  year?: string;
+}) => [caption, [mission, year].filter(Boolean).join(", ")].join(" — ");
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Default styles · astro-image-zoom</title>
+    <meta name="robots" content="noindex" />
+    <!--
+      Hostile CSS, off until the checkbox (or ?hostile in the URL) turns it on: unlayered rules with
+      !important that would break a normal component. The zoom overlay must look the same.
+    -->
+    <style is:inline id="hostile" media="not all">
+      html {
+        font-size: 8px !important;
+      }
+      body {
+        color: red !important;
+        letter-spacing: 4px !important;
+        line-height: 3 !important;
+        text-transform: uppercase !important;
+        cursor: crosshair !important;
+      }
+      * {
+        transition: all 2s !important;
+        box-sizing: content-box !important;
+      }
+      button {
+        all: unset !important;
+        background: red !important;
+        color: red !important;
+      }
+      svg {
+        display: none !important;
+        width: 1em !important;
+        fill: red !important;
+        stroke: none !important;
+      }
+      path {
+        stroke: transparent !important;
+      }
+      img {
+        border-radius: 50% !important;
+        filter: grayscale(1) !important;
+        opacity: 0.6 !important;
+      }
+      p {
+        font-size: 32px !important;
+        color: red !important;
+      }
+      span {
+        display: none !important;
+      }
+      div {
+        padding: 40px !important;
+        border: 2px dashed red !important;
+      }
+      figure {
+        margin: 80px !important;
+      }
+      dialog {
+        background: red !important;
+        border: 10px solid lime !important;
+        max-width: 200px !important;
+      }
+      dialog::backdrop {
+        background: red !important;
+      }
+      [hidden] {
+        display: block !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Default styles</h1>
+      <p>
+        This page has no CSS of its own: the zoom looks as it does out of the
+        box, before a site sets any variable.{" "}
+        <a href={`${base}docs/`}>Back to the docs</a>.
+      </p>
+      <p>
+        <label>
+          <input type="checkbox" id="hostile-toggle" />
+          Hostile CSS: aggressive rules that would break a normal component. The
+          page breaks; the zoom must not.
+        </label>
+      </p>
+
+      <h2>One image</h2>
+      <ImageZoom>
+        <Image
+          src={single.src}
+          alt={single.alt}
+          width={640}
+          loading="eager"
+          data-zoom-src={singleFull}
+          data-zoom-caption={caption(single)}
+        />
+      </ImageZoom>
+
+      <h2>A gallery</h2>
+      <p>The second image is only 960 px wide, as small as the original.</p>
+      <ImageZoom>
+        {gallery.map((photo, index) => (
+          <Image
+            src={photo.src}
+            alt={photo.alt}
+            width={320}
+            loading="eager"
+            data-zoom-src={galleryFull[index]}
+            data-zoom-caption={caption(photo)}
+          />
+        ))}
+      </ImageZoom>
+
+      <p>
+        Photos: NASA, ESA/Hubble and NASA/JPL-Caltech/SSI. Credits in PHOTOS.md.
+      </p>
+    </main>
+
+    <script>
+      const style = document.querySelector<HTMLStyleElement>("#hostile");
+      const toggle =
+        document.querySelector<HTMLInputElement>("#hostile-toggle");
+      const apply = (on: boolean) =>
+        style?.setAttribute("media", on ? "all" : "not all");
+
+      if (toggle) {
+        toggle.checked = new URLSearchParams(location.search).has("hostile");
+        apply(toggle.checked);
+        toggle.addEventListener("change", () => apply(toggle.checked));
+      }
+    </script>
+  </body>
+</html>
