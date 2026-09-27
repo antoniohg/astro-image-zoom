@@ -4,8 +4,6 @@
  * Medium-style zoom overlay with accessibility and performance features
  */
 
-// Global stylesheet: selectors are prefixed and live in @layer astro-image-zoom
-import "./zoom.css";
 import { wrapImages } from "./wrapImages";
 
 export interface Props {
@@ -107,6 +105,12 @@ const wrapperClasses = ["astro-image-zoom-wrapper", className]
 
 // Wrap the slot's images in accessible links
 const slotContent = wrapImages(await Astro.slots.render("default"));
+
+// The element only groups its content and must not add a box. Its own declarative shadow root says
+// so, with no stylesheet on the page: any rule of the site, layered or not, wins over :host. A string,
+// since Astro would take <slot> for its own
+const shadowRoot =
+  '<template shadowrootmode="open"><style>:host { display: contents; }</style><slot></slot></template>';
 ---
 
 <astro-image-zoom
@@ -122,7 +126,7 @@ const slotContent = wrapImages(await Astro.slots.render("default"));
   data-caption-position={captionPosition}
   style={variables || undefined}
 >
-  <Fragment set:html={slotContent} />
+  <Fragment set:html={shadowRoot + slotContent} />
 </astro-image-zoom>
 
 <script>
@@ -134,6 +138,15 @@ const slotContent = wrapImages(await Astro.slots.render("default"));
     private zoom: Zoom | null = null;
 
     connectedCallback() {
+      // The browser attaches the declarative shadow root while parsing, but not in pages parsed
+      // with DOMParser, as the client router of Astro does: attach it from the template then
+      if (!this.shadowRoot) {
+        const template = this.querySelector<HTMLTemplateElement>(":scope > template[shadowrootmode]");
+        if (template) {
+          this.attachShadow({ mode: "open" }).append(template.content.cloneNode(true));
+          template.remove();
+        }
+      }
       this.zoom = new Zoom(this);
     }
 

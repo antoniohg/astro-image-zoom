@@ -5,6 +5,7 @@ import {
   dialog,
   expectClosed,
   focusedLabel,
+  focusRing,
   links,
   openZoom,
   settle,
@@ -234,6 +235,13 @@ test.describe('focus', () => {
     expect(stops[0]).toBe('Close zoom overlay');
     // Never the page behind, never the dialog itself (Safari made it a stop with no visible focus)
     for (const stop of stops) expect(['Close zoom overlay', 'browser']).toContain(stop);
+  });
+
+  test('leaves the focus ring of the generated link to the browser and the site', async ({ page }) => {
+    const ring = await focusRing(links(page, 'single').first());
+    // The browser's own ring, on the link; nothing drawn on the image
+    expect(ring.link).not.toBe('none');
+    expect(ring.image).toBe('none');
   });
 
   test('opens from the keyboard', async ({ page }) => {

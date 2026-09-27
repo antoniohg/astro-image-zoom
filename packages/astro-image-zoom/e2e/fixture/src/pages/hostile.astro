@@ -33,6 +33,7 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
       dialog { background: red !important; border: 10px solid lime !important; max-width: 200px !important; }
       dialog::backdrop { background: red !important; }
       [hidden] { display: block !important; }
+      :focus, :focus-visible { outline: 4px solid red !important; outline-offset: 0 !important; }
     </style>
     <script is:inline>
       if (new URLSearchParams(location.search).has("hostile")) {

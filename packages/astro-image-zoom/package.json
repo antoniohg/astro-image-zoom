@@ -30,8 +30,7 @@
   },
   "exports": {
     ".": "./index.js",
-    "./ImageZoom.astro": "./ImageZoom.astro",
-    "./zoom.css": "./zoom.css"
+    "./ImageZoom.astro": "./ImageZoom.astro"
   },
   "files": [
     "index.js",
@@ -40,7 +39,6 @@
     "overlay.css",
     "env.d.ts",
     "wrapImages.ts",
-    "zoom.css",
     "README.md"
   ],
   "peerDependencies": {

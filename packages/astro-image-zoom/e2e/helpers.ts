@@ -48,3 +48,12 @@ export function focusedLabel(page: Page): Promise<string | null> {
     return active?.getAttribute('aria-label') ?? null;
   });
 }
+
+// Focuses a zoom link and returns the outline style of the link and of its image
+export async function focusRing(link: Locator): Promise<{ link: string; image: string }> {
+  await link.focus();
+  return link.evaluate((element) => ({
+    link: getComputedStyle(element).outlineStyle,
+    image: getComputedStyle(element.querySelector('img')!).outlineStyle,
+  }));
+}
