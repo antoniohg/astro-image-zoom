@@ -38,7 +38,7 @@ const cssRule = (selector: string, vars: Record<string, string>) =>
 // Each option gets a small live demo with its own photos
 const options: ExampleData[] = [
   {
-    title: "No arrow buttons",
+    title: "No arrows or counter",
     description: "Keys and swipes still move through the gallery.",
     code: "<ImageZoom showNavigation={false}>",
     sketch: { nav: "none" },
@@ -54,7 +54,7 @@ const options: ExampleData[] = [
     zoom: { keyboardNavigation: false },
   },
   {
-    title: "Open after a click beside",
+    title: "Stays open on a backdrop click",
     description: "A click on the backdrop does nothing; the close button and Escape still work.",
     code: "<ImageZoom closeOnBackdrop={false}>",
     icon: "lucide:square-dashed-mouse-pointer",
@@ -62,7 +62,7 @@ const options: ExampleData[] = [
     zoom: { closeOnBackdrop: false },
   },
   {
-    title: "Open after a click on the image",
+    title: "Stays open on an image click",
     description: "A click on the zoomed image does nothing.",
     code: "<ImageZoom closeOnImage={false}>",
     icon: "lucide:square-mouse-pointer",
@@ -70,7 +70,7 @@ const options: ExampleData[] = [
     zoom: { closeOnImage: false },
   },
   {
-    title: "Open while scrolling",
+    title: "Stays open while scrolling",
     description: "Scrolling or a vertical swipe doesn't close it.",
     code: "<ImageZoom closeOnScroll={false}>",
     icon: "lucide:mouse",
@@ -541,7 +541,7 @@ a[data-zoom-generated] img {
   --zoom-bg: rgb(5 8 20 / 0.97);
 }
 
-/* One gallery */
+/* One gallery: <ImageZoom class="portfolio"> */
 .portfolio {
   --zoom-padding: 5vmin;
   --zoom-image-radius: 12px;

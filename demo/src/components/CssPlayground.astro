@@ -189,7 +189,9 @@ const ranges = [
     const css = changed.size
       ? `.gallery {\n${[...changed].map(([name, value]) => `  ${name}: ${value};`).join("\n")}\n}`
       : "";
-    const markup = props ? `<ImageZoom${props}>` : "";
+    // The variables go on the component through a class, so the code works as it is
+    const markup =
+      css || props ? `<ImageZoom${css ? ' class="gallery"' : ""}${props}>` : "";
     snippet.textContent =
       [css, markup].filter(Boolean).join("\n\n") ||
       "/* Change a value to see the code */";
