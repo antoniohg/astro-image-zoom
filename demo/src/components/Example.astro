@@ -1,0 +1,103 @@
+---
+import CodeSample from "@components/CodeSample.astro";
+import { Icon } from "astro-icon/components";
+import OverlaySketch from "@components/OverlaySketch.astro";
+import type { ComponentProps } from "astro/types";
+
+interface Props {
+  title: string;
+  description: string;
+  code: string;
+  lang?: "astro" | "css";
+  /** What the option changes: a drawing of the overlay, or an icon for a behavior */
+  sketch?: ComponentProps<typeof OverlaySketch>;
+  /** Lucide icon, such as "lucide:keyboard-off" */
+  icon?: string;
+  /** Heading level: h3 right under a chapter, h4 under a section */
+  level?: 3 | 4;
+  /** --zoom-* variables set around the photos, for examples made with CSS */
+  vars?: Record<`--zoom-${string}`, string>;
+}
+
+const {
+  title,
+  description,
+  code,
+  lang = "astro",
+  sketch,
+  icon,
+  level = 4,
+  vars,
+} = Astro.props;
+const Heading = `h${level}` as const;
+---
+
+<li class="example">
+  <div style={vars}>
+    <slot />
+  </div>
+  <div class="head">
+    <div class="visual">
+      {sketch && <OverlaySketch {...sketch} />}
+      {!sketch && icon && <Icon name={icon} size={28} aria-hidden="true" />}
+    </div>
+    <div class="text">
+      <Heading>{title}</Heading>
+      <p>{description}</p>
+    </div>
+  </div>
+  <CodeSample code={code} lang={lang} open />
+</li>
+
+<style>
+  @layer components {
+    .example {
+      display: grid;
+      gap: 1rem;
+      align-content: start;
+      min-inline-size: 0;
+
+      :global(pre) {
+        margin: 0;
+        margin-block-start: auto;
+      }
+    }
+
+    .head {
+      display: grid;
+      grid-template-columns: 6rem minmax(0, 1fr);
+      gap: 1rem;
+      align-items: start;
+    }
+
+    /* Sketches and icons share one tile, so every example lines up the same */
+    .visual {
+      display: grid;
+      place-items: center;
+      aspect-ratio: 3 / 2;
+      color: var(--color-accent);
+      background: var(--color-surface);
+      border-radius: var(--radius);
+
+      /* A sketch is its own frame */
+      &:has(.sketch) {
+        background: none;
+      }
+    }
+
+    .text {
+      display: grid;
+      gap: 0.25rem;
+
+      :is(h3, h4) {
+        font-size: 1.0625rem;
+        letter-spacing: -0.01em;
+      }
+
+      p {
+        font-size: 0.9375rem;
+        color: var(--color-text-muted);
+      }
+    }
+  }
+</style>
