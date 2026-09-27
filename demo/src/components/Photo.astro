@@ -1,0 +1,107 @@
+---
+import { Image, getImage } from "astro:assets";
+import { photos, type PhotoName } from "@data/photos";
+
+interface Props {
+  name: Exclude<PhotoName, "blueMarble">;
+  /** Width of the image on the page; the zoom always gets the full-size file */
+  width: number;
+  height?: number;
+  widths?: number[];
+  sizes?: string;
+  /** Show the title and mission under the image */
+  caption?: boolean;
+  /** Fill the box it sits in, cropping the image as object-fit: cover does */
+  fill?: boolean;
+  loading?: "eager" | "lazy";
+  class?: string;
+}
+
+const {
+  name,
+  width,
+  height,
+  widths,
+  sizes,
+  caption = true,
+  fill = false,
+  loading = "lazy",
+  class: className,
+} = Astro.props;
+const photo = photos[name];
+
+// Full-size version for the zoom: the whole downloaded file (up to 2560 px), as WebP
+const full = await getImage({
+  src: photo.src,
+  width: photo.src.width,
+  format: "webp",
+  quality: 85,
+});
+const meta = [photo.mission, photo.year].filter(Boolean).join(" · ");
+---
+
+<figure class:list={["photo", { fill }, className]}>
+  <Image
+    src={photo.src}
+    alt={photo.alt}
+    width={width}
+    height={height}
+    widths={widths}
+    sizes={sizes}
+    loading={loading}
+    data-zoom-src={full.src}
+    data-zoom-caption={`${photo.caption} — ${meta}`}
+  />
+  {caption && (
+    <figcaption>
+      <span class="title">{photo.caption}</span>
+      <span class="label">{meta}</span>
+    </figcaption>
+  )}
+</figure>
+
+<style>
+  @layer components {
+    /* A page can round the corners differently with --photo-radius */
+    .photo {
+      display: grid;
+      align-content: start;
+      gap: 0.5rem;
+
+      :global(img) {
+        inline-size: 100%;
+        border-radius: var(--photo-radius, var(--radius));
+      }
+    }
+
+    /* A block, not a grid: its height passes down to the zoom link and the image */
+    .fill {
+      display: block;
+      block-size: 100%;
+      min-block-size: 0;
+
+      :global(a) {
+        display: block;
+        block-size: 100%;
+      }
+
+      :global(img) {
+        block-size: 100%;
+        object-fit: cover;
+      }
+    }
+
+    figcaption {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.125rem 0.625rem;
+      font-size: 0.875rem;
+      line-height: 1.35;
+    }
+
+    .title {
+      font-weight: 600;
+    }
+  }
+</style>
