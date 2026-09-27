@@ -1,8 +1,11 @@
 name: Deploy demo
 
+# The demo shows the package as it is in the repository, so it goes out with each release of the
+# package, built from its tag: it never shows what npm does not have yet. A manual run publishes a
+# fix to the demo alone, built from the branch it runs on
 on:
-  push:
-    branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
