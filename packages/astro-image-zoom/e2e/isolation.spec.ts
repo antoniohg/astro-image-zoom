@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { dialog, settle } from './helpers';
+import { dialog, focusRing, settle } from './helpers';
 
 // The computed styles of the overlay, opened on the second image of the gallery of /hostile/
 async function overlayStyles(page: Page, url: string): Promise<Record<string, string>> {
@@ -61,4 +61,10 @@ test('the CSS of the page cannot change the overlay', async ({ page }) => {
   await expect(page.locator('h1')).toHaveCSS('text-transform', 'uppercase');
 
   expect(hostile).toEqual(normal);
+});
+
+test('the focus style of the page reaches the generated link as the site wrote it', async ({ page }) => {
+  await page.goto('/hostile/?hostile');
+  const ring = await focusRing(page.locator('astro-image-zoom a').first());
+  expect(ring).toEqual({ link: 'solid', image: 'none' });
 });

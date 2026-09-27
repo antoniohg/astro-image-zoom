@@ -63,7 +63,8 @@ image optimized by Astro. The tests build the site and serve it with `astro prev
   gallery navigation, every option, theming and reduced motion.
 - `a11y.spec.ts`: no axe violations, in light and dark mode, with the zoom closed and open in every
   layout: the component must be accessible with no help from the site.
-- `isolation.spec.ts`: the CSS of the page cannot change the overlay.
+- `isolation.spec.ts`: the CSS of the page cannot change the overlay, and its focus style reaches
+  the generated links untouched.
 - `no-js.spec.ts`: without JavaScript, each image links to its full-size version.
 
 A new option or behavior gets a case in the fixture site and a test.

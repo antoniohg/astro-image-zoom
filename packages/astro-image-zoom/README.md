@@ -221,10 +221,6 @@ You can override the default styles using CSS variables:
   --zoom-caption-font-size: 13px;
   --zoom-color-scheme: light dark; /* set "dark" or "light" to follow your own theme toggle */
   --zoom-caption-radius: 6px;
-
-  /* Focus ring drawn on the image when its link has keyboard focus */
-  --zoom-focus-outline: 3px solid rebeccapurple; /* default: 2px solid currentColor */
-  --zoom-focus-offset: 3px; /* use a negative value if a parent with overflow: hidden clips it */
 }
 ```
 
@@ -267,25 +263,46 @@ astro-image-zoom-overlay::part(caption) {
 The component loads its own stylesheet, so you don't need to import `zoom.css` yourself. Import
 `astro-image-zoom/zoom.css` directly only if you use `ZoomClass` without the `<ImageZoom>` component.
 
-#### Cascade layer
+#### Your page
 
-The styles for the images on your page (the zoom cursor and the focus ring) live in the
-`astro-image-zoom` [cascade layer](https://developer.mozilla.org/en-US/docs/Web/CSS/@layer).
-Any unlayered CSS on your page overrides them, with no specificity tricks or `!important`.
-
-If your site uses its own layers, add `astro-image-zoom` to your layer order so you decide what wins.
-Declare the order before any stylesheet loads (for example, in an inline `<style>` at the top of
-`<head>`), because the first time a layer appears fixes its position:
+How your images look on the page is up to your site: the component doesn't style them, not even
+their focus ring. It only wraps each image in a link, so it opens with the keyboard and, without
+JavaScript, links to the full-size image:
 
 ```html
-<style is:inline>
-  @layer reset, base, astro-image-zoom, components;
-</style>
+<a href="/full-size.jpg" data-zoom-generated aria-label="Enlarge image: A red car">
+  <img src="/photo.jpg" alt="A red car" />
+</a>
 ```
 
-With this order your reset can't break the zoom cursor or the focus ring, and your `components`
-layer can still customize them. Class names (`.astro-image-zoom-*`) are prefixed, so the styles don't
-clash with the rest of your site.
+The link is inline and unstyled, so it never changes your layout, and it gets your site's link
+styles, focus ring included. If your images are `display: block`, the outline of an inline link
+doesn't wrap them: depending on the browser it is invisible or spans the whole line. Draw your
+focus ring on the image instead, in your own style:
+
+```css
+a[data-zoom-generated]:focus-visible {
+  outline: none;
+}
+
+a[data-zoom-generated]:focus-visible img {
+  outline: 2px solid green; /* your focus ring */
+  outline-offset: 3px; /* negative if a parent with overflow: hidden clips it */
+}
+```
+
+A zoom cursor, if you want one, is also yours to add:
+
+```css
+a[data-zoom-generated] img {
+  cursor: zoom-in;
+}
+```
+
+The only page style of the component, `display: contents` on `<astro-image-zoom>` so it adds no box,
+lives in the `astro-image-zoom`
+[cascade layer](https://developer.mozilla.org/en-US/docs/Web/CSS/@layer): any unlayered CSS of your
+page overrides it.
 
 To style the images of one gallery on the page, pass a class:
 
@@ -320,7 +337,8 @@ To style the images of one gallery on the page, pass a class:
 
 - A native modal `<dialog>`: focus moves to the close button, stays inside while it is open and
   returns to the image when it closes.
-- Each image becomes a link, reachable with the keyboard, with a visible focus ring.
+- Each image becomes a link, reachable with the keyboard. Its focus ring is the one of your site;
+  see [Your page](#your-page) to draw it on the image.
 - Labelled buttons; the caption is announced when the image changes.
 - Reduced motion turns the animations off; forced colors (Windows high contrast) keep the controls
   visible.

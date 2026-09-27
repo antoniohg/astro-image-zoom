@@ -4,33 +4,13 @@
  * The overlay lives in a shadow root and brings its own styles (overlay.css), so no CSS of
  * the page can reach it. Style it with the --zoom-* custom properties or with ::part().
  *
- * These page styles live in the `astro-image-zoom` cascade layer, so any unlayered CSS on the page
- * overrides them without specificity fights. To control their priority among your own layers,
- * name the layer in your layer order, e.g. `@layer reset, astro-image-zoom, components;`.
+ * How the images look on the page, their focus ring included, is up to the site: this file only
+ * keeps the component out of its layout. It lives in the `astro-image-zoom` cascade layer, so any
+ * unlayered CSS of the page overrides it.
  */
 @layer astro-image-zoom {
   /* The element only groups its content, it must not add a box */
   astro-image-zoom {
     display: contents;
-  }
-
-  /* Links wrapping images: the image is the click target */
-  .astro-image-zoom-wrapper a img {
-    cursor: zoom-in;
-  }
-
-  /*
-   * Focus ring on the image, not on the generated link: the link is inline, so when the image
-   * is display: block its outline does not wrap the image. Customize it with
-   * --zoom-focus-outline and --zoom-focus-offset (a negative offset draws it inside the image,
-   * useful when a parent with overflow: hidden would clip it).
-   */
-  .astro-image-zoom-wrapper a[data-zoom-generated]:focus-visible {
-    outline: none;
-
-    img {
-      outline: var(--zoom-focus-outline, 2px solid currentColor);
-      outline-offset: var(--zoom-focus-offset, 3px);
-    }
   }
 }
