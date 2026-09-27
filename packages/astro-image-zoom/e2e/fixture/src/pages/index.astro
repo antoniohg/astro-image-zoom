@@ -30,6 +30,15 @@ const image = (name: string) => `${base}images/${name}.svg`;
         padding-block-end: 150vh;
       }
     </style>
+    <!-- A site that lays out a gallery from a cascade layer, on the element of the component itself -->
+    <style is:inline>
+      @layer site {
+        .site-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 240px);
+        }
+      }
+    </style>
   </head>
   <body>
     <main>
@@ -107,6 +116,14 @@ const image = (name: string) => `${base}images/${name}.svg`;
         <ImageZoom showCaption={false} showCounter={false} keyboardNavigation={false}>
           <img src={image("wide")} alt="Wide one" data-zoom-caption="Hidden caption" />
           <img src={image("portrait")} alt="Portrait two" data-zoom-caption="Hidden caption two" />
+        </ImageZoom>
+      </section>
+
+      <section id="site-layout">
+        <h2>Laid out by the site</h2>
+        <ImageZoom class="site-grid">
+          <img src={image("square")} alt="Square in a grid" />
+          <img src={image("landscape")} alt="Landscape in a grid" />
         </ImageZoom>
       </section>
     </main>

@@ -260,9 +260,6 @@ astro-image-zoom-overlay::part(caption) {
 | `nav`, `prev`, `next` | The arrows (`nav` matches both) |
 | `counter` | The position in the gallery |
 
-The component loads its own stylesheet, so you don't need to import `zoom.css` yourself. Import
-`astro-image-zoom/zoom.css` directly only if you use `ZoomClass` without the `<ImageZoom>` component.
-
 #### Your page
 
 How your images look on the page is up to your site: the component doesn't style them, not even
@@ -299,12 +296,13 @@ a[data-zoom-generated] img {
 }
 ```
 
-The only page style of the component, `display: contents` on `<astro-image-zoom>` so it adds no box,
-lives in the `astro-image-zoom`
-[cascade layer](https://developer.mozilla.org/en-US/docs/Web/CSS/@layer): any unlayered CSS of your
-page overrides it.
+The component adds no stylesheet to your page. `<astro-image-zoom>` groups the images without
+adding a box of its own (`display: contents`), from its own
+[declarative shadow root](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html),
+so it works without JavaScript and any rule of your site wins over it, cascade layers included.
 
-To style the images of one gallery on the page, pass a class:
+To style one gallery, pass a class. It can style the images, or lay out the gallery on the element
+itself:
 
 ```astro
 <ImageZoom class="custom-zoom">
@@ -313,6 +311,11 @@ To style the images of one gallery on the page, pass a class:
 
 <style>
   /* Global: the wrapper is rendered by the component, outside the scope of your page */
+  :global(.custom-zoom) {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
   :global(.custom-zoom img) {
     border-radius: 8px;
   }

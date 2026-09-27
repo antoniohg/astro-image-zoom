@@ -89,6 +89,14 @@ describe('<ImageZoom>', () => {
     );
   });
 
+  it('declares its display in its own shadow root, with no stylesheet on the page', async () => {
+    const { html } = await render();
+    expect(html).toMatch(
+      /<astro-image-zoom\b[^>]*>\s*<template shadowrootmode="open"><style>:host \{ display: contents; \}<\/style><slot><\/slot><\/template>/
+    );
+    expect(html).not.toContain('<link');
+  });
+
   it('wraps the images of the slot in zoom links', async () => {
     const { html } = await render(
       {},

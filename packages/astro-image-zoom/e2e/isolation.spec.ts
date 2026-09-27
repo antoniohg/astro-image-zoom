@@ -68,3 +68,31 @@ test('the focus style of the page reaches the generated link as the site wrote i
   const ring = await focusRing(page.locator('astro-image-zoom a').first());
   expect(ring).toEqual({ link: 'solid', image: 'none' });
 });
+
+test('the component adds no box of its own, and any rule of the site changes that', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#single astro-image-zoom')).toHaveCSS('display', 'contents');
+  // A layered rule of the site wins over the default of the component
+  await expect(page.locator('#site-layout astro-image-zoom')).toHaveCSS('display', 'grid');
+});
+
+test('a page parsed by a client router, which ignores declarative shadow roots, still works', async ({
+  page,
+}) => {
+  await page.goto('/');
+  // What Astro's client router does: parse the new page with DOMParser and move its nodes in
+  await page.evaluate(async () => {
+    const html = await (await fetch('/')).text();
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    const gallery = parsed.querySelector('#gallery')!;
+    gallery.id = 'swapped';
+    document.querySelector('main')!.prepend(document.adoptNode(gallery));
+  });
+
+  const zoom = page.locator('#swapped astro-image-zoom');
+  await expect(zoom).toHaveCSS('display', 'contents');
+  expect(await zoom.evaluate((element) => element.querySelector('template'))).toBeNull();
+
+  await zoom.locator('a').first().click();
+  await expect(dialog(page)).toHaveClass(/is-open/);
+});

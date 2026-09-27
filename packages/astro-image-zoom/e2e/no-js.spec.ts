@@ -20,3 +20,8 @@ test('without JavaScript, an optimized image links to the file set in data-zoom-
   expect(zoomSource).toBeTruthy();
   await expect(link).toHaveAttribute('href', zoomSource!);
 });
+
+test('without JavaScript, the component adds no box of its own', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#single astro-image-zoom')).toHaveCSS('display', 'contents');
+});
