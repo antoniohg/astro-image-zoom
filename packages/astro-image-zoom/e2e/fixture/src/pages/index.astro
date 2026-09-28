@@ -60,6 +60,14 @@ const image = (name: string) => `${base}images/${name}.svg`;
         </ImageZoom>
       </section>
 
+      <section id="card-link">
+        <h2>A normal link with an image</h2>
+        <ImageZoom>
+          <img src={image("wide")} alt="Zoomable panorama" />
+          <a href={`${base}hostile/`}><img src={image("square")} alt="Card linking to another page" /></a>
+        </ImageZoom>
+      </section>
+
       <section id="sources">
         <h2>Zoom sources</h2>
         <ImageZoom>

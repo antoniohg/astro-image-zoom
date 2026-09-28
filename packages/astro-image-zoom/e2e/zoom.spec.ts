@@ -152,6 +152,20 @@ test.describe('open and close', () => {
     await expect(zoomedImage(page)).toHaveAttribute('src', /wide\.svg$/);
   });
 
+  test('leaves a normal link with an image alone: it navigates and is not part of the gallery', async ({
+    page,
+  }) => {
+    // Only the image the component wrapped opens, alone: no counter or arrows for the card
+    await links(page, 'card-link').first().click();
+    await expect(dialog(page)).toHaveClass(/is-open/);
+    await expect(page.locator('.astro-image-zoom-toolbar')).toBeHidden();
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+
+    await page.getByRole('link', { name: 'Card linking to another page' }).click();
+    await expect(page).toHaveURL(/\/hostile\/$/);
+  });
+
   test('closes at once while the image is still loading, and never opens later', async ({ page }) => {
     // A new URL for the zoom, so neither the cache nor a thumbnail serves it
     await links(page, 'single').first().evaluate((link: HTMLAnchorElement) => {

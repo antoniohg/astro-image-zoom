@@ -310,10 +310,10 @@ class Zoom {
     this.setupEventListeners();
   }
 
+  // Only the links the component generated and those the site marks with data-zoom: any other link
+  // with an image (a card, a logo) keeps navigating
   private collectImages(): void {
-    const links = this.wrapper.querySelectorAll<HTMLAnchorElement>(
-      'a[data-zoom-generated], a[data-zoom], a:has(img)'
-    );
+    const links = this.wrapper.querySelectorAll<HTMLAnchorElement>('a[data-zoom-generated], a[data-zoom]');
 
     this.state.images = Array.from(links)
       .map((anchor) => {
@@ -325,7 +325,7 @@ class Zoom {
           element: anchor
         };
       })
-      .filter(({ src }) => src && src !== window.location.origin + '/' && src !== 'about:blank');
+      .filter(({ src }) => src);
   }
 
   private setupEventListeners(): void {
