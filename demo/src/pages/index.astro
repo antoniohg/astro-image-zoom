@@ -17,16 +17,20 @@ type LocalPhoto = Exclude<PhotoName, "blueMarble">;
 // the tile needs with the crop of object-fit: cover
 type Crop = { width: number; height?: number; sizes: string };
 const desktop = "(min-width: 48rem)";
-const wall: { name: LocalPhoto; tile: string; phone: Crop; wide: Crop }[] = [
+// priority: the largest image of the first screen (LCP), the cliffs from 48rem and the rocket on
+// phones, fetched first
+const wall: { name: LocalPhoto; tile: string; phone: Crop; wide: Crop; priority?: boolean }[] = [
   {
     name: "cosmicCliffs",
     tile: "cliffs",
+    priority: true,
     phone: { width: 720, height: 329, sizes: "94vw" },
     wide: { width: 710, height: 458, sizes: "min(60vw, 710px)" },
   },
   {
     name: "apollo11Liftoff",
     tile: "liftoff",
+    priority: true,
     phone: { width: 356, sizes: "51vw" },
     wide: { width: 228, height: 456, sizes: "min(19vw, 228px)" },
   },
@@ -136,7 +140,7 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
     <ImageZoom>
       <div class="wall wide">
         {
-          wall.map(({ name, tile, phone, wide }, index) => (
+          wall.map(({ name, tile, phone, wide, priority }) => (
             <div class:list={["tile", tile]}>
               <Photo
                 name={name}
@@ -145,7 +149,7 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
                 caption={false}
                 fill
                 loading="eager"
-                fetchpriority={index === 0 ? "high" : undefined}
+                fetchpriority={priority ? "high" : undefined}
               />
             </div>
           ))
