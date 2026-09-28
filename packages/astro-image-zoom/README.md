@@ -1,5 +1,7 @@
 # astro-image-zoom
 
+[![npm version](https://img.shields.io/npm/v/astro-image-zoom/beta)](https://www.npmjs.com/package/astro-image-zoom)
+
 Medium-style image zoom for Astro: a click grows each image from its place on the page to fill the
 screen, and the images of a gallery become a carousel you can swipe.
 
