@@ -138,6 +138,19 @@ const image = (name: string) => `${base}images/${name}.svg`;
         </ImageZoom>
       </section>
 
+      <section id="ignore">
+        <h2>Images left out with data-zoom-ignore</h2>
+        <ImageZoom>
+          <img src={image("square")} alt="Zoomable one" />
+          <img src={image("wide")} alt="Ignored image" data-zoom-ignore />
+          <div data-zoom-ignore>
+            <img src={image("portrait")} alt="Ignored by its parent" />
+            <a href={image("portrait")} data-zoom><img src={image("portrait")} alt="Ignored link" /></a>
+          </div>
+          <img src={image("landscape")} alt="Zoomable two" />
+        </ImageZoom>
+      </section>
+
       <section id="site-layout">
         <h2>Laid out by the site</h2>
         <ImageZoom class="site-grid">

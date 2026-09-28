@@ -314,6 +314,8 @@ class Zoom {
     const links = this.wrapper.querySelectorAll<HTMLAnchorElement>('a[data-zoom-generated], a[data-zoom]');
 
     this.state.images = Array.from(links)
+      // data-zoom-ignore on a link, on its image or around it leaves it out of the zoom and the gallery
+      .filter((anchor) => !anchor.closest('[data-zoom-ignore]') && !anchor.querySelector('img[data-zoom-ignore]'))
       .map((anchor) => {
         const img = anchor.querySelector('img');
         return {

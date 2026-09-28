@@ -53,6 +53,32 @@ describe('wrapImages', () => {
     );
   });
 
+  describe('data-zoom-ignore', () => {
+    it('leaves an image with data-zoom-ignore alone', () => {
+      const html = '<img src="/logo.svg" alt="Logo" data-zoom-ignore>';
+      expect(wrapImages(html)).toBe(html);
+    });
+
+    it('leaves a <picture> alone when its image has data-zoom-ignore', () => {
+      const picture = '<picture><source srcset="/a.avif"><img src="/a.jpg" alt="" data-zoom-ignore></picture>';
+      expect(wrapImages(picture)).toBe(picture);
+    });
+
+    it('leaves alone every image inside an element with data-zoom-ignore, nested ones too', () => {
+      const ignored =
+        '<div data-zoom-ignore="true"><div><img src="/1.jpg" alt=""></div><img src="/2.jpg" alt=""></div>';
+      expect(wrapImages(`${ignored}<img src="/3.jpg" alt="">`)).toBe(
+        `${ignored}<a href="/3.jpg" data-zoom-generated aria-label="Enlarge image"><img src="/3.jpg" alt=""></a>`
+      );
+    });
+
+    it('reads the attribute, not text that mentions it', () => {
+      expect(wrapImages('<p title="data-zoom-ignore"><img src="/1.jpg" alt=""></p>')).toBe(
+        '<p title="data-zoom-ignore"><a href="/1.jpg" data-zoom-generated aria-label="Enlarge image"><img src="/1.jpg" alt=""></a></p>'
+      );
+    });
+  });
+
   it('leaves a <picture> without an image alone', () => {
     const picture = '<picture><source srcset="/a.avif"></picture>';
     expect(wrapImages(picture)).toBe(picture);

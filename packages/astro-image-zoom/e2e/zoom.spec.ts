@@ -382,6 +382,24 @@ test.describe('gallery', () => {
     await expect(caption(page)).toBeHidden();
   });
 
+  test('leaves the images with data-zoom-ignore out of the zoom and the gallery', async ({ page }) => {
+    await expect(links(page, 'ignore')).toHaveCount(3);
+    await expect(page.getByRole('link', { name: /Ignored image|Ignored by its parent/ })).toHaveCount(0);
+
+
+    await openZoom(page, 'ignore');
+    await expect(counter(page)).toHaveText('1 / 2');
+    await page.keyboard.press('ArrowRight');
+    await expect(counter(page)).toHaveText('2 / 2');
+    await expect(zoomedImage(page)).toHaveAttribute('src', /landscape\.svg$/);
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+
+    // A link with data-zoom inside an ignored element is a plain link: it navigates
+    await page.locator('#ignore a[data-zoom]').click();
+    await expect(page).toHaveURL(/portrait\.svg$/);
+  });
+
   test('places the caption at the top and the arrows at the sides', async ({ page }) => {
     await openZoom(page, 'layout');
     const viewport = page.viewportSize()!;

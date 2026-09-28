@@ -204,4 +204,9 @@ export const attributes: ReferenceRow[] = [
     description:
       "On an `<a href>` around an image: the zoom opens its `href`. The component leaves the link as it is",
   },
+  {
+    name: "data-zoom-ignore",
+    description:
+      "On an image or any element around it: left out of the zoom and the gallery, for logos, icons and decorative images",
+  },
 ];

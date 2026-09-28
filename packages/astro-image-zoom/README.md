@@ -112,6 +112,24 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 </ImageZoom>
 ```
 
+### Leaving Images Out
+
+Add `data-zoom-ignore` to an image, or to any element around it, to keep it out of the zoom: it is
+not wrapped in a link, does not open, and does not count in the gallery. Useful for logos, icons
+and decorative images inside an article.
+
+```astro
+<ImageZoom>
+  <img src="/photo.jpg" alt="Harbor at dawn" />
+  <img src="/signature.svg" alt="" data-zoom-ignore />
+  <aside data-zoom-ignore>
+    <img src="/author.jpg" alt="The author" />
+  </aside>
+</ImageZoom>
+```
+
+A link with `data-zoom` inside an ignored element stays a plain link.
+
 ### High-Resolution Images
 
 Use `data-zoom-src` to load higher resolution images in the zoom:

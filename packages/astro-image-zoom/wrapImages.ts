@@ -55,10 +55,17 @@ function wrap(html: string, image: Attributes): string {
   return `<a href="${escapeQuotes(src)}" data-zoom-generated${captionAttribute} aria-label="${escapeQuotes(label)}">${html}</a>`;
 }
 
+// Elements without a closing tag: data-zoom-ignore on them never opens a scope
+const VOID_ELEMENTS = new Set([
+  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'
+]);
+
 export function wrapImages(html: string): string {
   let output = '';
   let cursor = 0;
   let anchorDepth = 0;
+  // Inside an element with data-zoom-ignore: its name, and how deep elements of that name nest in it
+  let ignored: { name: string; depth: number } | null = null;
   // A <picture> is wrapped as a whole: <a> is not valid inside it
   let picture: { start: number; image?: Attributes } | null = null;
 
@@ -69,6 +76,22 @@ export function wrapImages(html: string): string {
     const name = rawName.toLowerCase();
     const start = match.index;
     const end = start + tag.length;
+
+    // Nothing inside an ignored element is wrapped, whatever it holds
+    if (ignored) {
+      if (name === ignored.name) ignored.depth += closing ? -1 : 1;
+      if (ignored.depth === 0) ignored = null;
+      continue;
+    }
+    if (
+      !closing &&
+      !VOID_ELEMENTS.has(name) &&
+      !/\/\s*$/.test(rawAttributes) &&
+      parseAttributes(rawAttributes).has('data-zoom-ignore')
+    ) {
+      ignored = { name, depth: 1 };
+      continue;
+    }
 
     if (name === 'a') {
       anchorDepth = Math.max(0, anchorDepth + (closing ? -1 : 1));
@@ -91,7 +114,10 @@ export function wrapImages(html: string): string {
       }
     } else if (name === 'img' && !closing) {
       const image = parseAttributes(rawAttributes);
-      if (picture) {
+      if (image.has('data-zoom-ignore')) {
+        // An ignored image leaves its <picture> unwrapped too
+        if (picture) picture = null;
+      } else if (picture) {
         picture.image ??= image;
       } else if (getSource(image)) {
         output += html.slice(cursor, start) + wrap(tag, image);
