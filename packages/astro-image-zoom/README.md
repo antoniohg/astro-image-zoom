@@ -66,13 +66,14 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 
 ### Which image the zoom shows
 
-The zoom opens, in this order:
-
-1. The URL in `data-zoom-src`, if the image has it.
-2. The `href` of a link around the image (`<a href="…" data-zoom>`).
-3. The image's own `src`.
-
-Plain images work out of the box: `<img src="/photo.jpg">` opens that same file, at full size.
+- **An image on its own** opens the URL in its `data-zoom-src`, or its own `src` without it. Plain
+  images work out of the box: `<img src="/photo.jpg">` opens that same file, at full size.
+- **An image inside a link with `data-zoom`** (`<a href="…" data-zoom>`) opens the `href` of the
+  link. Put `data-zoom-caption` (or `title`) on the link: the image inside gives only its `alt`, and
+  its own `data-zoom-src` and `data-zoom-caption` are ignored. See
+  [Gallery with Links](#gallery-with-links).
+- **An image inside any other link** is left alone: the link keeps working as a link (a card, a
+  logo) and the image is not part of the gallery.
 
 > **Warning: resized images look blurry when zoomed.** If the image on the page is a smaller
 > version (a thumbnail, or Astro's `<Image width={400}>`, which generates a 400 px file), the zoom
