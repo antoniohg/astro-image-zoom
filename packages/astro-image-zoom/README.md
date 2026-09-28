@@ -5,6 +5,8 @@
 Medium-style image zoom for Astro: a click grows each image from its place on the page to fill the
 screen, and the images of a gallery become a carousel you can swipe.
 
+**[Live demo and docs](https://antoniohg.com/astro-image-zoom/)**
+
 > **Beta.** The API may still change before 1.0. Feedback and bug reports are welcome in the
 > [issues](https://github.com/antoniohg/astro-image-zoom/issues).
 

@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/astro-image-zoom/beta)](https://www.npmjs.com/package/astro-image-zoom)
 
 The source of [astro-image-zoom](./packages/astro-image-zoom), a Medium-style image zoom for Astro,
-and its demo site. For how to use the component, see the
+and its [demo site](https://antoniohg.com/astro-image-zoom/). For how to use the component, see the
 [package README](./packages/astro-image-zoom/README.md).
 
 ## Structure
