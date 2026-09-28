@@ -72,11 +72,21 @@ describe('<ImageZoom>', () => {
 
   it('turns the theme and the duration into --zoom-* variables', async () => {
     const { attributes } = await render({
-      theme: { backgroundColor: '#050a1a', closeButtonColor: 'white', navigationColor: 'rgb(1, 2, 3)' },
+      theme: {
+        backgroundColor: '#050a1a',
+        closeButtonColor: 'white',
+        closeButtonBackground: 'black',
+        navigationColor: 'rgb(1, 2, 3)',
+        navigationBackground: 'navy',
+        captionColor: 'red',
+        captionBackground: 'light-dark(#fff, #000)',
+      },
       animationDuration: 800,
     });
     expect(attributes.get('style')).toBe(
-      '--zoom-bg: #050a1a; --zoom-close-color: white; --zoom-nav-color: rgb(1, 2, 3); --zoom-animation-duration: 800ms'
+      '--zoom-bg: #050a1a; --zoom-close-color: white; --zoom-close-bg: black; ' +
+        '--zoom-nav-color: rgb(1, 2, 3); --zoom-nav-bg: navy; --zoom-caption-color: red; ' +
+        '--zoom-caption-bg: light-dark(#fff, #000); --zoom-animation-duration: 800ms'
     );
   });
 

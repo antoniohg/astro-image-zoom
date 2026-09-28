@@ -183,8 +183,12 @@ const optimizedImage = await getImage({
 |------|------|---------|-------------|
 | `theme` | `object` | `{}` | Theme configuration object |
 | `theme.backgroundColor` | `string` | light or dark, following the page | Overlay background color (`--zoom-bg`) |
-| `theme.closeButtonColor` | `string` | light or dark, following the page | Close button color (`--zoom-close-color`) |
+| `theme.closeButtonColor` | `string` | light or dark, following the page | Close icon color (`--zoom-close-color`) |
+| `theme.closeButtonBackground` | `string` | translucent, following the page | Close button background (`--zoom-close-bg`) |
 | `theme.navigationColor` | `string` | light or dark, following the page | Arrows and counter color (`--zoom-nav-color`) |
+| `theme.navigationBackground` | `string` | translucent, following the page | Navigation bar background, or each arrow in the sides layout (`--zoom-nav-bg`) |
+| `theme.captionColor` | `string` | light or dark, following the page | Caption text color (`--zoom-caption-color`) |
+| `theme.captionBackground` | `string` | translucent, following the page | Caption box background (`--zoom-caption-bg`) |
 | `animationDuration` | `number` | — | Animation duration in milliseconds; overrides `--zoom-animation-duration` (300ms by default) |
 | `keyboardNavigation` | `boolean` | `true` | Enable keyboard shortcuts |
 | `closeOnBackdrop` | `boolean` | `true` | Close when clicking backdrop |

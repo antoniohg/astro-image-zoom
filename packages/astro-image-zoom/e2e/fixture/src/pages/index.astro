@@ -78,8 +78,19 @@ const image = (name: string) => `${base}images/${name}.svg`;
 
       <section id="theme">
         <h2>Theme and duration props</h2>
-        <ImageZoom theme={{ backgroundColor: "rgb(5, 10, 26)", closeButtonColor: "rgb(142, 203, 255)" }} animationDuration={800}>
-          <img src={image("square")} alt="Themed square" />
+        <ImageZoom
+          theme={{
+            backgroundColor: "rgb(5, 10, 26)",
+            closeButtonColor: "rgb(142, 203, 255)",
+            closeButtonBackground: "rgb(10, 20, 30)",
+            navigationColor: "rgb(1, 2, 3)",
+            navigationBackground: "rgb(4, 5, 6)",
+            captionColor: "rgb(250, 240, 230)",
+            captionBackground: "rgb(40, 30, 20)",
+          }}
+          animationDuration={800}
+        >
+          <img src={image("square")} alt="Themed square" data-zoom-caption="Themed caption" />
         </ImageZoom>
       </section>
 

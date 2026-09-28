@@ -8,12 +8,23 @@ import { wrapImages } from "./wrapImages";
 
 export interface Props {
   /**
-   * Theme configuration
+   * Colors of the overlay; each one sets a --zoom-* variable and wins over it
    */
   theme?: {
+    /** Overlay background (--zoom-bg) */
     backgroundColor?: string;
+    /** Close icon (--zoom-close-color) */
     closeButtonColor?: string;
+    /** Close button (--zoom-close-bg) */
+    closeButtonBackground?: string;
+    /** Arrows and counter (--zoom-nav-color) */
     navigationColor?: string;
+    /** Navigation bar, or each arrow in the sides layout (--zoom-nav-bg) */
+    navigationBackground?: string;
+    /** Caption text (--zoom-caption-color) */
+    captionColor?: string;
+    /** Caption box (--zoom-caption-bg) */
+    captionBackground?: string;
   };
 
   /**
@@ -93,7 +104,11 @@ const {
 const variables = Object.entries({
   "--zoom-bg": theme.backgroundColor,
   "--zoom-close-color": theme.closeButtonColor,
+  "--zoom-close-bg": theme.closeButtonBackground,
   "--zoom-nav-color": theme.navigationColor,
+  "--zoom-nav-bg": theme.navigationBackground,
+  "--zoom-caption-color": theme.captionColor,
+  "--zoom-caption-bg": theme.captionBackground,
   "--zoom-animation-duration": animationDuration === undefined ? undefined : `${animationDuration}ms`,
 })
   .filter(([, value]) => value)

@@ -119,7 +119,8 @@ export const parts: ReferenceRow[] = [
 export const props: ReferenceRow[] = [
   {
     name: "theme",
-    description: "`backgroundColor`, `closeButtonColor` and `navigationColor` for this gallery",
+    description:
+      "The colors of this gallery: `backgroundColor`, `closeButtonColor`, `closeButtonBackground`, `navigationColor`, `navigationBackground`, `captionColor` and `captionBackground`",
     type: "object",
     default: "{}",
   },

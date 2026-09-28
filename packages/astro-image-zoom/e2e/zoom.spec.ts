@@ -414,7 +414,14 @@ test.describe('theming', () => {
 
     await expect(dialog(page)).toHaveClass(/is-open/);
     await expect(page.locator('.astro-image-zoom-backdrop')).toHaveCSS('background-color', 'rgb(5, 10, 26)');
-    await expect(page.getByRole('button', { name: 'Close zoom overlay' })).toHaveCSS('color', 'rgb(142, 203, 255)');
+    const close = page.getByRole('button', { name: 'Close zoom overlay' });
+    await expect(close).toHaveCSS('color', 'rgb(142, 203, 255)');
+    await expect(close).toHaveCSS('background-color', 'rgb(10, 20, 30)');
+    await expect(caption(page)).toHaveCSS('color', 'rgb(250, 240, 230)');
+    await expect(caption(page)).toHaveCSS('background-color', 'rgb(40, 30, 20)');
+    // One image: the bar is hidden, but it takes the colors all the same
+    await expect(page.locator('.astro-image-zoom-toolbar')).toHaveCSS('color', 'rgb(1, 2, 3)');
+    await expect(page.locator('.astro-image-zoom-toolbar')).toHaveCSS('background-color', 'rgb(4, 5, 6)');
   });
 
   test('takes the variables set around a gallery, and drops them for the next one', async ({ page }) => {
