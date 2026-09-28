@@ -10,7 +10,7 @@
     "url": "git+https://github.com/antoniohg/astro-image-zoom.git",
     "directory": "packages/astro-image-zoom"
   },
-  "homepage": "https://github.com/antoniohg/astro-image-zoom#readme",
+  "homepage": "https://antoniohg.com/astro-image-zoom/",
   "bugs": {
     "url": "https://github.com/antoniohg/astro-image-zoom/issues"
   },
