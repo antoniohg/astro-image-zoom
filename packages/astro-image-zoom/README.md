@@ -75,9 +75,10 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 - **An image inside any other link** is left alone: the link keeps working as a link (a card, a
   logo) and the image is not part of the gallery.
 
-> **Warning: resized images look blurry when zoomed.** If the image on the page is a smaller
-> version (a thumbnail, or Astro's `<Image width={400}>`, which generates a 400 px file), the zoom
-> enlarges that small file. Add `data-zoom-src` with the full-size version, as shown in
+> **Resized images barely grow when zoomed.** The zoom shows each image at most at its real size,
+> never enlarged. If the image on the page is a smaller version (a thumbnail, or Astro's
+> `<Image width={400}>`, which generates a 400 px file), the zoom opens that small file and it
+> stays small. Add `data-zoom-src` with the full-size version, as shown in
 > [High-Resolution Images](#high-resolution-images) and
 > [Using with Astro Assets](#using-with-astro-assets-optimized-images).
 

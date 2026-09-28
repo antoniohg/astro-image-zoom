@@ -244,7 +244,8 @@ const fullSize = await getImage({ src: photo, width: photo.width });
               Why <code>data-zoom-src</code>?
             </strong>{" "}
             Astro's <code>{`<Image width={800}>`}</code> generates an
-            800&nbsp;px file, and the zoom would blow that small file up. Point
+            800&nbsp;px file, and the zoom never shows an image bigger than it
+            is: it would open that small file, at 800&nbsp;px. Point
             <code>data-zoom-src</code> at a bigger version. Plain{" "}
             <code>{`<img>`}</code> tags don't need it: the zoom opens the same
             file.
