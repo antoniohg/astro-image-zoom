@@ -170,7 +170,6 @@ const optimizedImage = await getImage({
     navigationColor: '#ffffff'
   }}
   animationDuration={300}
-  keyboardNavigation={true}
   closeOnBackdrop={true}
   showNavigation={true}
   class="my-custom-class"
@@ -190,7 +189,6 @@ const optimizedImage = await getImage({
 | `theme.captionColor` | `string` | light or dark, following the page | Caption text color (`--zoom-caption-color`) |
 | `theme.captionBackground` | `string` | translucent, following the page | Caption box background (`--zoom-caption-bg`) |
 | `animationDuration` | `number` | — | Animation duration in milliseconds; overrides `--zoom-animation-duration` (300ms by default) |
-| `keyboardNavigation` | `boolean` | `true` | Enable keyboard shortcuts |
 | `closeOnBackdrop` | `boolean` | `true` | Close when clicking backdrop |
 | `closeOnImage` | `boolean` | `true` | Close when clicking the zoomed image |
 | `closeOnScroll` | `boolean` | `true` | Close when scrolling/wheeling |

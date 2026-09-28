@@ -261,7 +261,6 @@ class Zoom {
   };
 
   private options = {
-    keyboardNavigation: true,
     closeOnBackdrop: true,
     closeOnImage: true,
     closeOnScroll: true,
@@ -289,7 +288,6 @@ class Zoom {
     this.wrapper = wrapper;
 
     // Get configuration from data attributes
-    this.options.keyboardNavigation = wrapper.dataset.keyboard !== 'false';
     this.options.closeOnBackdrop = wrapper.dataset.closeBackdrop !== 'false';
     this.options.closeOnImage = wrapper.dataset.closeImage !== 'false';
     this.options.closeOnScroll = wrapper.dataset.closeScroll !== 'false';
@@ -471,10 +469,8 @@ class Zoom {
       this.overlay.classList.add('is-open');
     });
 
-    // Add keyboard listener
-    if (this.options.keyboardNavigation) {
-      document.addEventListener('keydown', this.handleKeydown, { signal });
-    }
+    // Arrow keys move through the gallery
+    document.addEventListener('keydown', this.handleKeydown, { signal });
 
     // Horizontal swipes scroll the track natively; the slide on screen follows the scroll
     this.track.addEventListener('scroll', this.handleScroll, { passive: true, signal });

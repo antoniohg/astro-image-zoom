@@ -131,8 +131,8 @@ const image = (name: string) => `${base}images/${name}.svg`;
       </section>
 
       <section id="hidden">
-        <h2>No caption, no counter, no keyboard</h2>
-        <ImageZoom showCaption={false} showCounter={false} keyboardNavigation={false}>
+        <h2>No caption, no counter</h2>
+        <ImageZoom showCaption={false} showCounter={false}>
           <img src={image("wide")} alt="Wide one" data-zoom-caption="Hidden caption" />
           <img src={image("portrait")} alt="Portrait two" data-zoom-caption="Hidden caption two" />
         </ImageZoom>

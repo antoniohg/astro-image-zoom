@@ -169,12 +169,6 @@ export const props: ReferenceRow[] = [
     default: "\"bottom\"",
   },
   {
-    name: "keyboardNavigation",
-    description: "Arrow keys move through the gallery",
-    type: "boolean",
-    default: "true",
-  },
-  {
     name: "closeOnBackdrop",
     description: "A click beside the image closes it",
     type: "boolean",

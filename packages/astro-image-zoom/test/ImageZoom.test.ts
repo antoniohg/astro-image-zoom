@@ -29,7 +29,6 @@ describe('<ImageZoom>', () => {
     const { attributes } = await render();
     expect(Object.fromEntries(attributes)).toMatchObject({
       class: 'astro-image-zoom-wrapper',
-      'data-keyboard': 'true',
       'data-close-backdrop': 'true',
       'data-close-image': 'true',
       'data-close-scroll': 'true',
@@ -45,7 +44,6 @@ describe('<ImageZoom>', () => {
 
   it('renders every option as its data attribute', async () => {
     const { attributes } = await render({
-      keyboardNavigation: false,
       closeOnBackdrop: false,
       closeOnImage: false,
       closeOnScroll: false,
@@ -58,7 +56,6 @@ describe('<ImageZoom>', () => {
     });
     expect(Object.fromEntries(attributes)).toMatchObject({
       class: 'astro-image-zoom-wrapper portfolio',
-      'data-keyboard': 'false',
       'data-close-backdrop': 'false',
       'data-close-image': 'false',
       'data-close-scroll': 'false',

@@ -376,14 +376,10 @@ test.describe('gallery', () => {
     expect(await widthOnThumbnail()).toBeCloseTo(320, 0);
   });
 
-  test('honors keyboardNavigation, showCaption and showCounter', async ({ page }) => {
+  test('honors showCaption and showCounter', async ({ page }) => {
     await openZoom(page, 'hidden');
     await expect(counter(page)).toBeHidden();
     await expect(caption(page)).toBeHidden();
-
-    await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(400);
-    await expect(zoomedImage(page)).toHaveAttribute('src', /wide\.svg$/);
   });
 
   test('places the caption at the top and the arrows at the sides', async ({ page }) => {

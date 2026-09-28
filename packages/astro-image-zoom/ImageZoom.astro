@@ -34,11 +34,6 @@ export interface Props {
   animationDuration?: number;
 
   /**
-   * Enable keyboard navigation
-   */
-  keyboardNavigation?: boolean;
-
-  /**
    * Close on backdrop click
    */
   closeOnBackdrop?: boolean;
@@ -87,7 +82,6 @@ export interface Props {
 const {
   theme = {},
   animationDuration,
-  keyboardNavigation = true,
   closeOnBackdrop = true,
   closeOnImage = true,
   closeOnScroll = true,
@@ -130,7 +124,6 @@ const shadowRoot =
 
 <astro-image-zoom
   class={wrapperClasses}
-  data-keyboard={keyboardNavigation ? "true" : "false"}
   data-close-backdrop={closeOnBackdrop ? "true" : "false"}
   data-close-image={closeOnImage ? "true" : "false"}
   data-close-scroll={closeOnScroll ? "true" : "false"}
