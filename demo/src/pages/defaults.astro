@@ -12,7 +12,7 @@ const gallery = [photos.twinJet, photos.veil];
 
 // Full-size versions for the zoom
 const full = async (src: ImageMetadata) =>
-  (await getImage({ src, width: src.width, format: "webp" })).src;
+  (await getImage({ src, width: src.width, format: "avif", quality: "high" })).src;
 const singleFull = await full(single.src);
 const galleryFull = await Promise.all(gallery.map(({ src }) => full(src)));
 
@@ -122,6 +122,7 @@ const caption = ({
           src={single.src}
           alt={single.alt}
           width={640}
+          format="avif"
           loading="eager"
           data-zoom-src={singleFull}
           data-zoom-caption={caption(single)}
@@ -136,6 +137,7 @@ const caption = ({
             src={photo.src}
             alt={photo.alt}
             width={320}
+            format="avif"
             loading="eager"
             data-zoom-src={galleryFull[index]}
             data-zoom-caption={caption(photo)}

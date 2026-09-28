@@ -157,7 +157,12 @@ const ranges = [
       <ImageZoom>
         <div class="preview-images">
           {images.map((name) => (
-            <Photo name={name} width={640} height={480} />
+            <Photo
+              name={name}
+              width={322}
+              height={242}
+              sizes="(min-width: 48rem) 322px, 42vw"
+            />
           ))}
         </div>
       </ImageZoom>
