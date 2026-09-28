@@ -1,8 +1,7 @@
 ---
 import CodeSample from "@components/CodeSample.astro";
-import { Icon } from "astro-icon/components";
 import OverlaySketch from "@components/OverlaySketch.astro";
-import type { ComponentProps } from "astro/types";
+import type { ComponentProps, SvgComponent } from "astro/types";
 
 interface Props {
   title: string;
@@ -11,8 +10,8 @@ interface Props {
   lang?: "astro" | "css";
   /** What the option changes: a drawing of the overlay, or an icon for a behavior */
   sketch?: ComponentProps<typeof OverlaySketch>;
-  /** Lucide icon, such as "lucide:keyboard-off" */
-  icon?: string;
+  /** Phosphor duotone icon from src/assets/icons */
+  icon?: SvgComponent;
   /** Heading level: h3 right under a chapter, h4 under a section */
   level?: 3 | 4;
   /** --zoom-* variables set around the photos, for examples made with CSS */
@@ -25,7 +24,7 @@ const {
   code,
   lang = "astro",
   sketch,
-  icon,
+  icon: Icon,
   level = 4,
   vars,
 } = Astro.props;
@@ -39,7 +38,7 @@ const Heading = `h${level}` as const;
   <div class="head">
     <div class="visual">
       {sketch && <OverlaySketch {...sketch} />}
-      {!sketch && icon && <Icon name={icon} size={28} aria-hidden="true" />}
+      {!sketch && Icon && <Icon width={28} height={28} aria-hidden="true" />}
     </div>
     <div class="text">
       <Heading>{title}</Heading>

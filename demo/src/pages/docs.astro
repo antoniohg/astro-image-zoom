@@ -21,6 +21,11 @@ import {
   props,
 } from "@data/reference";
 import type { ComponentProps } from "astro/types";
+import ArrowsLeftRightIcon from "../assets/icons/arrows-left-right.svg";
+import SelectionBackgroundIcon from "../assets/icons/selection-background.svg";
+import SelectionForegroundIcon from "../assets/icons/selection-foreground.svg";
+import MouseScrollIcon from "../assets/icons/mouse-scroll.svg";
+import GaugeIcon from "../assets/icons/gauge.svg";
 
 type LocalPhoto = Exclude<PhotoName, "blueMarble">;
 
@@ -49,7 +54,7 @@ const options: ExampleData[] = [
     title: "No arrow keys",
     description: "The arrow keys do nothing. Escape still closes.",
     code: "<ImageZoom keyboardNavigation={false}>",
-    icon: "lucide:keyboard-off",
+    icon: ArrowsLeftRightIcon,
     names: ["saturnShadow", "saturn", "pluto"],
     zoom: { keyboardNavigation: false },
   },
@@ -57,7 +62,7 @@ const options: ExampleData[] = [
     title: "Stays open on a backdrop click",
     description: "A click on the backdrop does nothing; the close button and Escape still work.",
     code: "<ImageZoom closeOnBackdrop={false}>",
-    icon: "lucide:square-dashed-mouse-pointer",
+    icon: SelectionBackgroundIcon,
     names: ["edWhite"],
     zoom: { closeOnBackdrop: false },
   },
@@ -65,7 +70,7 @@ const options: ExampleData[] = [
     title: "Stays open on an image click",
     description: "A click on the zoomed image does nothing.",
     code: "<ImageZoom closeOnImage={false}>",
-    icon: "lucide:square-mouse-pointer",
+    icon: SelectionForegroundIcon,
     names: ["mccandless"],
     zoom: { closeOnImage: false },
   },
@@ -73,7 +78,7 @@ const options: ExampleData[] = [
     title: "Stays open while scrolling",
     description: "Scrolling or a vertical swipe doesn't close it.",
     code: "<ImageZoom closeOnScroll={false}>",
-    icon: "lucide:mouse",
+    icon: MouseScrollIcon,
     names: ["issArrays"],
     zoom: { closeOnScroll: false },
   },
@@ -420,7 +425,7 @@ a[data-zoom-generated] img {
             description="The length of the zoom in milliseconds: 150 on the left, 800 on the right."
             code={`<ImageZoom animationDuration={150}>
 <ImageZoom animationDuration={800}>`}
-            icon="lucide:gauge"
+            icon={GaugeIcon}
             level={3}
           >
             <ExamplePhotos

@@ -1,5 +1,4 @@
 import { defineConfig, fontProviders } from "astro/config";
-import icon from "astro-icon";
 import sitemap from "@astrojs/sitemap";
 
 // https://astro.build/config
@@ -9,8 +8,6 @@ export default defineConfig({
   site: "https://antoniohg.com",
   base: process.env.GITHUB_PAGES ? "/astro-image-zoom" : undefined,
   integrations: [
-    // Lucide icons, inlined as SVG at build time
-    icon(),
     // /defaults/ is a bare test page with noindex, so it stays out of the sitemap
     sitemap({ filter: (page) => !page.endsWith("/defaults/") }),
   ],
