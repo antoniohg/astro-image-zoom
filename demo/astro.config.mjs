@@ -1,5 +1,6 @@
 import { defineConfig, fontProviders } from "astro/config";
 import icon from "astro-icon";
+import sitemap from "@astrojs/sitemap";
 
 // https://astro.build/config
 export default defineConfig({
@@ -7,8 +8,12 @@ export default defineConfig({
   // user site; the deploy workflow sets GITHUB_PAGES, so locally the demo stays at the root
   site: "https://antoniohg.com",
   base: process.env.GITHUB_PAGES ? "/astro-image-zoom" : undefined,
-  // Lucide icons, inlined as SVG at build time
-  integrations: [icon()],
+  integrations: [
+    // Lucide icons, inlined as SVG at build time
+    icon(),
+    // /defaults/ is a bare test page with noindex, so it stays out of the sitemap
+    sitemap({ filter: (page) => !page.endsWith("/defaults/") }),
+  ],
   vite: {
     optimizeDeps: {
       // Use the workspace package directly so edits show up without a restart

@@ -1,5 +1,6 @@
 ---
-import { Font } from "astro:assets";
+import { Font, getImage } from "astro:assets";
+import { photos } from "@data/photos";
 import "../styles/global.css";
 
 interface Props {
@@ -12,6 +13,19 @@ interface Props {
 const { title, description, current } = Astro.props;
 const repository = "https://github.com/antoniohg/astro-image-zoom";
 const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+
+// Absolute URLs for search engines and link previews; Astro.site comes from `site` in the config
+const canonical = new URL(Astro.url.pathname, Astro.site);
+// Preview image when a page is shared: the first photo of the home, cropped to the 1.91:1 card
+const share = photos.cosmicCliffs;
+const shareImage = await getImage({
+  src: share.src,
+  width: 1200,
+  height: 630,
+  fit: "cover",
+  format: "jpg",
+});
+const shareImageUrl = new URL(shareImage.src, Astro.site);
 ---
 
 <!doctype html>
@@ -22,6 +36,18 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     <meta name="color-scheme" content="light dark" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="sitemap" href={`${base}sitemap-index.xml`} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="astro-image-zoom" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={shareImageUrl} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={share.alt} />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
     <Font cssVariable="--font-archivo" preload />
     <Font cssVariable="--font-plex-mono" preload />
