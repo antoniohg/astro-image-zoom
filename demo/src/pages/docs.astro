@@ -153,7 +153,8 @@ const spacing: ExampleData[] = [
 const sunflowerFull = await getImage({
   src: photos.sunflower.src,
   width: photos.sunflower.src.width,
-  format: "webp",
+  format: "avif",
+  quality: "high",
 });
 const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
 
@@ -293,8 +294,9 @@ a[data-zoom-generated] img {
               <div class="source">
                 <Photo
                   name="pillars"
-                  width={640}
-                  height={480}
+                  width={300}
+                  height={225}
+                  sizes="(min-width: 32rem) 300px, 94vw"
                   caption={false}
                 />
                 <p class="label">
@@ -305,8 +307,10 @@ a[data-zoom-generated] img {
                 <Picture
                   src={photos.sunflower.src}
                   alt={photos.sunflower.alt}
-                  widths={[640]}
-                  height={480}
+                  width={300}
+                  height={225}
+                  widths={[300, 600]}
+                  sizes="(min-width: 32rem) 300px, 94vw"
                   formats={["avif", "webp"]}
                   data-zoom-src={sunflowerFull.src}
                   data-zoom-caption={`${photos.sunflower.caption} — ${photos.sunflower.mission}`}
@@ -316,11 +320,13 @@ a[data-zoom-generated] img {
                 </p>
               </div>
               <div class="source">
+                <!-- A small copy for the page, the full file for the zoom -->
                 <img
-                  src={`${base}images/as17-148-22727.jpg`}
+                  src={`${base}images/as17-148-22727-640.jpg`}
                   alt={photos.blueMarble.alt}
-                  width="2560"
-                  height="2560"
+                  width="640"
+                  height="640"
+                  data-zoom-src={`${base}images/as17-148-22727.jpg`}
                   loading="lazy"
                   decoding="async"
                   data-zoom-caption={`${photos.blueMarble.caption} — ${photos.blueMarble.mission}, ${photos.blueMarble.year}`}
@@ -350,7 +356,7 @@ a[data-zoom-generated] img {
             code={`<ImageZoom>
   <Image src={photo} alt="…" width={640} data-zoom-src={fullSize.src} />
   <Picture src={photo} alt="…" widths={[640]} formats={['avif', 'webp']} data-zoom-src={fullSize.src} />
-  <img src="/images/blue-marble.jpg" alt="…" />
+  <img src="/images/blue-marble-small.jpg" alt="…" data-zoom-src="/images/blue-marble.jpg" />
   <img src="https://images-assets.nasa.gov/image/PIA15985/PIA15985~large.jpg" alt="…" />
 </ImageZoom>`}
           />
@@ -365,8 +371,9 @@ a[data-zoom-generated] img {
             <article class="card">
               <Photo
                 name="apollo11Rollout"
-                width={1200}
-                height={560}
+                width={928}
+                height={433}
+                sizes="(min-width: 64rem) min(70vw, 928px), 94vw"
                 caption={false}
               />
               <div class="card-body">
@@ -382,8 +389,9 @@ a[data-zoom-generated] img {
                   ).map((name) => (
                     <Photo
                       name={name}
-                      width={320}
-                      height={240}
+                      width={290}
+                      height={218}
+                      sizes="(min-width: 64rem) min(23vw, 290px), 29vw"
                       caption={false}
                     />
                   ))}
@@ -512,7 +520,12 @@ a[data-zoom-generated] img {
                 navigationColor: "#8ecbff",
               }}
             >
-              <Photo name="ngc3274" width={640} height={480} />
+              <Photo
+                name="ngc3274"
+                width={452}
+                height={339}
+                sizes="(min-width: 64rem) min(35vw, 452px), (min-width: 36rem) 45vw, 90vw"
+              />
             </ImageZoom>
             <CodeSample
               open

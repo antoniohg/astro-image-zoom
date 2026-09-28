@@ -16,10 +16,21 @@ interface Props {
 }
 
 const { names, zoom = {} } = Astro.props;
-const photo = (name: Props["names"][number]) => ({
+// Each file is cut to the shape of its frame on a wide screen, and sizes follow the frame: one photo
+// takes it all, two split it, three put a big one beside two small ones. Measured from 64rem (docs
+// with the index), from 40rem (two examples per row) and on phones
+const frames = {
+  1: [{ width: 450, height: 300, sizes: "(min-width: 64rem) min(33vw, 450px), (min-width: 40rem) 45vw, 93vw" }],
+  2: [{ width: 222, height: 300, sizes: "(min-width: 64rem) min(17vw, 222px), (min-width: 40rem) 22vw, 46vw" }],
+  3: [
+    { width: 300, height: 300, sizes: "(min-width: 64rem) min(22vw, 300px), (min-width: 40rem) 29vw, 61vw" },
+    { width: 150, height: 150, sizes: "(min-width: 64rem) min(11vw, 150px), (min-width: 40rem) 15vw, 31vw" },
+  ],
+};
+const shape = frames[Math.min(names.length, 3) as 1 | 2 | 3];
+const photo = (name: Props["names"][number], index: number) => ({
   name,
-  width: 640,
-  height: 480,
+  ...(shape[index] ?? shape[shape.length - 1]),
   caption: false,
   fill: true,
 });
@@ -31,13 +42,13 @@ const photo = (name: Props["names"][number]) => ({
     Array.isArray(zoom) ? (
       names.map((name, index) => (
         <ImageZoom {...zoom[index]}>
-          <Photo {...photo(name)} />
+          <Photo {...photo(name, index)} />
         </ImageZoom>
       ))
     ) : (
       <ImageZoom {...zoom}>
-        {names.map((name) => (
-          <Photo {...photo(name)} />
+        {names.map((name, index) => (
+          <Photo {...photo(name, index)} />
         ))}
       </ImageZoom>
     )

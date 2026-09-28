@@ -10,14 +10,54 @@ import type { PhotoName } from "@data/photos";
 
 type LocalPhoto = Exclude<PhotoName, "blueMarble">;
 
-// The wall of the intro: every shape of photo, cropped to fit its tile; the zoom unfolds each crop
-const wall: { name: LocalPhoto; width: number; tile: string }[] = [
-  { name: "cosmicCliffs", width: 1400, tile: "cliffs" },
-  { name: "apollo11Liftoff", width: 700, tile: "liftoff" },
-  { name: "hubbleServicing", width: 900, tile: "hubble" },
-  { name: "endeavourDocked", width: 900, tile: "endeavour" },
-  { name: "milkyWayCore", width: 1400, tile: "milky-way" },
-  { name: "curiosityPanorama", width: 1400, tile: "panorama" },
+// The wall of the intro: every shape of photo, cropped to fit its tile; the zoom unfolds each crop.
+// A tile changes shape between phones (two columns) and from 48rem (six columns), so each screen
+// gets its own crop: the tightest one that still holds every shape the tile takes there, or the
+// whole photo when the tile is sometimes wider and sometimes taller than it. sizes follow the width
+// the tile needs with the crop of object-fit: cover
+type Crop = { width: number; height?: number; sizes: string };
+const desktop = "(min-width: 48rem)";
+// priority: the largest image of the first screen (LCP), the cliffs from 48rem and the rocket on
+// phones, fetched first
+const wall: { name: LocalPhoto; tile: string; phone: Crop; wide: Crop; priority?: boolean }[] = [
+  {
+    name: "cosmicCliffs",
+    tile: "cliffs",
+    priority: true,
+    phone: { width: 720, height: 329, sizes: "94vw" },
+    wide: { width: 710, height: 458, sizes: "min(60vw, 710px)" },
+  },
+  {
+    name: "apollo11Liftoff",
+    tile: "liftoff",
+    priority: true,
+    phone: { width: 356, sizes: "51vw" },
+    wide: { width: 228, height: 456, sizes: "min(19vw, 228px)" },
+  },
+  {
+    name: "hubbleServicing",
+    tile: "hubble",
+    phone: { width: 356, sizes: "54vw" },
+    wide: { width: 424, height: 267, sizes: "min(31vw, 424px)" },
+  },
+  {
+    name: "endeavourDocked",
+    tile: "endeavour",
+    phone: { width: 356, sizes: "54vw" },
+    wide: { width: 424, height: 267, sizes: "min(31vw, 424px)" },
+  },
+  {
+    name: "milkyWayCore",
+    tile: "milky-way",
+    phone: { width: 720, height: 329, sizes: "94vw" },
+    wide: { width: 640, height: 264, sizes: "min(47vw, 640px)" },
+  },
+  {
+    name: "curiosityPanorama",
+    tile: "panorama",
+    phone: { width: 720, height: 192, sizes: "min(134vw, 720px)" },
+    wide: { width: 706, height: 224, sizes: "min(59vw, 706px)" },
+  },
 ];
 
 const deepSky: LocalPhoto[] = [
@@ -100,14 +140,16 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
     <ImageZoom>
       <div class="wall wide">
         {
-          wall.map(({ name, width, tile }) => (
+          wall.map(({ name, tile, phone, wide, priority }) => (
             <div class:list={["tile", tile]}>
               <Photo
                 name={name}
-                width={width}
+                {...phone}
+                sources={[{ media: desktop, ...wide }]}
                 caption={false}
                 fill
                 loading="eager"
+                fetchpriority={priority ? "high" : undefined}
               />
             </div>
           ))
@@ -130,10 +172,9 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
             <ImageZoom>
               <Photo
                 name="earthrise"
-                width={1280}
-                height={853}
-                widths={[640, 1280]}
-                sizes="(min-width: 64rem) 38rem, 100vw"
+                width={608}
+                height={405}
+                sizes="(min-width: 40rem) 608px, calc(100vw - 2.5rem)"
               />
             </ImageZoom>
             <p>
@@ -152,7 +193,13 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
           <ImageZoom>
             <div class="deep-sky">
               {deepSky.map((name) => (
-                <Photo name={name} width={480} height={480} caption={false} />
+                <Photo
+                  name={name}
+                  width={200}
+                  height={200}
+                  sizes="(min-width: 40rem) 200px, 46vw"
+                  caption={false}
+                />
               ))}
             </div>
           </ImageZoom>
@@ -169,7 +216,13 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
               <ImageZoom>
                 <div class="group-photos">
                   {names.map((name) => (
-                    <Photo name={name} width={640} height={480} caption={false} />
+                    <Photo
+                      name={name}
+                      width={260}
+                      height={195}
+                      sizes="(min-width: 56rem) min(20vw, 260px), 29vw"
+                      caption={false}
+                    />
                   ))}
                 </div>
               </ImageZoom>
