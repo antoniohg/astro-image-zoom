@@ -221,14 +221,14 @@ You can override the default styles using CSS variables:
   /* Layout */
   --zoom-padding: 0; /* space between the zoomed image and the screen edges */
   --zoom-image-radius: 0; /* corners of the zoomed image */
-  --zoom-button-size: 44px; /* arrows and close button */
+  --zoom-button-size: 40px; /* arrows and close button; 36px on phones */
   --zoom-button-radius: 999px; /* shape of the buttons and the navigation bar */
-  --zoom-controls-offset: 20px; /* distance from the controls and the caption to the edges */
-  --zoom-caption-max-width: 70%; /* 90% on phones */
+  --zoom-controls-offset: 16px; /* distance from the controls and the caption to the edges; 12px on phones */
+  --zoom-caption-max-width: 70%; /* 100% on phones */
   --zoom-caption-font: inherit; /* the font of your site */
-  --zoom-caption-font-size: 13px;
+  --zoom-caption-font-size: 13px; /* 12px on phones */
   --zoom-color-scheme: light dark; /* set "dark" or "light" to follow your own theme toggle */
-  --zoom-caption-radius: 6px;
+  --zoom-caption-radius: 10px;
 }
 ```
 

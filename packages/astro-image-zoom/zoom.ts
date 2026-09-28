@@ -54,7 +54,7 @@ const CAPTION_POSITIONS = ['bottom', 'top'];
 const NAVIGATION_LAYOUTS = ['bar', 'sides'];
 
 // The CSS animations of the overlay that open() and close() wait for
-const OPEN_ANIMATIONS = ['astro-image-zoom-in', 'astro-image-zoom-backdrop-in'];
+const OPEN_ANIMATIONS = ['astro-image-zoom-in', 'astro-image-zoom-backdrop-in', 'astro-image-zoom-controls-in'];
 const CLOSE_ANIMATIONS = ['astro-image-zoom-out', 'astro-image-zoom-backdrop-out'];
 // How long (ms) a requested slide counts as the target while the smooth scroll runs
 const SCROLL_TARGET_TTL = 500;
