@@ -57,6 +57,8 @@
     --color-text-muted: light-dark(#4f5460, #a3a9b8);
     --color-accent: light-dark(#8a4d00, #ffb454);
     --color-rule: light-dark(#cfd3da, #292e3c);
+    /* Orange of the logo; darker in light mode for contrast (4.5:1 on --color-bg) */
+    --color-logo: light-dark(#c43e00, #ff5d01);
 
     /* Zoom component theme */
     --zoom-bg: light-dark(rgb(238 239 242 / 0.98), rgb(16 19 27 / 0.97));
@@ -281,6 +283,13 @@
     font-variation-settings: var(--heading-width);
     letter-spacing: -0.01em;
     text-decoration: none;
+    white-space: nowrap;
+  }
+
+  /* The last word, a size up, as if zoomed */
+  .logo-zoom {
+    color: var(--color-logo);
+    font-size: 1.18em;
   }
 
   .header-nav ul {
