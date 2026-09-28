@@ -48,7 +48,9 @@ const shareImageUrl = new URL(shareImage.src, Astro.site);
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content={share.alt} />
     <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href={`${base}favicon.ico`} sizes="32x32" />
     <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={`${base}apple-touch-icon.png`} />
     <Font cssVariable="--font-archivo" preload />
     <Font cssVariable="--font-plex-mono" preload />
   </head>
