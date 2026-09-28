@@ -169,6 +169,13 @@ export const props: ReferenceRow[] = [
     default: "\"bottom\"",
   },
   {
+    name: "ignore",
+    description:
+      "Images left out of the zoom and the gallery: simple selectors (tag, `.class`, `#id`, `[attribute]`) matched on each image and the elements around it",
+    type: "string",
+    default: "\"\"",
+  },
+  {
     name: "closeOnBackdrop",
     description: "A click beside the image closes it",
     type: "boolean",
@@ -207,6 +214,6 @@ export const attributes: ReferenceRow[] = [
   {
     name: "data-zoom-ignore",
     description:
-      "On an image or any element around it: left out of the zoom and the gallery, for logos, icons and decorative images",
+      "On an image or any element around it: left out of the zoom and the gallery, like the `ignore` prop for a single image",
   },
 ];

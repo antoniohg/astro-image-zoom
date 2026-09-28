@@ -96,6 +96,24 @@ describe('<ImageZoom>', () => {
     );
   });
 
+  it('leaves out the images of the ignore prop and hands the selectors to the client', async () => {
+    const { html, attributes } = await render(
+      { ignore: ".logo, [alt='']" },
+      '<img class="logo" src="/logo.svg" alt="Logo"><img src="/deco.jpg" alt=""><img src="/photo.jpg" alt="A photo">'
+    );
+    expect(attributes.get('data-ignore')).toBe(".logo, [alt='']");
+    expect(html).toContain('<img class="logo" src="/logo.svg" alt="Logo"><img src="/deco.jpg" alt="">');
+    expect(html.match(/data-zoom-generated/g)).toHaveLength(1);
+  });
+
+  it('renders no data-ignore without the prop', async () => {
+    expect((await render()).attributes.has('data-ignore')).toBe(false);
+  });
+
+  it('fails the build on a selector the server cannot match', async () => {
+    await expect(render({ ignore: 'article img' })).rejects.toThrow(/unsupported selector/);
+  });
+
   it('declares its display in its own shadow root, with no stylesheet on the page', async () => {
     const { html } = await render();
     expect(html).toMatch(

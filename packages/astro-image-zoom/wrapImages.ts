@@ -55,16 +55,82 @@ function wrap(html: string, image: Attributes): string {
   return `<a href="${escapeQuotes(src)}" data-zoom-generated${captionAttribute} aria-label="${escapeQuotes(label)}">${html}</a>`;
 }
 
-// Elements without a closing tag: data-zoom-ignore on them never opens a scope
+// Elements without a closing tag: a match on them never opens an ignored scope
 const VOID_ELEMENTS = new Set([
   'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'
 ]);
 
-export function wrapImages(html: string): string {
+/**
+ * One compound selector: an optional tag name, then classes, ids and attributes, such as
+ * `img.logo[alt=""]`. The server has no DOM, so combinators and pseudo-classes are not supported.
+ */
+export interface Selector {
+  tag?: string;
+  classes: string[];
+  ids: string[];
+  attributes: { name: string; value?: string }[];
+}
+
+const SIMPLE = /\.([\w-]+)|#([\w-]+)|\[\s*([\w:-]+)\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|([^\]\s"']+))\s*)?\]/y;
+
+function parseSelector(source: string): Selector {
+  const text = source.trim();
+  const selector: Selector = { classes: [], ids: [], attributes: [] };
+  const tag = /^(?:[a-zA-Z][\w-]*|\*)/.exec(text);
+  let index = 0;
+  if (tag) {
+    if (tag[0] !== '*') selector.tag = tag[0].toLowerCase();
+    index = tag[0].length;
+  }
+  while (index < text.length) {
+    SIMPLE.lastIndex = index;
+    const match = SIMPLE.exec(text);
+    if (!match) {
+      throw new Error(
+        `astro-image-zoom: unsupported selector in "ignore": "${source.trim()}". Use tag names, ` +
+          '.classes, #ids and [attributes] (with or without =value), without spaces or combinators.'
+      );
+    }
+    const [, className, id, name, double, single, bare] = match;
+    if (className) selector.classes.push(className);
+    else if (id) selector.ids.push(id);
+    else selector.attributes.push({ name: name.toLowerCase(), value: double ?? single ?? bare });
+    index = SIMPLE.lastIndex;
+  }
+  return selector;
+}
+
+/** Parses the ignore prop, a list of simple selectors separated by commas */
+export function parseIgnore(ignore = ''): Selector[] {
+  // A trailing comma is forgiven
+  return ignore.split(',').filter((part) => part.trim()).map(parseSelector);
+}
+
+// data-zoom-ignore always leaves an image out, with or without the ignore prop
+const ALWAYS_IGNORED: Selector = { classes: [], ids: [], attributes: [{ name: 'data-zoom-ignore' }] };
+
+function matches(name: string, attributes: Attributes, selector: Selector): boolean {
+  if (selector.tag && selector.tag !== name) return false;
+  const classes = (attributes.get('class') ?? '').split(/\s+/);
+  return (
+    selector.classes.every((className) => classes.includes(className)) &&
+    selector.ids.every((id) => attributes.get('id') === id) &&
+    selector.attributes.every(
+      ({ name: attribute, value }) =>
+        attributes.has(attribute) && (value === undefined || attributes.get(attribute) === value)
+    )
+  );
+}
+
+export function wrapImages(html: string, ignore: Selector[] = []): string {
+  const selectors = [ALWAYS_IGNORED, ...ignore];
+  const isIgnored = (name: string, attributes: Attributes): boolean =>
+    selectors.some((selector) => matches(name, attributes, selector));
+
   let output = '';
   let cursor = 0;
   let anchorDepth = 0;
-  // Inside an element with data-zoom-ignore: its name, and how deep elements of that name nest in it
+  // Inside an ignored element: its name, and how deep elements of that name nest in it
   let ignored: { name: string; depth: number } | null = null;
   // A <picture> is wrapped as a whole: <a> is not valid inside it
   let picture: { start: number; image?: Attributes } | null = null;
@@ -87,7 +153,7 @@ export function wrapImages(html: string): string {
       !closing &&
       !VOID_ELEMENTS.has(name) &&
       !/\/\s*$/.test(rawAttributes) &&
-      parseAttributes(rawAttributes).has('data-zoom-ignore')
+      isIgnored(name, parseAttributes(rawAttributes))
     ) {
       ignored = { name, depth: 1 };
       continue;
@@ -114,7 +180,7 @@ export function wrapImages(html: string): string {
       }
     } else if (name === 'img' && !closing) {
       const image = parseAttributes(rawAttributes);
-      if (image.has('data-zoom-ignore')) {
+      if (isIgnored('img', image)) {
         // An ignored image leaves its <picture> unwrapped too
         if (picture) picture = null;
       } else if (picture) {

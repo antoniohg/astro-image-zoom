@@ -151,6 +151,19 @@ const image = (name: string) => `${base}images/${name}.svg`;
         </ImageZoom>
       </section>
 
+      <section id="ignore-prop">
+        <h2>Images left out with the ignore prop</h2>
+        <ImageZoom ignore=".logo, [alt=''], .sidebar">
+          <img src={image("square")} alt="Kept one" />
+          <img class="logo" src={image("wide")} alt="Logo" />
+          <img src={image("portrait")} alt="" />
+          <div class="sidebar">
+            <a href={image("landscape")} data-zoom><img src={image("landscape")} alt="Sidebar link" /></a>
+          </div>
+          <img src={image("landscape")} alt="Kept two" />
+        </ImageZoom>
+      </section>
+
       <section id="site-layout">
         <h2>Laid out by the site</h2>
         <ImageZoom class="site-grid">

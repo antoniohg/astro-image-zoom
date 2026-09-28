@@ -114,18 +114,35 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 
 ### Leaving Images Out
 
-Add `data-zoom-ignore` to an image, or to any element around it, to keep it out of the zoom: it is
-not wrapped in a link, does not open, and does not count in the gallery. Useful for logos, icons
-and decorative images inside an article.
+Logos, icons, avatars and decorative images inside a wrapped article should not zoom. List them in
+the `ignore` prop: an ignored image is not wrapped in a link, does not open, and does not count in
+the gallery.
 
 ```astro
-<ImageZoom>
+<ImageZoom ignore=".logo, .author, [alt='']">
   <img src="/photo.jpg" alt="Harbor at dawn" />
-  <img src="/signature.svg" alt="" data-zoom-ignore />
-  <aside data-zoom-ignore>
-    <img src="/author.jpg" alt="The author" />
+  <img class="logo" src="/logo.svg" alt="Harbor Co." />
+  <img src="/divider.svg" alt="" />
+  <aside class="author">
+    <img src="/avatar.jpg" alt="The author" />
   </aside>
 </ImageZoom>
+```
+
+Each selector is checked against the image and every element around it inside `<ImageZoom>`, so
+`.author` leaves out every image in the aside. `[alt='']` leaves out the images marked as
+decorative, which screen readers skip too.
+
+The images are wrapped on the server, without a DOM, so `ignore` takes simple selectors only: a tag
+name, `.classes`, `#ids` and `[attributes]`, with or without `=value`, combined as in
+`img.logo[alt='']`. Spaces, combinators (`article img`, `>`) and pseudo-classes fail the build with
+an error that names the selector.
+
+For a single image, `data-zoom-ignore` on the image or on an element around it does the same without
+the prop:
+
+```astro
+<img src="/signature.svg" alt="Signature" data-zoom-ignore />
 ```
 
 A link with `data-zoom` inside an ignored element stays a plain link.
@@ -215,6 +232,7 @@ const optimizedImage = await getImage({
 | `showCounter` | `boolean` | `true` | Show the position in the gallery, such as "3 / 8" |
 | `showCaption` | `boolean` | `true` | Show the caption of the zoomed image |
 | `captionPosition` | `'bottom' \| 'top'` | `'bottom'` | Where the caption sits on the screen |
+| `ignore` | `string` | `''` | Images left out of the zoom: simple selectors separated by commas, such as `".logo, [alt='']"` ([Leaving Images Out](#leaving-images-out)) |
 | `class` | `string` | `''` | Custom CSS class |
 
 ### Custom Styling
@@ -426,7 +444,9 @@ itself:
 ```
 
 `ZoomClass` reads the options from the `data-*` attributes that `<ImageZoom>` renders; the theme and
-the duration come from the `--zoom-*` variables.
+the duration come from the `--zoom-*` variables. Without `<ImageZoom>`, `data-ignore` on the wrapper
+takes any CSS selector, since the browser matches it; images are not wrapped then, so only links
+with `data-zoom` count.
 
 ## Examples
 

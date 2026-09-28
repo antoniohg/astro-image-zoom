@@ -314,8 +314,7 @@ class Zoom {
     const links = this.wrapper.querySelectorAll<HTMLAnchorElement>('a[data-zoom-generated], a[data-zoom]');
 
     this.state.images = Array.from(links)
-      // data-zoom-ignore on a link, on its image or around it leaves it out of the zoom and the gallery
-      .filter((anchor) => !anchor.closest('[data-zoom-ignore]') && !anchor.querySelector('img[data-zoom-ignore]'))
+      .filter((anchor) => !this.isIgnored(anchor))
       .map((anchor) => {
         const img = anchor.querySelector('img');
         return {
@@ -326,6 +325,22 @@ class Zoom {
         };
       })
       .filter(({ src }) => src);
+  }
+
+  // data-zoom-ignore, or a selector of the ignore prop, on the image of a link or on an element
+  // around it, up to the wrapper, leaves the link out of the zoom and the gallery. The generated
+  // links are the images the server kept: matching them here, with the new <a> in between, could
+  // leave out images the server wrapped. Only the site's own links with data-zoom are checked
+  private isIgnored(anchor: HTMLAnchorElement): boolean {
+    if (anchor.hasAttribute('data-zoom-generated')) return false;
+    const selectors = ['[data-zoom-ignore]', this.wrapper.dataset.ignore].filter(Boolean).join(', ');
+    try {
+      const match = (anchor.querySelector('img') ?? anchor).closest(selectors);
+      return match !== null && match !== this.wrapper && this.wrapper.contains(match);
+    } catch {
+      // An invalid selector: ImageZoom.astro rejects them at build time, ZoomClass users may not
+      return false;
+    }
   }
 
   private setupEventListeners(): void {

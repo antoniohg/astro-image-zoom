@@ -400,6 +400,23 @@ test.describe('gallery', () => {
     await expect(page).toHaveURL(/portrait\.svg$/);
   });
 
+  test('leaves the images of the ignore prop out of the zoom and the gallery', async ({ page }) => {
+    // The server wraps only the two kept images; the link with data-zoom is the site's own
+    await expect(links(page, 'ignore-prop')).toHaveCount(3);
+    await expect(page.getByRole('link', { name: /Logo/ })).toHaveCount(0);
+
+    await openZoom(page, 'ignore-prop');
+    await expect(counter(page)).toHaveText('1 / 2');
+    await page.keyboard.press('ArrowRight');
+    await expect(zoomedImage(page)).toHaveAttribute('src', /landscape\.svg$/);
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+
+    // The client leaves out the link inside .sidebar too: it navigates
+    await page.locator('#ignore-prop .sidebar a').click();
+    await expect(page).toHaveURL(/landscape\.svg$/);
+  });
+
   test('places the caption at the top and the arrows at the sides', async ({ page }) => {
     await openZoom(page, 'layout');
     const viewport = page.viewportSize()!;
