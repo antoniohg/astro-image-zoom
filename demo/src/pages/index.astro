@@ -1,0 +1,437 @@
+---
+import ImageZoom from "astro-image-zoom/ImageZoom.astro";
+import Layout from "@layouts/Layout.astro";
+import Section from "@components/Section.astro";
+import Case from "@components/Case.astro";
+import CodeSample from "@components/CodeSample.astro";
+import Photo from "@components/Photo.astro";
+import { Icon } from "astro-icon/components";
+import type { PhotoName } from "@data/photos";
+
+type LocalPhoto = Exclude<PhotoName, "blueMarble">;
+
+// The wall of the intro: every shape of photo, cropped to fit its tile; the zoom unfolds each crop
+const wall: { name: LocalPhoto; width: number; tile: string }[] = [
+  { name: "cosmicCliffs", width: 1400, tile: "cliffs" },
+  { name: "apollo11Liftoff", width: 700, tile: "liftoff" },
+  { name: "hubbleServicing", width: 900, tile: "hubble" },
+  { name: "endeavourDocked", width: 900, tile: "endeavour" },
+  { name: "milkyWayCore", width: 1400, tile: "milky-way" },
+  { name: "curiosityPanorama", width: 1400, tile: "panorama" },
+];
+
+const deepSky: LocalPhoto[] = [
+  "deepField",
+  "sombrero",
+  "bubble",
+  "horsehead",
+  "lagoon",
+  "casA",
+  "whirlpool",
+  "helix",
+];
+
+const galleries: { title: string; names: LocalPhoto[] }[] = [
+  {
+    title: "Earth from orbit",
+    names: ["aurora", "helene", "mediterraneanNight"],
+  },
+  {
+    title: "Mars",
+    names: ["perseveranceIngenuity", "santaCruz", "threeForks"],
+  },
+  { title: "The Moon", names: ["aldrinWalk", "aldrinFlag", "schmittFlag"] },
+];
+
+const features: { icon: string; title: string; text: string }[] = [
+  {
+    icon: "lucide:keyboard",
+    title: "Keyboard",
+    text: "Tab to a photo and press Enter. The arrow keys move through the gallery, Escape closes, and focus goes back where it was.",
+  },
+  {
+    icon: "lucide:speech",
+    title: "Screen readers",
+    text: "A native dialog with labelled controls. The caption is announced as you move, and every image keeps its alt text.",
+  },
+  {
+    icon: "lucide:hand",
+    title: "Touch and touchpad",
+    text: "Swipe between photos with the inertia of a real carousel. A vertical swipe or a scroll closes the zoom.",
+  },
+  {
+    icon: "lucide:link",
+    title: "Works without JavaScript",
+    text: "Each photo is wrapped in a link to its full-size file, so it still opens before the script loads, or without it.",
+  },
+  {
+    icon: "lucide:shield-check",
+    title: "Safe from your CSS",
+    text: "The overlay lives in a shadow root, so the styles of your site can't break it, and it doesn't style your page: your thumbnails keep your design. You change the zoom on purpose, with CSS variables.",
+  },
+  {
+    icon: "lucide:package",
+    title: "Zero dependencies",
+    text: "One Astro component and a small script. It follows light and dark mode, reduced motion and forced colors.",
+  },
+];
+
+const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
+---
+
+<Layout
+  title="astro-image-zoom: image zoom for Astro"
+  description="An accessible, dependency-free image zoom for Astro. Wrap your images, click, and they zoom from the page like on Medium."
+  current="home"
+>
+  <article class="flow">
+    <header class="hero wide">
+      <h1>Image zoom for Astro</h1>
+      <div class="pitch">
+        <p class="lead">
+          Click any photo on this page. It grows from its place to fill the
+          screen, and a group of photos becomes a gallery you can swipe.
+        </p>
+        <CodeSample code="pnpm add astro-image-zoom@beta" lang="sh" open />
+      </div>
+    </header>
+
+    <!-- The first thing to try: one gallery with a photo of every shape, above the fold -->
+    <ImageZoom>
+      <div class="wall wide">
+        {
+          wall.map(({ name, width, tile }) => (
+            <div class:list={["tile", tile]}>
+              <Photo
+                name={name}
+                width={width}
+                caption={false}
+                fill
+                loading="eager"
+              />
+            </div>
+          ))
+        }
+      </div>
+    </ImageZoom>
+
+    <Section title="Wherever your images are" id="examples" wide>
+      <div class="rows wide">
+        <Case title="Inside an article" id="article">
+          <p slot="description">
+            Photos in the flow of text. The zoom starts from the image itself,
+            so the eye never loses it.
+          </p>
+          <div class="article">
+            <p>
+              On Christmas Eve 1968, Apollo 8 came around the far side of the
+              Moon, and Bill Anders saw the Earth rise over its horizon.
+            </p>
+            <ImageZoom>
+              <Photo
+                name="earthrise"
+                width={1280}
+                height={853}
+                widths={[640, 1280]}
+                sizes="(min-width: 64rem) 38rem, 100vw"
+              />
+            </ImageZoom>
+            <p>
+              He asked for a roll of color film and took the photo in a hurry,
+              before the Earth moved out of the window.
+            </p>
+          </div>
+        </Case>
+
+        <Case title="A gallery" id="galleries">
+          <p slot="description">
+            All the images inside one <code>{`<ImageZoom>`}</code> form a
+            gallery. Move with the arrows, the <kbd>←</kbd>&nbsp;<kbd>→</kbd>
+            keys or a swipe.
+          </p>
+          <ImageZoom>
+            <div class="deep-sky">
+              {deepSky.map((name) => (
+                <Photo name={name} width={480} height={480} caption={false} />
+              ))}
+            </div>
+          </ImageZoom>
+        </Case>
+
+        <Case title="Several galleries" id="several-galleries">
+          <p slot="description">
+            Each <code>{`<ImageZoom>`}</code> is its own gallery: the arrows
+            only move through the photos of the one you opened.
+          </p>
+          {galleries.map(({ title, names }) => (
+            <div class="group">
+              <p class="group-title">{title}</p>
+              <ImageZoom>
+                <div class="group-photos">
+                  {names.map((name) => (
+                    <Photo name={name} width={640} height={480} caption={false} />
+                  ))}
+                </div>
+              </ImageZoom>
+            </div>
+          ))}
+        </Case>
+      </div>
+    </Section>
+
+    <Section title="Built in" id="features" wide>
+      <ul class="features wide" role="list">
+        {features.map(({ icon, title, text }) => (
+          <li>
+            <span class="icon">
+              <Icon name={icon} size={24} aria-hidden="true" />
+            </span>
+            <h3>{title}</h3>
+            <p>{text}</p>
+          </li>
+        ))}
+      </ul>
+    </Section>
+
+    <Section title="Get started" id="usage" wide>
+      <ol class="rows wide" role="list">
+        <li>
+          <Case title="Install" number={1}>
+            <CodeSample code="pnpm add astro-image-zoom@beta" lang="sh" open />
+          </Case>
+        </li>
+        <li>
+          <Case title="Wrap your images" number={2}>
+            <p slot="description">
+              Point <code>data-zoom-src</code> at a full-size version when the
+              image on the page is resized.
+            </p>
+            <CodeSample
+              open
+              code={`---
+import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
+import { Image, getImage } from 'astro:assets';
+import photo from '../assets/earthrise.jpg';
+
+const fullSize = await getImage({ src: photo, width: photo.width });
+---
+<ImageZoom>
+  <Image
+    src={photo}
+    alt="Earth rising above the Moon"
+    width={800}
+    data-zoom-src={fullSize.src}
+  />
+</ImageZoom>`}
+            />
+          </Case>
+        </li>
+        <li>
+          <Case title="Make it yours" number={3}>
+            <p class="next">
+              Options for the navigation, the caption and how it closes;
+              colors, spacing and shapes with CSS variables.
+            </p>
+            <a class="button" href={docs}>Read the docs</a>
+          </Case>
+        </li>
+      </ol>
+    </Section>
+  </article>
+</Layout>
+
+<style>
+  @layer components {
+    /* The title on the left, the pitch and the install command at its foot on the right */
+    .hero {
+      display: grid;
+      gap: 1.5rem 4rem;
+      align-items: end;
+      margin-block-end: clamp(2rem, 5vw, 3.5rem);
+
+      @media (width >= 64rem) {
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+      }
+
+      h1 {
+        font-size: clamp(2.75rem, 1rem + 6vw, 5.75rem);
+        font-weight: 800;
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+      }
+
+      :global(pre) {
+        margin: 0;
+      }
+    }
+
+    .pitch {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    /*
+     * A wall of photos of every shape, each cropped to its tile. The zoom unfolds each crop into
+     * the whole photo, so the wall shows both the gallery and the shapes at once.
+     */
+    .wall {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-auto-rows: clamp(8rem, 30vw, 12rem);
+      gap: 0.5rem;
+
+      @media (width >= 48rem) {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        grid-auto-rows: clamp(9rem, 15vw, 14rem);
+      }
+    }
+
+    /* A grid too, so the photo stretches to fill it */
+    .tile {
+      display: grid;
+      min-block-size: 0;
+
+      &:is(.cliffs, .milky-way, .panorama) {
+        grid-column: span 2;
+      }
+
+      &.liftoff {
+        grid-row: span 2;
+      }
+
+      @media (width >= 48rem) {
+        &.cliffs {
+          grid-area: span 2 / span 3;
+        }
+
+        &:is(.hubble, .endeavour) {
+          grid-column: span 2;
+        }
+
+        &:is(.milky-way, .panorama) {
+          grid-column: span 3;
+        }
+      }
+    }
+
+    /* Rows of cases or steps, split by rules; the rule of the chapter title opens the first one */
+    .rows {
+      display: grid;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+
+      > :global(*) {
+        padding-block: 2rem;
+      }
+
+      > :global(:first-child) {
+        padding-block-start: 1rem;
+      }
+
+      > :global(* + *) {
+        border-block-start: 1px solid var(--color-rule);
+      }
+    }
+
+    /* A column of text, like the page of a blog */
+    .article {
+      display: grid;
+      gap: 1.25rem;
+      max-inline-size: 38rem;
+    }
+
+    .deep-sky {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.5rem;
+
+      @media (width >= 40rem) {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+
+    /* One block per gallery, stacked, so each one reads as a set of its own */
+    .group {
+      display: grid;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: var(--color-surface);
+      border-radius: var(--radius);
+    }
+
+    .group-title {
+      font-size: 0.9375rem;
+      font-weight: 600;
+    }
+
+    .group-photos {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.5rem;
+    }
+
+    /* Short notes in up to three columns, split by rules instead of boxes */
+    .features {
+      display: grid;
+      gap: 0 2.5rem;
+      margin: 0;
+      padding: 0;
+
+      @media (width >= 40rem) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      @media (width >= 64rem) {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      li {
+        display: grid;
+        gap: 0.5rem;
+        align-content: start;
+        padding-block: 1.5rem 2rem;
+        border-block-start: 1px solid var(--color-rule);
+      }
+
+      h3 {
+        font-size: 1.125rem;
+      }
+
+      p {
+        color: var(--color-text-muted);
+      }
+    }
+
+    .icon {
+      display: grid;
+      place-items: center;
+      inline-size: 3.25rem;
+      aspect-ratio: 1;
+      margin-block-end: 0.5rem;
+      color: var(--color-accent);
+      background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+      border-radius: 50%;
+    }
+
+    .next {
+      max-inline-size: 36rem;
+      color: var(--color-text-muted);
+    }
+
+    .button {
+      justify-self: start;
+      padding: 0.75rem 1.25rem;
+      font-weight: 700;
+      font-variation-settings: var(--heading-width);
+      text-decoration: none;
+      color: var(--color-bg);
+      background: var(--color-text);
+      border-radius: var(--radius);
+
+      &:hover {
+        background: var(--color-accent);
+      }
+    }
+  }
+</style>

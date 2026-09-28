@@ -1,0 +1,743 @@
+---
+import { Picture, getImage } from "astro:assets";
+import ImageZoom from "astro-image-zoom/ImageZoom.astro";
+import Layout from "@layouts/Layout.astro";
+import Section from "@components/Section.astro";
+import CodeSample from "@components/CodeSample.astro";
+import CssPlayground from "@components/CssPlayground.astro";
+import Example from "@components/Example.astro";
+import ExamplePhotos from "@components/ExamplePhotos.astro";
+import OverlaySketch from "@components/OverlaySketch.astro";
+import Reference from "@components/Reference.astro";
+import TableOfContents from "@components/TableOfContents.astro";
+import Photo from "@components/Photo.astro";
+import { photos, type PhotoName } from "@data/photos";
+import {
+  attributes,
+  colorVariables,
+  layoutVariables,
+  otherVariables,
+  parts,
+  props,
+} from "@data/reference";
+import type { ComponentProps } from "astro/types";
+
+type LocalPhoto = Exclude<PhotoName, "blueMarble">;
+
+type ExampleData = Omit<ComponentProps<typeof Example>, "level"> & {
+  names: LocalPhoto[];
+  zoom?: ComponentProps<typeof ExamplePhotos>["zoom"];
+};
+
+// The code of an example made with CSS variables: the rule that sets them
+const cssRule = (selector: string, vars: Record<string, string>) =>
+  `${selector} {\n${Object.entries(vars)
+    .map(([name, value]) => `  ${name}: ${value};`)
+    .join("\n")}\n}`;
+
+// Each option gets a small live demo with its own photos
+const options: ExampleData[] = [
+  {
+    title: "No arrows or counter",
+    description: "Keys and swipes still move through the gallery.",
+    code: "<ImageZoom showNavigation={false}>",
+    sketch: { nav: "none" },
+    names: ["orionEarthMoon", "orionArray", "orionMoon"],
+    zoom: { showNavigation: false },
+  },
+  {
+    title: "No arrow keys",
+    description: "The arrow keys do nothing. Escape still closes.",
+    code: "<ImageZoom keyboardNavigation={false}>",
+    icon: "lucide:keyboard-off",
+    names: ["saturnShadow", "saturn", "pluto"],
+    zoom: { keyboardNavigation: false },
+  },
+  {
+    title: "Stays open on a backdrop click",
+    description: "A click on the backdrop does nothing; the close button and Escape still work.",
+    code: "<ImageZoom closeOnBackdrop={false}>",
+    icon: "lucide:square-dashed-mouse-pointer",
+    names: ["edWhite"],
+    zoom: { closeOnBackdrop: false },
+  },
+  {
+    title: "Stays open on an image click",
+    description: "A click on the zoomed image does nothing.",
+    code: "<ImageZoom closeOnImage={false}>",
+    icon: "lucide:square-mouse-pointer",
+    names: ["mccandless"],
+    zoom: { closeOnImage: false },
+  },
+  {
+    title: "Stays open while scrolling",
+    description: "Scrolling or a vertical swipe doesn't close it.",
+    code: "<ImageZoom closeOnScroll={false}>",
+    icon: "lucide:mouse",
+    names: ["issArrays"],
+    zoom: { closeOnScroll: false },
+  },
+];
+
+// Props for the navigation and the caption, CSS variables around the gallery for the rest
+const navigation: ExampleData[] = [
+  {
+    title: "Arrows at the sides",
+    description: "The arrows move to the screen edges; the counter stays at the bottom.",
+    code: `<ImageZoom navigationLayout="sides">`,
+    sketch: { nav: "sides", highlight: ["nav"] },
+    names: ["gordiiFossae", "arabiaTerra", "galeDaybreak"],
+    zoom: { navigationLayout: "sides" },
+  },
+  {
+    title: "No counter",
+    description: "Only the arrows in the bar, without the position in the gallery.",
+    code: "<ImageZoom showCounter={false}>",
+    sketch: { counter: false, highlight: ["nav"] },
+    names: ["seoulNight", "beanLadder"],
+    zoom: { showCounter: false },
+  },
+];
+
+const captions: ExampleData[] = [
+  {
+    title: "Caption at the top",
+    description: "Useful when the bottom of the photos holds the subject.",
+    code: `<ImageZoom captionPosition="top">`,
+    sketch: { caption: "top", highlight: ["caption"] },
+    names: ["milton"],
+    zoom: { captionPosition: "top" },
+  },
+  {
+    title: "No caption",
+    description: "For photos that speak for themselves. The image keeps its alt text.",
+    code: "<ImageZoom showCaption={false}>",
+    sketch: { caption: "none" },
+    names: ["bootprint"],
+    zoom: { showCaption: false },
+  },
+];
+
+const framed = { "--zoom-padding": "6vmin", "--zoom-image-radius": "16px" };
+const customControls = {
+  "--zoom-button-size": "38px",
+  "--zoom-button-radius": "2px",
+  "--zoom-caption-radius": "0",
+  "--zoom-controls-offset": "0.75rem",
+  "--zoom-caption-bg": "#ffb454",
+  "--zoom-caption-color": "#131722",
+};
+
+const spacing: ExampleData[] = [
+  {
+    title: "Padding and corners",
+    description: "Room around the zoomed image, and rounded corners.",
+    code: cssRule(".framed", framed),
+    lang: "css",
+    vars: framed,
+    sketch: { padded: true, highlight: ["image"] },
+    names: ["auroraAustralis"],
+  },
+  {
+    title: "Buttons and caption",
+    description: "Square buttons, a flat caption in the accent color, everything closer to the edges.",
+    code: cssRule(".custom-controls", customControls),
+    lang: "css",
+    vars: customControls,
+    sketch: { square: true, highlight: ["close", "nav", "caption"] },
+    names: ["auroraRed", "starsSetting"],
+  },
+];
+
+// The <Picture> example builds its own full-size version
+const sunflowerFull = await getImage({
+  src: photos.sunflower.src,
+  width: photos.sunflower.src.width,
+  format: "webp",
+});
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+
+// Public domain image from NASA, loaded from its own server
+const remote = {
+  src: "https://images-assets.nasa.gov/image/PIA15985/PIA15985~large.jpg",
+  alt: "Pillar of gas and dust in the Carina Nebula, photographed by Hubble",
+  caption: "Mystic Mountain in the Carina Nebula — Hubble",
+};
+
+const toc: ComponentProps<typeof TableOfContents>["entries"] = [
+  {
+    id: "usage",
+    title: "Usage",
+    children: [
+      { id: "sources", title: "Image sources" },
+      { id: "nested", title: "Nested markup" },
+    ],
+  },
+  { id: "options", title: "Options" },
+  {
+    id: "layout",
+    title: "Layout",
+    children: [
+      { id: "navigation", title: "Navigation" },
+      { id: "caption", title: "Caption" },
+      { id: "layout-variables", title: "Spacing and controls" },
+    ],
+  },
+  {
+    id: "theming",
+    title: "Theming",
+    children: [
+      { id: "playground", title: "Playground" },
+      { id: "theme-prop", title: "The theme prop" },
+      { id: "css-variables", title: "CSS variables" },
+      { id: "parts", title: "Parts" },
+    ],
+  },
+  { id: "api", title: "API" },
+];
+---
+
+<Layout
+  title="Docs · astro-image-zoom"
+  description="Options, layout, theming, CSS variables and the API of astro-image-zoom, with live examples."
+  current="docs"
+>
+  <div class="docs">
+    <header class="intro">
+      <h1>Docs</h1>
+      <p class="lead">
+        Everything <code>{`<ImageZoom>`}</code> can do, with a live example for
+        each option. Every image on this page opens.
+      </p>
+    </header>
+
+    <TableOfContents entries={toc} />
+
+    <article class="flow content">
+      <!-- Usage -->
+      <Section title="Usage" id="usage">
+        <CodeSample code="pnpm add astro-image-zoom@beta" lang="sh" open />
+        <p>
+          Put <code>{`<ImageZoom>`}</code> around any markup with images. It
+          wraps each one in a link to its full-size file, so without JavaScript
+          the link still opens the image.
+        </p>
+        <CodeSample
+          open
+          code={`---
+import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
+import { Image, getImage } from 'astro:assets';
+import photo from '../assets/earthrise.jpg';
+
+// Full-size version for the zoom
+const fullSize = await getImage({ src: photo, width: photo.width });
+---
+<ImageZoom>
+  <Image src={photo} alt="Earth rising above the Moon" width={800}
+    data-zoom-src={fullSize.src} data-zoom-caption="Earthrise — Apollo 8, 1968" />
+</ImageZoom>`}
+        />
+        <div class="note">
+          <p>
+            <strong>
+              Why <code>data-zoom-src</code>?
+            </strong>{" "}
+            Astro's <code>{`<Image width={800}>`}</code> generates an
+            800&nbsp;px file, and the zoom would blow that small file up. Point
+            <code>data-zoom-src</code> at a bigger version. Plain{" "}
+            <code>{`<img>`}</code> tags don't need it: the zoom opens the same
+            file.
+          </p>
+        </div>
+        <div class="note">
+          <p>
+            <strong>Your thumbnails, your styles.</strong> The component doesn't
+            style the images on your page, not even their focus ring. Each one
+            gets an inline <code>{`<a data-zoom-generated>`}</code> with your
+            link styles, and if your images are <code>display: block</code>, the
+            outline of that link doesn't wrap them. Draw your focus ring on the
+            image instead, as this page does, and add a zoom cursor if you like.
+          </p>
+          <CodeSample
+            lang="css"
+            code={`a[data-zoom-generated]:focus-visible {
+  outline: none;
+}
+
+a[data-zoom-generated]:focus-visible img {
+  outline: 2px solid green; /* your focus ring */
+  outline-offset: 3px; /* negative if a parent with overflow: hidden clips it */
+}
+
+a[data-zoom-generated] img {
+  cursor: zoom-in;
+}`}
+          />
+        </div>
+
+        <Section title="Image sources" id="sources" level={3}>
+          <p>
+            Astro's <code>{`<Image>`}</code> and <code>{`<Picture>`}</code>, a
+            plain <code>{`<img>`}</code>
+            from <code>public/</code>, or an image on another server.
+          </p>
+          <p>
+            Prefer <code>{`<Image>`}</code> or <code>{`<Picture>`}</code>: Astro
+            resizes and compresses them, so the page loads light images and the
+            zoom fetches the full size only when it opens. Plain
+            <code>{`<img>`}</code> tags work just as well, but they ship
+            whatever file you give them.
+          </p>
+          <ImageZoom>
+            <div class="sources">
+              <div class="source">
+                <Photo
+                  name="pillars"
+                  width={640}
+                  height={480}
+                  caption={false}
+                />
+                <p class="label">
+                  <code>{`<Image>`}</code> · Pillars of Creation
+                </p>
+              </div>
+              <div class="source">
+                <Picture
+                  src={photos.sunflower.src}
+                  alt={photos.sunflower.alt}
+                  widths={[640]}
+                  height={480}
+                  formats={["avif", "webp"]}
+                  data-zoom-src={sunflowerFull.src}
+                  data-zoom-caption={`${photos.sunflower.caption} — ${photos.sunflower.mission}`}
+                />
+                <p class="label">
+                  <code>{`<Picture>`}</code> · Sunflower galaxy
+                </p>
+              </div>
+              <div class="source">
+                <img
+                  src={`${base}images/as17-148-22727.jpg`}
+                  alt={photos.blueMarble.alt}
+                  width="2560"
+                  height="2560"
+                  loading="lazy"
+                  decoding="async"
+                  data-zoom-caption={`${photos.blueMarble.caption} — ${photos.blueMarble.mission}, ${photos.blueMarble.year}`}
+                />
+                <p class="label">
+                  <code>{`<img>`}</code> from <code>public/</code> · The Blue
+                  Marble
+                </p>
+              </div>
+              <div class="source">
+                <img
+                  src={remote.src}
+                  alt={remote.alt}
+                  width="1920"
+                  height="1767"
+                  loading="lazy"
+                  decoding="async"
+                  data-zoom-caption={remote.caption}
+                />
+                <p class="label">
+                  Remote <code>{`<img>`}</code> · Mystic Mountain
+                </p>
+              </div>
+            </div>
+          </ImageZoom>
+          <CodeSample
+            code={`<ImageZoom>
+  <Image src={photo} alt="…" width={640} data-zoom-src={fullSize.src} />
+  <Picture src={photo} alt="…" widths={[640]} formats={['avif', 'webp']} data-zoom-src={fullSize.src} />
+  <img src="/images/blue-marble.jpg" alt="…" />
+  <img src="https://images-assets.nasa.gov/image/PIA15985/PIA15985~large.jpg" alt="…" />
+</ImageZoom>`}
+          />
+        </Section>
+
+        <Section title="Nested markup" id="nested" level={3}>
+          <p>
+            Images nested anywhere inside the component zoom too, like in this
+            card.
+          </p>
+          <ImageZoom>
+            <article class="card">
+              <Photo
+                name="apollo11Rollout"
+                width={1200}
+                height={560}
+                caption={false}
+              />
+              <div class="card-body">
+                <p class="label">Photo essay · 4 images</p>
+                <h4>Leaving the pad</h4>
+                <p>
+                  From Mercury capsules to the Space Shuttle: how the early
+                  crews got to space and back.
+                </p>
+                <div class="card-thumbs">
+                  {(
+                    ["glenn", "shepardRescue", "challengerLaunch"] as const
+                  ).map((name) => (
+                    <Photo
+                      name={name}
+                      width={320}
+                      height={240}
+                      caption={false}
+                    />
+                  ))}
+                </div>
+              </div>
+            </article>
+          </ImageZoom>
+        </Section>
+      </Section>
+
+      <!-- Options -->
+      <Section title="Options" id="options">
+        <p>
+          Props change how the zoom moves, closes and animates. Open each
+          example to try it.
+        </p>
+        <ul class="examples" role="list">
+          {options.map(({ names, zoom, ...example }) => (
+            <Example {...example} level={3}>
+              <ExamplePhotos names={names} zoom={zoom} />
+            </Example>
+          ))}
+          <Example
+            title="Faster or slower"
+            description="The length of the zoom in milliseconds: 150 on the left, 800 on the right."
+            code={`<ImageZoom animationDuration={150}>
+<ImageZoom animationDuration={800}>`}
+            icon="lucide:gauge"
+            level={3}
+          >
+            <ExamplePhotos
+              names={["saturnVLaunch", "andromeda"]}
+              zoom={[{ animationDuration: 150 }, { animationDuration: 800 }]}
+            />
+          </Example>
+        </ul>
+      </Section>
+
+      <!-- Layout -->
+      <Section title="Layout" id="layout">
+        <p>
+          Props choose where the navigation and the caption go. Spacing, corners
+          and the size and shape of the controls are CSS variables: set them on
+          any element around an
+          <code>{`<ImageZoom>`}</code> to change that gallery only, or on{" "}
+          <code>:root</code> for the whole site.
+        </p>
+        <figure class="default-layout">
+          <OverlaySketch />
+          <figcaption>
+            <p><strong>The default layout</strong></p>
+            <ul>
+              <li>The close button at the top right</li>
+              <li>The caption at the bottom, over the image</li>
+              <li>
+                A bar with the arrows and the counter, in galleries of more
+                than one photo
+              </li>
+            </ul>
+          </figcaption>
+        </figure>
+
+        <Section title="Navigation" id="navigation" level={3}>
+          <p>
+            By default the arrows and the counter sit together in a bar at the
+            bottom, easy to reach with a thumb.
+          </p>
+          <ul class="examples" role="list">
+            {navigation.map(({ names, zoom, ...example }) => (
+              <Example {...example}>
+                <ExamplePhotos names={names} zoom={zoom} />
+              </Example>
+            ))}
+          </ul>
+        </Section>
+
+        <Section title="Caption" id="caption" level={3}>
+          <p>
+            The caption comes from <code>data-zoom-caption</code>, and sits at
+            the bottom by default.
+          </p>
+          <ul class="examples" role="list">
+            {captions.map(({ names, zoom, ...example }) => (
+              <Example {...example}>
+                <ExamplePhotos names={names} zoom={zoom} />
+              </Example>
+            ))}
+          </ul>
+        </Section>
+
+        <Section title="Spacing and controls" id="layout-variables" level={3}>
+          <ul class="examples" role="list">
+            {spacing.map(({ names, zoom, ...example }) => (
+              <Example {...example}>
+                <ExamplePhotos names={names} zoom={zoom} />
+              </Example>
+            ))}
+          </ul>
+          <Reference rows={layoutVariables} />
+        </Section>
+      </Section>
+
+      <!-- Theming -->
+      <Section title="Theming" id="theming">
+        <p>
+          The overlay follows the light or dark preference of the system. Change
+          its colors for one gallery with the <code>theme</code> prop or with
+          CSS variables around it, or for the whole site with the same variables
+          on <code>:root</code>.
+        </p>
+
+        <Section title="Playground" id="playground" level={3}>
+          <p>
+            Change a value and open a photo. The code to copy updates as you go;
+            the variables only apply to this gallery.
+          </p>
+          <CssPlayground images={["crab", "spirograph"]} />
+        </Section>
+
+        <Section title="The theme prop" id="theme-prop" level={3}>
+          <div class="theme-example">
+            <ImageZoom
+              theme={{
+                backgroundColor: "#050a1a",
+                closeButtonColor: "#8ecbff",
+                navigationColor: "#8ecbff",
+              }}
+            >
+              <Photo name="ngc3274" width={640} height={480} />
+            </ImageZoom>
+            <CodeSample
+              open
+              code={`<ImageZoom theme={{
+  backgroundColor: '#050a1a',
+  closeButtonColor: '#8ecbff',
+  navigationColor: '#8ecbff',
+}}>
+  …
+</ImageZoom>`}
+            />
+          </div>
+        </Section>
+
+        <Section title="CSS variables" id="css-variables" level={3}>
+          <p>
+            When a gallery opens, the overlay takes the <code>--zoom-*</code>{" "}
+            values found around it. The
+            <code>theme</code> prop wins over them.
+          </p>
+          <CodeSample
+            open
+            lang="css"
+            code={`/* The whole site */
+:root {
+  --zoom-bg: rgb(5 8 20 / 0.97);
+}
+
+/* One gallery: <ImageZoom class="portfolio"> */
+.portfolio {
+  --zoom-padding: 5vmin;
+  --zoom-image-radius: 12px;
+}`}
+          />
+          <h4>Colors</h4>
+          <Reference rows={colorVariables} />
+          <h4>Color scheme and motion</h4>
+          <Reference rows={otherVariables} />
+          <p>
+            The layout variables are listed under{" "}
+            <a href="#layout-variables">Spacing and controls</a>.
+          </p>
+        </Section>
+
+        <Section title="Parts" id="parts" level={3}>
+          <p>
+            The overlay lives in a shadow root, so the CSS of your site can't
+            break it: generic rules such as{" "}
+            <code>{`button { all: unset }`}</code> or{" "}
+            <code>{`svg { width: 1em }`}</code> never reach it. The variables
+            cross into it; for anything else, style its parts with
+            <code>::part()</code>.
+          </p>
+          <CodeSample
+            open
+            lang="css"
+            code={`astro-image-zoom-overlay::part(caption) {
+  text-transform: uppercase;
+}`}
+          />
+          <Reference rows={parts} />
+          <p>
+            See the zoom{" "}
+            <a href={`${base}defaults/`}>with its default styles</a>, and with
+            hostile CSS that breaks the rest of the page.
+          </p>
+        </Section>
+      </Section>
+
+      <!-- API -->
+      <Section title="API" id="api">
+        <h3>Props</h3>
+        <Reference rows={props} />
+
+        <h3>Image attributes</h3>
+        <Reference rows={attributes} />
+      </Section>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  @layer components {
+    /* The index on the left, and the content aligned to its right */
+    .docs {
+      display: grid;
+      gap: 2rem 3.5rem;
+      max-inline-size: calc(var(--width-wide) + 2 * var(--gutter));
+      margin-inline: auto;
+      padding-inline: var(--gutter);
+
+      @media (width >= 64rem) {
+        grid-template-columns: 12rem minmax(0, 1fr);
+      }
+    }
+
+    /* Above the index and the content, whatever the screen width */
+    .intro {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: 1rem;
+
+      h1 {
+        font-size: clamp(2.5rem, 1.5rem + 3.5vw, 4rem);
+        line-height: 1;
+        letter-spacing: -0.035em;
+      }
+    }
+
+    /* One column for everything, so text, examples and tables share the same edges */
+    .content {
+      grid-template-columns:
+        [full-start wide-start text-start] minmax(0, 58rem)
+        [text-end wide-end full-end];
+    }
+
+    .note {
+      display: grid;
+      gap: 0.75rem;
+      padding-inline-start: 1.25rem;
+      color: var(--color-text-muted);
+      border-inline-start: 2px solid var(--color-accent);
+
+      strong {
+        color: var(--color-text);
+      }
+    }
+
+    .sources {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+      gap: 1.5rem 1rem;
+
+      /* The plain images keep the shape of their file; the same frame for all four */
+      img {
+        inline-size: 100%;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        border-radius: var(--radius);
+      }
+    }
+
+    .source {
+      display: grid;
+      gap: 0.5rem;
+      align-content: start;
+    }
+
+    /* Two examples per row at most, so every row is full and every card has room */
+    .examples {
+      display: grid;
+      gap: 3rem 2rem;
+      margin: 0;
+      padding: 0;
+
+      @media (width >= 40rem) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    /* The card clips its corners: square photos, and the focus ring inside them */
+    .card {
+      --photo-radius: 0;
+      --focus-offset: -4px;
+
+      overflow: hidden;
+      background: var(--color-surface);
+      border: 1px solid var(--color-rule);
+      border-radius: var(--radius);
+    }
+
+    .card-body {
+      display: grid;
+      gap: 0.5rem;
+      padding: 1.25rem;
+
+      > p:not(.label) {
+        color: var(--color-text-muted);
+      }
+    }
+
+    .card-thumbs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-block-start: 0.5rem;
+    }
+
+    .theme-example {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+      gap: 1rem 1.5rem;
+      align-items: start;
+
+      /* <astro-image-zoom> is display: contents: the photo and the code are the grid items */
+      > :global(*),
+      > :global(astro-image-zoom > *) {
+        min-inline-size: 0;
+      }
+    }
+
+    /* The reference the layout examples change */
+    .default-layout {
+      display: grid;
+      gap: 1rem 2rem;
+      align-items: center;
+      margin: 0;
+
+      @media (width >= 40rem) {
+        grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
+      }
+
+      figcaption {
+        display: grid;
+        gap: 0.5rem;
+        font-size: 0.9375rem;
+      }
+
+      ul {
+        display: grid;
+        gap: 0.25rem;
+        margin: 0;
+        padding-inline-start: 1.25rem;
+        color: var(--color-text-muted);
+      }
+    }
+  }
+</style>

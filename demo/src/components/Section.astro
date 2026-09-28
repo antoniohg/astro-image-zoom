@@ -1,0 +1,76 @@
+---
+interface Props {
+  title: string;
+  id: string;
+  /** Heading level: sections are h2, examples inside them h3 */
+  level?: 2 | 3;
+  /** Heading as wide as the wide column, over content that breaks out of the text */
+  wide?: boolean;
+}
+
+const { title, id, level = 2, wide = false } = Astro.props;
+const Heading = `h${level}` as const;
+---
+
+<section
+  class:list={["section", `level-${level}`, { "wide-heading": wide }]}
+  aria-labelledby={id}
+>
+  <Heading id={id}>{title}</Heading>
+  <slot />
+</section>
+
+<style>
+  @layer components {
+    /*
+     * Keeps the breakout tracks of the page through subgrid: its children are placed like those of
+     * the page (.flow in global.css), so they can be .wide too. Nested sections span them all.
+     */
+    .section {
+      display: grid;
+      grid-column: full;
+      grid-template-columns: subgrid;
+      row-gap: 1.25rem;
+      align-content: start;
+
+      /* Paragraphs keep a readable measure in wide columns */
+      > :global(p) {
+        max-inline-size: 44rem;
+      }
+    }
+
+    .wide-heading > :is(h2, h3) {
+      grid-column: wide;
+    }
+
+    /* Chapters open with a rule; the first one starts at the top of its column */
+    .level-2 {
+      margin-block-start: clamp(5rem, 12vw, 8rem);
+
+      &:first-child {
+        margin-block-start: 0;
+      }
+
+      > h2 {
+        padding-block-start: 1.25rem;
+        font-size: clamp(1.75rem, 1.2rem + 2vw, 2.75rem);
+        border-block-start: 1px solid var(--color-rule);
+      }
+
+      > :global(h3) {
+        margin-block-start: 1rem;
+        font-size: 1.125rem;
+      }
+    }
+
+    .level-3 {
+      margin-block-start: 3.5rem;
+
+      > h3 {
+        padding-block-start: 0.875rem;
+        font-size: 1.25rem;
+        border-block-start: 1px solid var(--color-rule);
+      }
+    }
+  }
+</style>

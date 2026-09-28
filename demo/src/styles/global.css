@@ -1,0 +1,324 @@
+/*
+ * Global styles: reset, tokens, base styles and the grid of the pages. Everything else is scoped to
+ * its component or page.
+ *
+ * Layer order: reset, tokens, base, layout, components. Later layers win. Component and page
+ * <style> blocks use @layer components.
+ */
+
+@layer reset, tokens, base, layout, components;
+
+/* ─── Reset ──────────────────────────────────────────────────────────────── */
+@layer reset {
+  *,
+  ::before,
+  ::after {
+    box-sizing: border-box;
+  }
+
+  :where(body, h1, h2, h3, h4, h5, h6, p, figure, pre, table, dl, dd) {
+    margin: 0;
+  }
+
+  :where(img, picture, svg) {
+    display: block;
+    max-inline-size: 100%;
+  }
+
+  :where(img) {
+    block-size: auto;
+  }
+
+  :where(input, button, select) {
+    font: inherit;
+  }
+}
+
+/* ─── Tokens ─────────────────────────────────────────────────────────────── */
+
+@layer tokens {
+  :root {
+    color-scheme: light dark;
+
+    /* Fonts: --font-archivo and --font-plex-mono come from the fonts config (astro.config.mjs) */
+    --font-sans: var(--font-archivo);
+    --font-mono: var(--font-plex-mono);
+    /* Headings use the same family, expanded: the type widens like a photo that zooms */
+    --heading-width: "wdth" 125;
+
+    /*
+     * Palette: neutral so the photos carry the color. A cool light table in light mode, a
+     * projection room in dark mode, and one amber accent for links and focus. Every text color
+     * is at least 4.5:1 on --color-bg and --color-surface.
+     */
+    --color-bg: light-dark(#eeeff2, #10131b);
+    --color-surface: light-dark(#e3e5ea, #181c27);
+    --color-text: light-dark(#15171d, #e8e9ee);
+    --color-text-muted: light-dark(#4f5460, #a3a9b8);
+    --color-accent: light-dark(#8a4d00, #ffb454);
+    --color-rule: light-dark(#cfd3da, #292e3c);
+
+    /* Zoom component theme */
+    --zoom-bg: light-dark(rgb(238 239 242 / 0.98), rgb(16 19 27 / 0.97));
+    --zoom-close-color: var(--color-text);
+    --zoom-nav-color: var(--color-text);
+    --zoom-caption-color: light-dark(#eeeff2, #10131b);
+    --zoom-caption-bg: light-dark(rgb(21 23 29 / 0.9), rgb(232 233 238 / 0.92));
+    --zoom-caption-font: var(--font-sans);
+    --zoom-caption-font-size: 0.8125rem;
+
+    /*
+     * Focus ring, the same on every element, the zoom controls included. A plain color, set per
+     * scheme below, not light-dark(): code blocks are color-scheme: dark, where the accent would
+     * resolve to its dark value against the light page
+     */
+    --color-focus: #8a4d00;
+    --focus-ring: 2px solid var(--color-focus);
+    --focus-offset: 3px;
+
+    /* Shape */
+    --radius: 2px;
+
+    /* Layout: a column of text, and a wider one for images that break out of it */
+    --width-text: 40rem;
+    --width-wide: 80rem;
+    --gutter: 1.25rem;
+
+    /* Sticky header height, so anchors are not hidden under it, and where sticky boxes stop */
+    --header-offset: 5rem;
+    --sticky-top: calc(var(--header-offset) + 1rem);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-focus: #ffb454;
+    }
+  }
+
+  @media (width >= 48rem) {
+    :root {
+      --gutter: 2rem;
+    }
+  }
+}
+
+/* ─── Base ───────────────────────────────────────────────────────────────── */
+
+@layer base {
+  html {
+    scroll-padding-top: var(--header-offset);
+    -webkit-text-size-adjust: 100%;
+
+    @media (prefers-reduced-motion: no-preference) {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    min-block-size: 100dvh;
+    font-family: var(--font-sans);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: var(--color-text);
+    background: var(--color-bg);
+    accent-color: var(--color-accent);
+  }
+
+  :where(h1, h2, h3, h4) {
+    font-weight: 700;
+    font-variation-settings: var(--heading-width);
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  /* Below h3, never bigger than it */
+  h4 {
+    font-size: 1.0625rem;
+  }
+
+  :where(p, li, dd) {
+    text-wrap: pretty;
+  }
+
+  a {
+    color: inherit;
+    text-decoration-color: color-mix(in oklab, currentColor 45%, transparent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+
+    &:hover {
+      text-decoration-color: var(--color-accent);
+    }
+  }
+
+  :focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-offset);
+  }
+
+  /* The controls of the zoom overlay, through its parts (a rule of their own, so a browser that
+     rejected the selector would not drop the one above) */
+  astro-image-zoom-overlay::part(close):focus-visible,
+  astro-image-zoom-overlay::part(nav):focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-offset);
+  }
+
+  /*
+   * Zoom links: astro-image-zoom wraps each image in an inline link, whose outline doesn't wrap a
+   * block image, so the ring goes on the image. A box that clips it sets a negative --focus-offset
+   */
+  a[data-zoom-generated] {
+    &:focus-visible {
+      outline: none;
+    }
+
+    &:focus-visible img {
+      outline: var(--focus-ring);
+      outline-offset: var(--focus-offset);
+    }
+
+    img {
+      cursor: zoom-in;
+    }
+  }
+
+  :where(code, kbd, pre) {
+    font-family: var(--font-mono);
+  }
+
+  :where(:not(pre) > code, kbd) {
+    padding: 0.1em 0.3em;
+    font-size: 0.85em;
+    background: var(--color-surface);
+    border: 1px solid var(--color-rule);
+    border-radius: var(--radius);
+  }
+
+  pre {
+    padding: 1rem 1.25rem;
+    font-size: 0.8125rem;
+    line-height: 1.65;
+    border: 1px solid var(--color-rule);
+    border-radius: var(--radius);
+    /* Code blocks use the github-dark-default theme in both page themes */
+    color-scheme: dark;
+  }
+
+  /* The introduction under the title of a page */
+  .lead {
+    max-inline-size: 38rem;
+    font-size: clamp(1.125rem, 1rem + 0.5vw, 1.3125rem);
+    color: var(--color-text-muted);
+  }
+
+  /* Small print: labels and photo details */
+  .label {
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-text-muted);
+  }
+}
+
+/* ─── Layout: header, main, footer ───────────────────────────────────────── */
+
+@layer layout {
+  /*
+   * Breakout grid: children sit in the text column; .wide breaks out of it. Sections (Section.astro)
+   * take the same tracks through subgrid, so their children are placed by the same rules.
+   */
+  .flow {
+    --wide-margin: calc((var(--width-wide) - var(--width-text)) / 2);
+
+    display: grid;
+    grid-template-columns:
+      [full-start] minmax(var(--gutter), 1fr)
+      [wide-start] minmax(0, var(--wide-margin))
+      [text-start] min(var(--width-text), 100% - 2 * var(--gutter)) [text-end]
+      minmax(0, var(--wide-margin)) [wide-end]
+      minmax(var(--gutter), 1fr) [full-end];
+  }
+
+  /* <astro-image-zoom> is display: contents, so its children are the grid items */
+  :where(.flow, .section) > *,
+  :where(.flow, .section) > astro-image-zoom > * {
+    grid-column: text;
+  }
+
+  :where(.flow, .section) > .wide,
+  :where(.flow, .section) > astro-image-zoom > .wide {
+    grid-column: wide;
+  }
+
+  /* The site header; articles have their own <header> */
+  body > header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    font-size: 0.9375rem;
+    background: color-mix(in oklab, var(--color-bg) 92%, transparent);
+    border-block-end: 1px solid var(--color-rule);
+    backdrop-filter: blur(8px);
+  }
+
+  .header-content {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1.5rem;
+    /* Same edges as the wide column of the page */
+    max-inline-size: calc(var(--width-wide) + 2 * var(--gutter));
+    margin-inline: auto;
+    padding: 0.875rem var(--gutter);
+  }
+
+  .logo {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    font-variation-settings: var(--heading-width);
+    letter-spacing: -0.01em;
+    text-decoration: none;
+  }
+
+  .header-nav ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    a {
+      color: var(--color-text-muted);
+      text-decoration: none;
+
+      &:hover,
+      &[aria-current="page"] {
+        color: var(--color-text);
+      }
+
+      &[aria-current="page"] {
+        text-decoration: underline;
+        text-decoration-color: var(--color-accent);
+        text-underline-offset: 0.35em;
+      }
+    }
+  }
+
+  main {
+    padding-block: clamp(3rem, 8vw, 6rem) 4rem;
+    /* Nothing wider than the screen makes the page scroll sideways */
+    overflow-x: clip;
+  }
+
+  footer {
+    padding: 2.5rem var(--gutter);
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    text-align: center;
+    border-block-start: 1px solid var(--color-rule);
+  }
+}

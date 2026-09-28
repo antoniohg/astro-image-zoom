@@ -1,0 +1,123 @@
+---
+interface Entry {
+  id: string;
+  title: string;
+}
+
+interface Props {
+  /** Chapters of the page, each with its sections */
+  entries: (Entry & { children?: Entry[] })[];
+}
+
+const { entries } = Astro.props;
+---
+
+<nav class="toc" aria-label="On this page" data-toc>
+  <ol>
+    {entries.map(({ id, title, children = [] }) => (
+      <li>
+        <a href={`#${id}`}>{title}</a>
+        {children.length > 0 && (
+          <ol>
+            {children.map((child) => (
+              <li>
+                <a href={`#${child.id}`}>{child.title}</a>
+              </li>
+            ))}
+          </ol>
+        )}
+      </li>
+    ))}
+  </ol>
+</nav>
+
+<script>
+  // Marks the entry of the index for the section being read: the last heading that has passed
+  // the top third of the screen
+  const links = [...document.querySelectorAll<HTMLAnchorElement>("[data-toc] a")];
+  const entries = links.flatMap((link) => {
+    const heading = document.getElementById(decodeURIComponent(link.hash.slice(1)));
+    return heading ? [{ link, heading }] : [];
+  });
+  let frame = 0;
+
+  const update = () => {
+    frame = 0;
+    const line = window.innerHeight / 3;
+    const current =
+      entries.findLast(({ heading }) => heading.getBoundingClientRect().top <= line) ??
+      entries[0];
+    for (const { link } of entries) {
+      if (link === current?.link) link.setAttribute("aria-current", "location");
+      else link.removeAttribute("aria-current");
+    }
+  };
+
+  const schedule = () => {
+    frame ||= requestAnimationFrame(update);
+  };
+
+  addEventListener("scroll", schedule, { passive: true });
+  addEventListener("resize", schedule, { passive: true });
+  update();
+</script>
+
+<style>
+  @layer components {
+    .toc {
+      font-size: 0.875rem;
+
+      @media (width >= 64rem) {
+        position: sticky;
+        top: var(--sticky-top);
+        align-self: start;
+      }
+
+      ol {
+        display: grid;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      > ol {
+        gap: 0.75rem;
+      }
+
+      ol ol {
+        margin-block-start: 0.25rem;
+      }
+
+      a {
+        display: block;
+        padding-block: 0.1875rem;
+        padding-inline-start: 0.875rem;
+        color: var(--color-text-muted);
+        text-decoration: none;
+        border-inline-start: 2px solid var(--color-rule);
+
+        &:hover {
+          color: var(--color-text);
+        }
+
+        &[aria-current] {
+          color: var(--color-text);
+          border-inline-start-color: var(--color-accent);
+        }
+      }
+
+      ol ol a {
+        padding-inline-start: 1.625rem;
+      }
+
+      /* Chapters in bold; the chapter being read in the text color */
+      > ol > li > a {
+        font-weight: 600;
+      }
+
+      > ol > li:has([aria-current]) > a {
+        color: var(--color-text);
+      }
+    }
+  }
+</style>
