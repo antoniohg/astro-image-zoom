@@ -54,7 +54,26 @@ declare global {
 interface ZoomSlide {
   figure: HTMLElement;
   img: HTMLImageElement;
-  loaded?: Promise<void>;
+  // Resolves when the image can be shown: see loadSlide()
+  ready?: Promise<void>;
+}
+
+// Resolves once the browser knows the size of the image, from its first bytes, long before a large
+// file has loaded; or when the load ends, also in error. There is no event for it, so the frames poll
+function sizeKnown(img: HTMLImageElement, decoded: Promise<void>): Promise<void> {
+  return new Promise((resolve) => {
+    let settled = false;
+    void decoded.then(() => {
+      settled = true;
+      resolve();
+    });
+    const check = () => {
+      if (settled) return;
+      if (img.naturalWidth > 0) resolve();
+      else requestAnimationFrame(check);
+    };
+    check();
+  });
 }
 
 // The custom properties of the overlay. When it opens, it takes the values set around the
@@ -677,26 +696,39 @@ class Zoom {
     for (const slide of this.track.querySelectorAll('.astro-image-zoom-slide')) slide.remove();
   }
 
-  // Loads the image of a slide once; the spinner appears only if the wait is noticeable.
-  // Resolves when the image is decoded, or failed: a broken image is shown as it is.
+  // Starts loading the full-size image of a slide. It is ready as soon as its size is known when the
+  // thumbnail can stand in for it until it decodes, or once it decodes otherwise
   private loadSlide(index: number): Promise<void> {
     const slide = this.slides[index];
+    if (slide.ready) return slide.ready;
 
-    slide.loaded ??= (async () => {
-      slide.img.src = this.state.images[index].src;
-      // The CSS shows the spinner only if the wait lasts
-      slide.figure.classList.add('is-loading');
+    const { img, figure } = slide;
+    img.src = this.state.images[index].src;
+    // The CSS shows the spinner only if the wait lasts
+    figure.classList.add('is-loading');
 
-      try {
-        await slide.img.decode();
-      } catch {
-        // Load error: nothing to do
-      }
+    const decoded = img.decode().catch(() => {
+      // Load error: nothing to do
+    });
+    slide.ready = sizeKnown(img, decoded)
+      .then(() => (this.showPlaceholder(index, img) ? undefined : decoded))
+      .then(() => figure.classList.remove('is-loading'));
+    void decoded.then(() => img.style.removeProperty('background-image'));
 
-      slide.figure.classList.remove('is-loading');
-    })();
+    return slide.ready;
+  }
 
-    return slide.loaded;
+  // Stretches the thumbnail, already loaded, behind the full-size image until it decodes. Only for
+  // the same picture: a thumbnail cropped by the site would show distorted
+  private showPlaceholder(index: number, img: HTMLImageElement): boolean {
+    const thumbnail = this.getThumbnail(index);
+    if (img.complete || !img.naturalWidth || !thumbnail?.complete || !thumbnail.naturalWidth) return false;
+
+    const ratio = ({ naturalWidth, naturalHeight }: HTMLImageElement) => naturalWidth / naturalHeight;
+    if (Math.abs(ratio(thumbnail) / ratio(img) - 1) > 0.02) return false;
+
+    img.style.backgroundImage = `url(${JSON.stringify(thumbnail.currentSrc)})`;
+    return true;
   }
 
   private preloadNeighbors(index: number): void {

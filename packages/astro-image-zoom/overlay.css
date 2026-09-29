@@ -216,9 +216,13 @@
   cursor: zoom-out;
   transition: opacity 0.15s ease;
   will-change: transform, opacity;
+  /* The thumbnail, stretched to the image, shows until the full-size file has decoded (zoom.ts) */
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
 }
 
-/* Loading state: after 200ms, the partly loaded image is hidden and the spinner shows */
+/* Loading state, until the image can be shown (loadSlide() in zoom.ts): after 200ms, the image is
+   hidden and the spinner shows */
 .astro-image-zoom-slide.is-loading .astro-image-zoom-image {
   animation: astro-image-zoom-hide 0s 200ms forwards;
 }

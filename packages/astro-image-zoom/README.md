@@ -394,6 +394,10 @@ itself:
 
 - The page loads the images you give it; the full-size version loads only when the zoom opens, and
   the neighbors of a gallery are preloaded.
+- The zoom does not wait for the full-size file: it opens as soon as the browser knows its size,
+  with the thumbnail stretched behind it, and sharpens when the file has loaded. A thumbnail with
+  other proportions (cropped by the site, or a different picture) would look distorted, so then the
+  zoom waits for the file, with a spinner if it takes a while.
 - Animations are CSS only (transforms, `clip-path` and opacity); the script measures positions and
   waits for them to end.
 - One overlay shared by every gallery on the page, and one delegated click listener per gallery.
