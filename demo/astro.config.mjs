@@ -11,6 +11,9 @@ export default defineConfig({
     // /defaults/ is a bare test page with noindex, so it stays out of the sitemap
     sitemap({ filter: (page) => !page.endsWith("/defaults/") }),
   ],
+  // Prefetch every link on hover or focus: the pages, and the full-size image of each zoom link,
+  // which the zoom then finds in the cache. Without prefetchAll only links with data-astro-prefetch
+  prefetch: { prefetchAll: true },
   vite: {
     optimizeDeps: {
       // Use the workspace package directly so edits show up without a restart
