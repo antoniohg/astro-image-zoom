@@ -71,9 +71,13 @@ export interface Selector {
   attributes: { name: string; value?: string }[];
 }
 
-// An unquoted attribute value must be a CSS identifier, as in [data-kind=logo]
-const SIMPLE =
-  /\.([\w-]+)|#([\w-]+)|\[\s*([\w:-]+)\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|(-?[_a-zA-Z\u00a0-\uffff][\w\u00a0-\uffff-]*))\s*)?\]/y;
+// A CSS identifier without escapes: what classes, ids, attribute names and unquoted values must be
+// for the browser's closest() to take the same selector (not .123, #1a or [xlink:href])
+const IDENT = String.raw`-?[_a-zA-Z\u00a0-\uffff][\w\u00a0-\uffff-]*`;
+const SIMPLE = new RegExp(
+  String.raw`\.(${IDENT})|#(${IDENT})|\[\s*(${IDENT})\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|(${IDENT}))\s*)?\]`,
+  'y'
+);
 
 function parseSelector(source: string): Selector {
   const text = source.trim();

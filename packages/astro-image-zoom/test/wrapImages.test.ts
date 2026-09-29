@@ -101,6 +101,10 @@ describe('wrapImages', () => {
       expect(() => parseIgnore('img:first-child')).toThrow(/unsupported selector/);
       expect(() => parseIgnore('[alt^="x"]')).toThrow(/unsupported selector/);
       expect(() => parseIgnore('[alt=a=b]')).toThrow(/unsupported selector/);
+      // Not CSS identifiers: the browser would reject them in closest()
+      for (const selector of ['.123', '#1a', '[1foo]', '[xlink:href]']) {
+        expect(() => parseIgnore(selector)).toThrow(/unsupported selector/);
+      }
     });
   });
 

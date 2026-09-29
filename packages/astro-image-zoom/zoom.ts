@@ -539,10 +539,8 @@ class Zoom {
     this.jumpToSlide(this.state.currentIndex);
 
     // Closed during the opening: the close starts from where the image and the backdrop are, read
-    // before the opening stops, not from the end of it, and goes to the thumbnail of the opening,
-    // whose variables are still set
-    const interrupted = this.overlay.classList.contains('is-opening');
-    if (interrupted) {
+    // before the opening stops, not from the end of it
+    if (this.overlay.classList.contains('is-opening')) {
       const image = getComputedStyle(this.imageElement);
       this.imageElement.style.setProperty('--transform-now', image.transform);
       this.imageElement.style.setProperty('--clip-now', image.clipPath);
@@ -558,10 +556,9 @@ class Zoom {
     this.overlay.classList.remove('is-open', 'is-opening');
     this.overlay.classList.add('is-closing');
 
-    if (!interrupted) {
-      const targetRect = sourceImg.getBoundingClientRect();
-      this.setAnimationVariables(flipTransform(targetRect, startRect, thumbnailFit(sourceImg)));
-    }
+    // To the thumbnail of the image on screen, which may not be the one the opening started from
+    const targetRect = sourceImg.getBoundingClientRect();
+    this.setAnimationVariables(flipTransform(targetRect, startRect, thumbnailFit(sourceImg)));
 
     // If closed by scroll, unlock scroll immediately and use special animation
     if (byScroll) {
