@@ -110,15 +110,31 @@ export function parseIgnore(ignore = ''): Selector[] {
 // data-zoom-ignore always leaves an image out, with or without the ignore prop
 const ALWAYS_IGNORED: Selector = { classes: [], ids: [], attributes: [{ name: 'data-zoom-ignore' }] };
 
+// The character references Astro and hand-written HTML use in attribute values
+const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+
+// Attribute values as the DOM sees them, so selectors match like in CSS: alt="Salt &amp; pepper"
+// is matched by [alt="Salt & pepper"]
+const decode = (value: string): string =>
+  value.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (_, entity: string) =>
+    entity.startsWith('#')
+      ? String.fromCodePoint(/^#x/i.test(entity) ? Number.parseInt(entity.slice(2), 16) : Number(entity.slice(1)))
+      : ENTITIES[entity.toLowerCase()]
+  );
+
 function matches(name: string, attributes: Attributes, selector: Selector): boolean {
   if (selector.tag && selector.tag !== name) return false;
-  const classes = (attributes.get('class') ?? '').split(/\s+/);
+  const value = (attribute: string): string | undefined => {
+    const raw = attributes.get(attribute);
+    return raw === undefined ? undefined : decode(raw);
+  };
+  const classes = (value('class') ?? '').split(/\s+/);
   return (
     selector.classes.every((className) => classes.includes(className)) &&
-    selector.ids.every((id) => attributes.get('id') === id) &&
+    selector.ids.every((id) => value('id') === id) &&
     selector.attributes.every(
-      ({ name: attribute, value }) =>
-        attributes.has(attribute) && (value === undefined || attributes.get(attribute) === value)
+      ({ name: attribute, value: expected }) =>
+        attributes.has(attribute) && (expected === undefined || value(attribute) === expected)
     )
   );
 }

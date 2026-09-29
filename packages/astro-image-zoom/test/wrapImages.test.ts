@@ -72,10 +72,12 @@ describe('wrapImages', () => {
       `<a href="${src}" data-zoom-generated aria-label="Enlarge image"><img src="${src}" alt=""></a>`;
 
     it('leaves out the images a selector matches, all of its parts: tag, class, id and attribute', () => {
-      const ignore = parseIgnore('.logo, #hero, [data-icon], img[alt="Author"], picture.big');
+      // The alt is matched as the DOM reads it, with its character references decoded
+      const ignore = parseIgnore('.logo, #hero, [data-icon], img[alt="Salt & pepper"], picture.big');
       const html =
         '<img class="big logo" src="/1.jpg" alt=""><img id="hero" src="/2.jpg" alt="">' +
-        '<img data-icon src="/3.jpg" alt=""><img src="/4.jpg" alt="Author">';
+        '<img data-icon src="/3.jpg" alt=""><img src="/4.jpg" alt="Salt &amp; pepper">' +
+        '<img class="&#108;ogo" src="/6.jpg" alt=""><img id="&#x68;ero" src="/7.jpg" alt="">';
       expect(wrapImages(`${html}<img class="big" src="/5.jpg" alt="">`, ignore)).toBe(
         html + '<a href="/5.jpg" data-zoom-generated aria-label="Enlarge image"><img class="big" src="/5.jpg" alt=""></a>'
       );
