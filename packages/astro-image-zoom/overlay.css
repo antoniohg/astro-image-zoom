@@ -16,6 +16,15 @@
   font-family: inherit;
   /* On the host, so what leaves the dialog on a scroll close keeps the light or dark scheme */
   color-scheme: var(--zoom-color-scheme, light dark);
+  /* Every zoom animation and control fade derives from this duration; 0s with reduced motion */
+  --astro-image-zoom-duration: var(--zoom-animation-duration, 300ms);
+}
+
+/* Reduced motion: the zoom runs in no time; zoom.ts still waits for its end, which comes at once */
+@media (prefers-reduced-motion: reduce) {
+  :host {
+    --astro-image-zoom-duration: 0s;
+  }
 }
 
 /* Overlay container: a modal <dialog>, so it lives in the top layer */
@@ -87,7 +96,7 @@
 }
 
 .astro-image-zoom-overlay.is-opening .astro-image-zoom-backdrop {
-  animation: astro-image-zoom-backdrop-in var(--zoom-animation-duration, 300ms) cubic-bezier(0.2, 0, 0.2, 1) forwards;
+  animation: astro-image-zoom-backdrop-in var(--astro-image-zoom-duration) cubic-bezier(0.2, 0, 0.2, 1) forwards;
 }
 
 .astro-image-zoom-overlay.is-open .astro-image-zoom-backdrop {
@@ -95,7 +104,7 @@
 }
 
 .astro-image-zoom-overlay.is-closing .astro-image-zoom-backdrop {
-  animation: astro-image-zoom-backdrop-out calc(var(--zoom-animation-duration, 300ms) * 0.75) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: astro-image-zoom-backdrop-out calc(var(--astro-image-zoom-duration) * 0.75) cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 @keyframes astro-image-zoom-backdrop-in {
@@ -254,12 +263,12 @@
 
 /* Opening animation - zoom in from thumbnail */
 .astro-image-zoom-overlay.is-opening .astro-image-zoom-slide.is-active .astro-image-zoom-image {
-  animation: astro-image-zoom-in var(--zoom-animation-duration, 300ms) cubic-bezier(0.2, 0, 0.2, 1) forwards;
+  animation: astro-image-zoom-in var(--astro-image-zoom-duration) cubic-bezier(0.2, 0, 0.2, 1) forwards;
 }
 
 /* Closing animation - zoom out to thumbnail */
 .astro-image-zoom-overlay.is-closing .astro-image-zoom-slide.is-active .astro-image-zoom-image {
-  animation: astro-image-zoom-out calc(var(--zoom-animation-duration, 300ms) * 0.75) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: astro-image-zoom-out calc(var(--astro-image-zoom-duration) * 0.75) cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /*
@@ -273,14 +282,14 @@
   z-index: 9999999;
   margin: 0;
   pointer-events: none;
-  animation: astro-image-zoom-out calc(var(--zoom-animation-duration, 300ms) * 0.75) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: astro-image-zoom-out calc(var(--astro-image-zoom-duration) * 0.75) cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .astro-image-zoom-backdrop.is-detached {
   position: fixed;
   z-index: 9999998;
   pointer-events: none;
-  animation: astro-image-zoom-backdrop-out calc(var(--zoom-animation-duration, 300ms) * 0.75) ease-out forwards;
+  animation: astro-image-zoom-backdrop-out calc(var(--astro-image-zoom-duration) * 0.75) ease-out forwards;
 }
 
 @keyframes astro-image-zoom-in {
@@ -379,12 +388,12 @@
 .astro-image-zoom-overlay:is(.is-opening, .is-open) :is(.astro-image-zoom-close, .astro-image-zoom-bottom) {
   opacity: 1;
   transition:
-    opacity calc(var(--zoom-animation-duration, 300ms) * 0.4) ease-out calc(var(--zoom-animation-duration, 300ms) * 0.6),
+    opacity calc(var(--astro-image-zoom-duration) * 0.4) ease-out calc(var(--astro-image-zoom-duration) * 0.6),
     background-color 0.15s ease;
 }
 
 .astro-image-zoom-overlay.is-closing :is(.astro-image-zoom-close, .astro-image-zoom-bottom) {
-  transition: opacity calc(var(--zoom-animation-duration, 300ms) * 0.3) ease-in;
+  transition: opacity calc(var(--astro-image-zoom-duration) * 0.3) ease-in;
 }
 
 /*
@@ -538,26 +547,15 @@
     transition: none;
   }
 
-  /* The zoom animations run in no time: zoom.ts still waits for their end, which comes at once */
-  .astro-image-zoom-backdrop,
-  .astro-image-zoom-image {
-    animation-duration: 0s !important;
-  }
-
   /* The arrows and keys change the image at once */
   .astro-image-zoom-track.is-sliding .astro-image-zoom-image {
     transition: none;
-  }
-
-  /* The controls show and hide at once */
-  .astro-image-zoom-overlay :is(.astro-image-zoom-close, .astro-image-zoom-bottom) {
-    transition: none !important;
   }
 }
 
 /* Print - hide zoom */
 @media print {
-  .astro-image-zoom-overlay {
-    display: none !important;
+  .astro-image-zoom-overlay[open] {
+    display: none;
   }
 }
