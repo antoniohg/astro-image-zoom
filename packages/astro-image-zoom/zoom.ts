@@ -538,17 +538,30 @@ class Zoom {
     this.setSlideOffset(0, false);
     this.jumpToSlide(this.state.currentIndex);
 
+    // Closed during the opening: the close starts from where the image and the backdrop are, read
+    // before the opening stops, not from the end of it, and goes to the thumbnail of the opening,
+    // whose variables are still set
+    const interrupted = this.overlay.classList.contains('is-opening');
+    if (interrupted) {
+      const image = getComputedStyle(this.imageElement);
+      this.imageElement.style.setProperty('--transform-now', image.transform);
+      this.imageElement.style.setProperty('--clip-now', image.clipPath);
+      this.backdrop.style.setProperty('--backdrop-now', getComputedStyle(this.backdrop).opacity);
+    }
+
+    // The box the animation moves, without its transform: during the opening, the rect on screen
+    // is the one of a moving image. The slide is the offset parent of the image
+    const slideRect = (this.imageElement.offsetParent as HTMLElement).getBoundingClientRect();
+    const { offsetLeft, offsetTop, offsetWidth, offsetHeight } = this.imageElement;
+    const startRect = new DOMRect(slideRect.left + offsetLeft, slideRect.top + offsetTop, offsetWidth, offsetHeight);
+
     this.overlay.classList.remove('is-open', 'is-opening');
     this.overlay.classList.add('is-closing');
 
-    const startRect = this.imageElement.getBoundingClientRect();
-    const targetRect = sourceImg.getBoundingClientRect();
-
-    // Calculate transform for closing animation
-    const transform = flipTransform(targetRect, startRect, thumbnailFit(sourceImg));
-
-    // Set CSS variables for closing animation
-    this.setAnimationVariables(transform);
+    if (!interrupted) {
+      const targetRect = sourceImg.getBoundingClientRect();
+      this.setAnimationVariables(flipTransform(targetRect, startRect, thumbnailFit(sourceImg)));
+    }
 
     // If closed by scroll, unlock scroll immediately and use special animation
     if (byScroll) {
@@ -848,6 +861,7 @@ class Zoom {
 
     this.overlay.close();
     this.overlay.classList.remove('is-closing');
+    this.backdrop.style.removeProperty('--backdrop-now');
     document.body.style.overflow = '';
 
     // The slides belong to the instance that opened the overlay: discard them

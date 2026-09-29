@@ -118,8 +118,9 @@
 }
 
 @keyframes astro-image-zoom-backdrop-out {
+  /* --backdrop-now: its opacity when the zoom closed during the opening */
   from {
-    opacity: 1;
+    opacity: var(--backdrop-now, 1);
   }
 
   to {
@@ -305,9 +306,10 @@
 }
 
 @keyframes astro-image-zoom-out {
+  /* --transform-now and --clip-now: where the image was when the zoom closed during the opening */
   from {
-    transform: translate(0, 0) scale(1);
-    clip-path: var(--clip-to, inset(0));
+    transform: var(--transform-now, translate(0, 0) scale(1));
+    clip-path: var(--clip-now, var(--clip-to, inset(0)));
   }
 
   to {

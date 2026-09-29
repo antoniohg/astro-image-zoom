@@ -13,7 +13,7 @@ export const links = (page: Page, fixture: string): Locator => page.locator(`#${
 // Opens an image and waits for the end of the opening animation
 export async function openZoom(page: Page, fixture: string, index = 0): Promise<void> {
   await links(page, fixture).nth(index).click();
-  await expect(dialog(page)).toHaveClass(/is-open/);
+  await expect(dialog(page)).toHaveClass(/\bis-open\b/);
 }
 
 // Waits for the animations and transitions running in the overlay (caption fade, image fade) to end

@@ -122,7 +122,7 @@ test.describe('open and close', () => {
     const box = (await zoomedImage(page).boundingBox())!;
     await page.mouse.click(box.x / 2, box.y + box.height / 2);
     await page.mouse.wheel(0, 400);
-    await expect(dialog(page)).toHaveClass(/is-open/);
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
 
     await page.keyboard.press('Escape');
     await expectClosed(page);
@@ -140,7 +140,7 @@ test.describe('open and close', () => {
     await expect(page.locator('.astro-image-zoom-slide')).toHaveCount(1);
     await expect(counter(page)).toBeHidden();
     await zoomedImage(page).click();
-    await expect(dialog(page)).toHaveClass(/is-open/);
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
     await page.keyboard.press('ArrowRight');
     await expect(zoomedImage(page)).toHaveAttribute('src', /portrait\.svg$/);
   });
@@ -157,7 +157,7 @@ test.describe('open and close', () => {
   }) => {
     // Only the image the component wrapped opens, alone: no counter or arrows for the card
     await links(page, 'card-link').first().click();
-    await expect(dialog(page)).toHaveClass(/is-open/);
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
     await expect(page.locator('.astro-image-zoom-toolbar')).toBeHidden();
     await page.keyboard.press('Escape');
     await expectClosed(page);
@@ -261,7 +261,7 @@ test.describe('focus', () => {
   test('opens from the keyboard', async ({ page }) => {
     await links(page, 'single').first().focus();
     await page.keyboard.press('Enter');
-    await expect(dialog(page)).toHaveClass(/is-open/);
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
     expect(await focusedLabel(page)).toBe('Close zoom overlay');
   });
 });
@@ -296,7 +296,7 @@ test.describe('gallery', () => {
     const previous = (await page.getByRole('button', { name: 'Previous image' }).boundingBox())!;
     await page.mouse.click(previous.x + previous.width / 2, previous.y + previous.height / 2);
     await counter(page).click();
-    await expect(dialog(page)).toHaveClass(/is-open/);
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
     await expect(counter(page)).toHaveText('1 / 3');
   });
 
@@ -371,6 +371,9 @@ test.describe('gallery', () => {
     await expect(dialog(page)).toHaveClass(/is-opening/);
     expect(await widthOnThumbnail()).toBeCloseTo(320, 0);
 
+    // Finish the opening at once: a close during it starts from the moving image instead
+    await dialog(page).evaluate((overlay) => overlay.getAnimations({ subtree: true }).forEach((a) => a.finish()));
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
     await page.keyboard.press('Escape');
     await expect(dialog(page)).toHaveClass(/is-closing/);
     expect(await widthOnThumbnail()).toBeCloseTo(320, 0);
@@ -425,9 +428,74 @@ test.describe('theming', () => {
     });
     expect(duration).toBe(800);
 
-    await expect(dialog(page)).toHaveClass(/is-open/);
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
     await expect(page.locator('.astro-image-zoom-backdrop')).toHaveCSS('background-color', 'rgb(5, 10, 26)');
     await expect(page.getByRole('button', { name: 'Close zoom overlay' })).toHaveCSS('color', 'rgb(142, 203, 255)');
+  });
+
+  test('closed during the opening, closes from where the image is, with no jump', async ({ page }) => {
+    // 800ms opening: close it about halfway
+    await links(page, 'theme').first().click();
+    await expect(dialog(page)).toHaveClass(/is-opening/);
+    await page.waitForTimeout(300);
+
+    // In one go in the page, so the opening does not move on in between: read where it is, close it
+    // as Escape does (the dialog's cancel event), then follow the next frames
+    const { before, seen } = await page.evaluate(async () => {
+      const root = document.querySelector('astro-image-zoom-overlay')!.shadowRoot!;
+      const image = root.querySelector('.astro-image-zoom-slide.is-active .astro-image-zoom-image')!;
+      const backdrop = root.querySelector('.astro-image-zoom-backdrop')!;
+      const state = () => ({
+        width: image.getBoundingClientRect().width,
+        opacity: Number(getComputedStyle(backdrop).opacity),
+      });
+      const before = state();
+      root.querySelector('dialog')!.dispatchEvent(new Event('cancel', { cancelable: true }));
+      const seen = [];
+      for (let frame = 0; frame < 8; frame++) {
+        await new Promise(requestAnimationFrame);
+        seen.push(state());
+      }
+      return { before, seen };
+    });
+    // Only shrinking and fading from there: the image never grows back, the backdrop never darkens
+    expect(Math.max(...seen.map(({ width }) => width))).toBeLessThanOrEqual(before.width + 1);
+    expect(Math.max(...seen.map(({ opacity }) => opacity))).toBeLessThanOrEqual(before.opacity + 0.02);
+    await expectClosed(page);
+  });
+
+  test('closed by a scroll during the opening, lands on the thumbnail where the page took it', async ({ page }) => {
+    await links(page, 'theme').first().click();
+    await expect(dialog(page)).toHaveClass(/is-opening/);
+    await page.waitForTimeout(300);
+
+    // The last box of the image before it goes, and the box of the thumbnail then
+    const landing = page.evaluate(
+      () =>
+        new Promise<number[][]>((resolve) => {
+          const root = document.querySelector('astro-image-zoom-overlay')!.shadowRoot!;
+          const thumbnail = document.querySelector('#theme img')!;
+          const box = (element: Element) => {
+            const { left, top, height } = element.getBoundingClientRect();
+            return [left, top + height / 2];
+          };
+          let last: number[][] = [];
+          const frame = () => {
+            const image = [...root.children].find((child) => child.matches('.astro-image-zoom-image'));
+            if (image) last = [box(image), box(thumbnail)];
+            else if (last.length) return resolve(last);
+            requestAnimationFrame(frame);
+          };
+          frame();
+        })
+    );
+    await page.mouse.move(640, 360);
+    for (let step = 0; step < 6; step++) await page.mouse.wheel(0, 80);
+    const [image, thumbnail] = await landing;
+    expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
+    expect(image[0]).toBeCloseTo(thumbnail[0], 0);
+    expect(image[1]).toBeCloseTo(thumbnail[1], 0);
+    await expectClosed(page);
   });
 
   test('takes the variables set around a gallery, and drops them for the next one', async ({ page }) => {
