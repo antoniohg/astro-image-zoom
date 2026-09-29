@@ -429,6 +429,67 @@ itself:
 </ImageZoom>
 ```
 
+### Events
+
+Each `<astro-image-zoom>` dispatches three events, which bubble, so one listener on the document
+hears every gallery on the page:
+
+| Event | When |
+|-------|------|
+| `astro-image-zoom:open` | A zoom opens (a click, Enter on a link) |
+| `astro-image-zoom:change` | The gallery moves to another image (arrows, keys, a swipe) |
+| `astro-image-zoom:close` | The zoom closes, however it closes |
+
+Their `detail` describes the image on screen:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `index` | `number` | Position of the image in its gallery, from 0 |
+| `total` | `number` | Number of images in the gallery |
+| `src` | `string` | URL of the full-size image the zoom shows |
+| `alt` | `string` | Alt text of the image |
+| `caption` | `string` | Caption, or an empty string |
+| `link` | `HTMLElement` | The link on the page that opens this image |
+
+```astro
+<script>
+  document.addEventListener('astro-image-zoom:open', (event) => {
+    const { index, total, src } = event.detail;
+    console.log(`Opened ${index + 1} of ${total}: ${src}`);
+  });
+
+  // Only one gallery: listen on its element instead
+  document.querySelector('.portfolio')?.addEventListener('astro-image-zoom:change', (event) => {
+    console.log('Now showing', event.detail.caption);
+  });
+</script>
+```
+
+`open` does not also dispatch `change`: each event means one thing, so counting `change` counts the
+moves between images. To follow whatever image is on screen, listen to both with one handler:
+
+```js
+const sync = (event) => {
+  history.replaceState(null, '', `#photo-${event.detail.index + 1}`);
+};
+document.addEventListener('astro-image-zoom:open', sync);
+document.addEventListener('astro-image-zoom:change', sync);
+```
+
+The events report, they do not decide: `preventDefault()` does not stop an opening or a close.
+`open` comes when the zoom starts to open, before the image has loaded, and every `open` gets its
+`close`, also when the zoom closes while the image is still loading.
+
+In TypeScript, the events are typed on elements, the document and the window once the package's
+types are in the project. Using `<ImageZoom>` is not enough: add one line to a declaration file,
+such as `src/env.d.ts`, and every script gets them:
+
+```ts
+import type {} from 'astro-image-zoom';
+```
+
+The detail has its own type too: `import type { ZoomEventDetail } from 'astro-image-zoom'`.
+
 ### Programmatic Control (Advanced)
 
 ```astro

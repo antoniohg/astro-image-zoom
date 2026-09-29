@@ -18,6 +18,38 @@ interface ZoomState {
   images: ZoomImage[];
 }
 
+/**
+ * The detail of the events an <astro-image-zoom> dispatches: astro-image-zoom:open when a zoom
+ * opens, astro-image-zoom:change when the gallery moves to another image and astro-image-zoom:close
+ * when it closes. They bubble, so one listener on the document hears every gallery.
+ */
+export interface ZoomEventDetail {
+  /** Position of the image in its gallery, from 0 */
+  index: number;
+  /** Number of images in the gallery */
+  total: number;
+  /** URL of the full-size image the zoom shows */
+  src: string;
+  alt: string;
+  caption: string;
+  /** The link on the page that opens this image */
+  link: HTMLElement;
+}
+
+type ZoomEvents = {
+  'astro-image-zoom:open': CustomEvent<ZoomEventDetail>;
+  'astro-image-zoom:change': CustomEvent<ZoomEventDetail>;
+  'astro-image-zoom:close': CustomEvent<ZoomEventDetail>;
+};
+
+// Typed addEventListener for the events, on any element (HTMLElementEventMap extends this one), and
+// on the document and the window they bubble to
+declare global {
+  interface ElementEventMap extends ZoomEvents {}
+  interface DocumentEventMap extends ZoomEvents {}
+  interface WindowEventMap extends ZoomEvents {}
+}
+
 // One slide of the carousel: the overlay holds a slide per image, scrolled and snapped natively
 interface ZoomSlide {
   figure: HTMLElement;
@@ -426,6 +458,7 @@ class Zoom {
 
     this.buildSlides();
     this.renderActive(index);
+    this.emit('open');
     // Hidden until the image is ready, so the FLIP animation starts from a clean frame. Before any
     // layout, so its opacity transition does not run: it would show the image for a frame
     this.imageElement.style.opacity = '0';
@@ -513,6 +546,7 @@ class Zoom {
 
     this.isClosing = true;
     this.state.isOpen = false;
+    this.emit('close');
 
     // Cancel a pending open() that is still waiting for the image to load
     this.openId++;
@@ -684,8 +718,29 @@ class Zoom {
     this.hideThumbnail(this.getThumbnail(index));
 
     this.renderActive(index);
+    this.emit('change');
     void this.loadSlide(index);
     this.preloadNeighbors(index);
+  }
+
+  // Tells the page what the zoom shows now; see ZoomEventDetail
+  private emit(type: 'open' | 'change' | 'close'): void {
+    const { images, currentIndex } = this.state;
+    const image = images[currentIndex];
+    if (!image) return;
+    this.wrapper.dispatchEvent(
+      new CustomEvent<ZoomEventDetail>(`astro-image-zoom:${type}`, {
+        bubbles: true,
+        detail: {
+          index: currentIndex,
+          total: images.length,
+          src: image.src,
+          alt: image.alt,
+          caption: image.caption ?? '',
+          link: image.element,
+        },
+      })
+    );
   }
 
   // Marks the slide on screen and updates what depends on it: caption and buttons
