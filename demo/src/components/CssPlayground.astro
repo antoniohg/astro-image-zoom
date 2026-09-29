@@ -22,7 +22,17 @@ const colors = [
   { name: "--zoom-caption-bg", label: "Caption box", value: "#ff7a66" },
 ];
 
-const ranges = [
+// phone: the default of the overlay up to 640px wide, where its controls get smaller
+const ranges: {
+  name: string;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  unit: string;
+  phone?: number;
+}[] = [
   {
     name: "--zoom-padding",
     label: "Padding",
@@ -48,6 +58,7 @@ const ranges = [
     max: 64,
     step: 2,
     value: 40,
+    phone: 36,
     unit: "px",
   },
   {
@@ -66,6 +77,7 @@ const ranges = [
     max: 64,
     step: 4,
     value: 16,
+    phone: 12,
     unit: "px",
   },
   {
@@ -102,7 +114,7 @@ const ranges = [
 
     <fieldset class="ranges">
       <legend>Layout and motion</legend>
-      {ranges.map(({ name, label, min, max, step, value, unit }) => (
+      {ranges.map(({ name, label, min, max, step, value, unit, phone }) => (
         <label class="range">
           <span class="name">
             {label}
@@ -116,6 +128,7 @@ const ranges = [
             step={step}
             value={value}
             data-unit={unit}
+            data-phone={phone}
           />
           <output data-default={`${value}${unit}`}>{`${value}${unit}`}</output>
         </label>
@@ -171,6 +184,8 @@ const ranges = [
 
   class CssPlayground extends HTMLElement {
     private changed = new Map<string, string>();
+    // The breakpoint of overlay.css where the buttons and the offset of the overlay get smaller
+    private phone = matchMedia("(max-width: 640px)");
 
     private get form() {
       return this.querySelector("form")!;
@@ -187,12 +202,25 @@ const ranges = [
     connectedCallback() {
       this.form.addEventListener("input", this.handleInput);
       this.form.addEventListener("reset", this.handleReset);
+      this.phone.addEventListener("change", this.showDefaults);
+      this.showDefaults();
     }
 
     disconnectedCallback() {
       this.form.removeEventListener("input", this.handleInput);
       this.form.removeEventListener("reset", this.handleReset);
+      this.phone.removeEventListener("change", this.showDefaults);
     }
+
+    // The sliders the user has not moved show the default of the overlay for this screen
+    private showDefaults = () => {
+      for (const input of this.form.querySelectorAll<HTMLInputElement>("input[data-phone]")) {
+        if (this.changed.has(input.name)) continue;
+        input.value = this.phone.matches ? input.dataset.phone! : input.defaultValue;
+        const output = input.parentElement?.querySelector("output");
+        if (output) output.value = input.value + (input.dataset.unit ?? "");
+      }
+    };
 
     private handleInput = (event: Event) => {
       const input = event.target;
@@ -216,6 +244,8 @@ const ranges = [
       this.changed.clear();
       for (const { attribute, initial } of Object.values(PROPS)) this.zoom.dataset[attribute] = initial;
       for (const output of this.form.querySelectorAll("output")) output.value = output.dataset.default ?? "";
+      // The form puts the sliders back after this event: set the ones of this screen then
+      requestAnimationFrame(this.showDefaults);
       this.render();
     };
 
