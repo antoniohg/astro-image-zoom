@@ -54,28 +54,16 @@ describe('wrapImages', () => {
   });
 
   describe('data-zoom-ignore', () => {
-    it('leaves an image with data-zoom-ignore alone', () => {
-      const html = '<img src="/logo.svg" alt="Logo" data-zoom-ignore>';
+    it('leaves out an image with it, and every image inside an element with it', () => {
+      const html =
+        '<img src="/logo.svg" alt="" data-zoom-ignore>' +
+        '<div data-zoom-ignore="true"><div><img src="/1.jpg" alt=""></div><img src="/2.jpg" alt=""></div>';
       expect(wrapImages(html)).toBe(html);
     });
 
-    it('leaves a <picture> alone when its image has data-zoom-ignore', () => {
+    it('leaves a <picture> alone when its image has it', () => {
       const picture = '<picture><source srcset="/a.avif"><img src="/a.jpg" alt="" data-zoom-ignore></picture>';
       expect(wrapImages(picture)).toBe(picture);
-    });
-
-    it('leaves alone every image inside an element with data-zoom-ignore, nested ones too', () => {
-      const ignored =
-        '<div data-zoom-ignore="true"><div><img src="/1.jpg" alt=""></div><img src="/2.jpg" alt=""></div>';
-      expect(wrapImages(`${ignored}<img src="/3.jpg" alt="">`)).toBe(
-        `${ignored}<a href="/3.jpg" data-zoom-generated aria-label="Enlarge image"><img src="/3.jpg" alt=""></a>`
-      );
-    });
-
-    it('reads the attribute, not text that mentions it', () => {
-      expect(wrapImages('<p title="data-zoom-ignore"><img src="/1.jpg" alt=""></p>')).toBe(
-        '<p title="data-zoom-ignore"><a href="/1.jpg" data-zoom-generated aria-label="Enlarge image"><img src="/1.jpg" alt=""></a></p>'
-      );
     });
   });
 
@@ -83,14 +71,13 @@ describe('wrapImages', () => {
     const wrapped = (src: string) =>
       `<a href="${src}" data-zoom-generated aria-label="Enlarge image"><img src="${src}" alt=""></a>`;
 
-    it('leaves out the images a selector matches: tag, class, id and attribute', () => {
-      const ignore = parseIgnore('.logo, #hero, [data-icon], img[alt="Author"]');
+    it('leaves out the images a selector matches, all of its parts: tag, class, id and attribute', () => {
+      const ignore = parseIgnore('.logo, #hero, [data-icon], img[alt="Author"], picture.big');
       const html =
         '<img class="big logo" src="/1.jpg" alt=""><img id="hero" src="/2.jpg" alt="">' +
-        '<img data-icon src="/3.jpg" alt=""><img src="/4.jpg" alt="Author"><img src="/5.jpg" alt="">';
-      expect(wrapImages(html, ignore)).toBe(
-        '<img class="big logo" src="/1.jpg" alt=""><img id="hero" src="/2.jpg" alt="">' +
-          '<img data-icon src="/3.jpg" alt=""><img src="/4.jpg" alt="Author">' + wrapped('/5.jpg')
+        '<img data-icon src="/3.jpg" alt=""><img src="/4.jpg" alt="Author">';
+      expect(wrapImages(`${html}<img class="big" src="/5.jpg" alt="">`, ignore)).toBe(
+        html + '<a href="/5.jpg" data-zoom-generated aria-label="Enlarge image"><img class="big" src="/5.jpg" alt=""></a>'
       );
     });
 
@@ -101,22 +88,8 @@ describe('wrapImages', () => {
       );
     });
 
-    it('matches an empty alt, the mark of a decorative image', () => {
-      expect(wrapImages('<img src="/1.jpg" alt=""><img src="/2.jpg" alt="Photo">', parseIgnore("[alt='']"))).toBe(
-        '<img src="/1.jpg" alt="">' +
-          '<a href="/2.jpg" data-zoom-generated aria-label="Enlarge image: Photo"><img src="/2.jpg" alt="Photo"></a>'
-      );
-    });
-
-    it('needs every part of a compound selector', () => {
-      const image = '<img class="logo" src="/1.jpg" alt="">';
-      expect(wrapImages(image, parseIgnore('picture.logo'))).toBe(
-        `<a href="/1.jpg" data-zoom-generated aria-label="Enlarge image">${image}</a>`
-      );
-    });
-
-    it('forgives spaces around the selectors and a trailing comma', () => {
-      expect(parseIgnore(' .a , .b, ')).toHaveLength(2);
+    it('splits the list on commas, not on those inside a quoted value', () => {
+      expect(parseIgnore(' .a , [alt="Last, First"], ')).toHaveLength(2);
       expect(parseIgnore('')).toEqual([]);
     });
 

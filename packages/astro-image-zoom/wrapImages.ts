@@ -102,8 +102,9 @@ function parseSelector(source: string): Selector {
 
 /** Parses the ignore prop, a list of simple selectors separated by commas */
 export function parseIgnore(ignore = ''): Selector[] {
-  // A trailing comma is forgiven
-  return ignore.split(',').filter((part) => part.trim()).map(parseSelector);
+  // Commas inside a quoted value, as in [alt="Last, First"], do not split; a trailing comma is forgiven
+  const parts = ignore.match(/(?:"[^"]*"|'[^']*'|[^,])+/g) ?? [];
+  return parts.filter((part) => part.trim()).map(parseSelector);
 }
 
 // data-zoom-ignore always leaves an image out, with or without the ignore prop

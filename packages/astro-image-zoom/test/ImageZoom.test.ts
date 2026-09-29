@@ -40,6 +40,7 @@ describe('<ImageZoom>', () => {
     });
     // No theme and no duration: the variables of the site apply
     expect(attributes.has('style')).toBe(false);
+    expect(attributes.has('data-ignore')).toBe(false);
   });
 
   it('renders every option as its data attribute', async () => {
@@ -104,10 +105,6 @@ describe('<ImageZoom>', () => {
     expect(attributes.get('data-ignore')).toBe(".logo, [alt='']");
     expect(html).toContain('<img class="logo" src="/logo.svg" alt="Logo"><img src="/deco.jpg" alt="">');
     expect(html.match(/data-zoom-generated/g)).toHaveLength(1);
-  });
-
-  it('renders no data-ignore without the prop', async () => {
-    expect((await render()).attributes.has('data-ignore')).toBe(false);
   });
 
   it('fails the build on a selector the server cannot match', async () => {

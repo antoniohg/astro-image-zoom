@@ -54,7 +54,7 @@ const CAPTION_POSITIONS = ['bottom', 'top'];
 const NAVIGATION_LAYOUTS = ['bar', 'sides'];
 
 // The CSS animations of the overlay that open() and close() wait for
-const OPEN_ANIMATIONS = ['astro-image-zoom-in', 'astro-image-zoom-backdrop-in', 'astro-image-zoom-controls-in'];
+const OPEN_ANIMATIONS = ['astro-image-zoom-in', 'astro-image-zoom-backdrop-in'];
 const CLOSE_ANIMATIONS = ['astro-image-zoom-out', 'astro-image-zoom-backdrop-out'];
 // How long (ms) a requested slide counts as the target while the smooth scroll runs
 const SCROLL_TARGET_TTL = 500;
@@ -333,10 +333,15 @@ class Zoom {
   // leave out images the server wrapped. Only the site's own links with data-zoom are checked
   private isIgnored(anchor: HTMLAnchorElement): boolean {
     if (anchor.hasAttribute('data-zoom-generated')) return false;
-    const selectors = ['[data-zoom-ignore]', this.wrapper.dataset.ignore].filter(Boolean).join(', ');
+    const start = anchor.querySelector('img') ?? anchor;
+    const inside = (match: Element | null): boolean =>
+      match !== null && match !== this.wrapper && this.wrapper.contains(match);
+    if (inside(start.closest('[data-zoom-ignore]'))) return true;
+
+    const ignore = this.wrapper.dataset.ignore;
+    if (!ignore) return false;
     try {
-      const match = (anchor.querySelector('img') ?? anchor).closest(selectors);
-      return match !== null && match !== this.wrapper && this.wrapper.contains(match);
+      return inside(start.closest(ignore));
     } catch {
       // An invalid selector: ImageZoom.astro rejects them at build time, ZoomClass users may not
       return false;

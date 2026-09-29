@@ -368,44 +368,23 @@
 /*
  * The controls and the caption stay out of the way of the zoom: hidden while the image loads,
  * they fade in over the last part of the opening, so they land with the image, and fade out first
- * on close, so the image flies back alone. The fade in ends with the zoom: zoom.ts waits for it.
+ * on close, so the image flies back alone. Transitions, not animations: a close during the fade in
+ * turns it around from where it got to. The fade in ends with the zoom, as the opening does.
  */
 .astro-image-zoom-close,
 .astro-image-zoom-bottom {
   opacity: 0;
 }
 
-.astro-image-zoom-overlay.is-opening :is(.astro-image-zoom-close, .astro-image-zoom-bottom) {
-  animation: astro-image-zoom-controls-in calc(var(--zoom-animation-duration, 300ms) * 0.4) ease-out
-    calc(var(--zoom-animation-duration, 300ms) * 0.6) both;
-}
-
-.astro-image-zoom-overlay.is-open :is(.astro-image-zoom-close, .astro-image-zoom-bottom) {
+.astro-image-zoom-overlay:is(.is-opening, .is-open) :is(.astro-image-zoom-close, .astro-image-zoom-bottom) {
   opacity: 1;
+  transition:
+    opacity calc(var(--zoom-animation-duration, 300ms) * 0.4) ease-out calc(var(--zoom-animation-duration, 300ms) * 0.6),
+    background-color 0.15s ease;
 }
 
 .astro-image-zoom-overlay.is-closing :is(.astro-image-zoom-close, .astro-image-zoom-bottom) {
-  animation: astro-image-zoom-controls-out calc(var(--zoom-animation-duration, 300ms) * 0.3) ease-in both;
-}
-
-@keyframes astro-image-zoom-controls-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes astro-image-zoom-controls-out {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
+  transition: opacity calc(var(--zoom-animation-duration, 300ms) * 0.3) ease-in;
 }
 
 /*
@@ -572,11 +551,7 @@
 
   /* The controls show and hide at once */
   .astro-image-zoom-overlay :is(.astro-image-zoom-close, .astro-image-zoom-bottom) {
-    animation: none !important;
-  }
-
-  .astro-image-zoom-overlay.is-opening :is(.astro-image-zoom-close, .astro-image-zoom-bottom) {
-    opacity: 1;
+    transition: none !important;
   }
 }
 
