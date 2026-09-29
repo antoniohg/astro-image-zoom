@@ -9,7 +9,8 @@ interface Props {
 
 const { images } = Astro.props;
 
-// Starting values of the controls; nothing is applied until a control changes
+// Starting values of the controls, the defaults of the overlay; nothing is applied until a control
+// changes
 const colors = [
   { name: "--zoom-bg", label: "Background", value: "#050814" },
   { name: "--zoom-close-color", label: "Close icon", value: "#ffb454" },
@@ -78,14 +79,19 @@ const ranges = [
 ];
 ---
 
-<div class="playground wide">
-  <form class="controls" data-playground aria-label="Zoom playground">
+<css-playground class="playground wide">
+  <form class="controls" aria-label="Zoom playground">
+    <div class="controls-head">
+      <p>Change a value, then open a photo.</p>
+      <button type="reset">Reset</button>
+    </div>
+
     <fieldset class="colors">
       <legend>Colors</legend>
       {colors.map(({ name, label, value }) => (
         <label class="color">
           <input type="color" name={name} value={value} />
-          <span>
+          <span class="name">
             {label}
             <code>{name}</code>
           </span>
@@ -93,12 +99,13 @@ const ranges = [
       ))}
     </fieldset>
 
-    <fieldset>
+    <fieldset class="ranges">
       <legend>Layout and motion</legend>
       {ranges.map(({ name, label, min, max, step, value, unit }) => (
         <label class="range">
-          <span>
-            {label} <code>{name}</code>
+          <span class="name">
+            {label}
+            <code>{name}</code>
           </span>
           <input
             type="range"
@@ -109,161 +116,175 @@ const ranges = [
             value={value}
             data-unit={unit}
           />
-          <output
-            data-for={name}
-            data-default={`${value}${unit}`}
-          >{`${value}${unit}`}</output>
+          <output data-default={`${value}${unit}`}>{`${value}${unit}`}</output>
         </label>
       ))}
     </fieldset>
 
-    <fieldset>
-      <legend>Caption props</legend>
-      <div class="choices">
-        <label>
-          <input type="radio" name="captionPosition" value="bottom" checked />{" "}
-          Bottom
-        </label>
-        <label>
-          <input type="radio" name="captionPosition" value="top" /> Top
-        </label>
-        <label>
-          <input type="checkbox" name="showCaption" checked /> Show caption
-        </label>
-      </div>
+    <fieldset class="prop">
+      <legend>Caption</legend>
+      <label><input type="radio" name="captionPosition" value="bottom" checked /> Bottom</label>
+      <label><input type="radio" name="captionPosition" value="top" /> Top</label>
+      <label><input type="checkbox" name="showCaption" checked /> Shown</label>
     </fieldset>
 
-    <fieldset>
-      <legend>Navigation props</legend>
-      <div class="choices">
-        <label>
-          <input type="radio" name="navigationLayout" value="bar" checked /> Bar
-        </label>
-        <label>
-          <input type="radio" name="navigationLayout" value="sides" /> Sides
-        </label>
-        <label>
-          <input type="checkbox" name="showCounter" checked /> Show counter
-        </label>
-      </div>
+    <fieldset class="prop">
+      <legend>Navigation</legend>
+      <label><input type="radio" name="navigationLayout" value="bar" checked /> Bar</label>
+      <label><input type="radio" name="navigationLayout" value="sides" /> Sides</label>
+      <label><input type="checkbox" name="showCounter" checked /> Counter</label>
     </fieldset>
-
-    <button type="reset">Reset</button>
   </form>
 
   <div class="preview">
     <!-- The variables go on this element, around the gallery: only this gallery changes -->
-    <div data-playground-scope>
+    <div class="scope">
       <ImageZoom>
-        <div class="preview-images">
+        <div class="photos">
           {images.map((name) => (
             <Photo
               name={name}
               width={322}
               height={242}
               sizes="(min-width: 48rem) 322px, 42vw"
+              caption={false}
             />
           ))}
         </div>
       </ImageZoom>
     </div>
     <!-- Focusable, as Astro's <Code> blocks: a long line scrolls sideways, also with the keyboard -->
-    <pre class="snippet" tabindex="0"><code data-snippet>/* Change a value to see the code */</code></pre>
+    <pre class="snippet" tabindex="0"><code>/* Change a value to see the code */</code></pre>
   </div>
-</div>
+</css-playground>
 
 <script>
   // Mirrors each changed control into a CSS variable on the element around the gallery, and the
-  // caption controls into the props (data attributes) of its <astro-image-zoom>
-  const form = document.querySelector<HTMLFormElement>("[data-playground]");
-  const scope = document.querySelector<HTMLElement>("[data-playground-scope]");
-  const zoom = scope?.querySelector<HTMLElement>("astro-image-zoom");
-  const snippet = document.querySelector<HTMLElement>("[data-snippet]");
-  const changed = new Map<string, string>();
+  // caption and navigation controls into the props (data attributes) of its <astro-image-zoom>
+  const PROPS = {
+    captionPosition: { attribute: "captionPosition", initial: "bottom" },
+    showCaption: { attribute: "showCaption", initial: "true" },
+    navigationLayout: { attribute: "navigationLayout", initial: "bar" },
+    showCounter: { attribute: "showCounter", initial: "true" },
+  } as const;
 
-  const render = () => {
-    if (!snippet || !zoom) return;
-    const props = [
-      zoom.dataset.captionPosition === "top" ? ' captionPosition="top"' : "",
-      zoom.dataset.showCaption === "false" ? " showCaption={false}" : "",
-      zoom.dataset.navigationLayout === "sides"
-        ? ' navigationLayout="sides"'
-        : "",
-      zoom.dataset.showCounter === "false" ? " showCounter={false}" : "",
-    ].join("");
-    const css = changed.size
-      ? `.gallery {\n${[...changed].map(([name, value]) => `  ${name}: ${value};`).join("\n")}\n}`
-      : "";
-    // The variables go on the component through a class, so the code works as it is
-    const markup =
-      css || props ? `<ImageZoom${css ? ' class="gallery"' : ""}${props}>` : "";
-    snippet.textContent =
-      [css, markup].filter(Boolean).join("\n\n") ||
-      "/* Change a value to see the code */";
-  };
+  class CssPlayground extends HTMLElement {
+    private changed = new Map<string, string>();
 
-  form?.addEventListener("input", (event) => {
-    const input = event.target;
-    if (!(input instanceof HTMLInputElement) || !scope || !zoom) return;
-
-    if (input.name === "captionPosition") {
-      zoom.dataset.captionPosition = input.value;
-    } else if (input.name === "showCaption") {
-      zoom.dataset.showCaption = String(input.checked);
-    } else if (input.name === "navigationLayout") {
-      zoom.dataset.navigationLayout = input.value;
-    } else if (input.name === "showCounter") {
-      zoom.dataset.showCounter = String(input.checked);
-    } else {
-      const value = input.value + (input.dataset.unit ?? "");
-      changed.set(input.name, value);
-      scope.style.setProperty(input.name, value);
-      const output = form.querySelector<HTMLOutputElement>(
-        `output[data-for="${input.name}"]`,
-      );
-      if (output) output.value = value;
+    private get form() {
+      return this.querySelector("form")!;
     }
-    render();
-  });
 
-  form?.addEventListener("reset", () => {
-    for (const name of changed.keys()) scope?.style.removeProperty(name);
-    changed.clear();
-    if (zoom) {
-      zoom.dataset.captionPosition = "bottom";
-      zoom.dataset.showCaption = "true";
-      zoom.dataset.navigationLayout = "bar";
-      zoom.dataset.showCounter = "true";
+    private get scope() {
+      return this.querySelector<HTMLElement>(".scope")!;
     }
-    for (const output of form.querySelectorAll<HTMLOutputElement>("output")) {
-      output.value = output.dataset.default ?? "";
+
+    private get zoom() {
+      return this.scope.querySelector<HTMLElement>("astro-image-zoom")!;
     }
-    render();
-  });
+
+    connectedCallback() {
+      this.form.addEventListener("input", this.handleInput);
+      this.form.addEventListener("reset", this.handleReset);
+    }
+
+    disconnectedCallback() {
+      this.form.removeEventListener("input", this.handleInput);
+      this.form.removeEventListener("reset", this.handleReset);
+    }
+
+    private handleInput = (event: Event) => {
+      const input = event.target;
+      if (!(input instanceof HTMLInputElement)) return;
+
+      if (input.name in PROPS) {
+        const { attribute } = PROPS[input.name as keyof typeof PROPS];
+        this.zoom.dataset[attribute] = input.type === "checkbox" ? String(input.checked) : input.value;
+      } else {
+        const value = input.value + (input.dataset.unit ?? "");
+        this.changed.set(input.name, value);
+        this.scope.style.setProperty(input.name, value);
+        const output = input.parentElement?.querySelector("output");
+        if (output) output.value = value;
+      }
+      this.render();
+    };
+
+    private handleReset = () => {
+      for (const name of this.changed.keys()) this.scope.style.removeProperty(name);
+      this.changed.clear();
+      for (const { attribute, initial } of Object.values(PROPS)) this.zoom.dataset[attribute] = initial;
+      for (const output of this.form.querySelectorAll("output")) output.value = output.dataset.default ?? "";
+      this.render();
+    };
+
+    // The code to copy: the changed variables in a class, and the props that differ from the defaults
+    private render() {
+      const { dataset } = this.zoom;
+      const props = [
+        dataset.captionPosition === "top" ? ' captionPosition="top"' : "",
+        dataset.showCaption === "false" ? " showCaption={false}" : "",
+        dataset.navigationLayout === "sides" ? ' navigationLayout="sides"' : "",
+        dataset.showCounter === "false" ? " showCounter={false}" : "",
+      ].join("");
+      const css = this.changed.size
+        ? `.gallery {\n${[...this.changed].map(([name, value]) => `  ${name}: ${value};`).join("\n")}\n}`
+        : "";
+      // The variables go on the component through a class, so the code works as it is
+      const markup = css || props ? `<ImageZoom${css ? ' class="gallery"' : ""}${props}>` : "";
+      this.querySelector(".snippet code")!.textContent =
+        [css, markup].filter(Boolean).join("\n\n") || "/* Change a value to see the code */";
+    }
+  }
+
+  customElements.define("css-playground", CssPlayground);
 </script>
 
 <style>
   @layer components {
+    /*
+     * Phones: the photos first, kept in view while the controls scroll, then the controls and the
+     * code. From 48rem: the controls on the left, the photos and the code in view on the right
+     */
     .playground {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
-      gap: 1.5rem 2.5rem;
-      padding: clamp(1.25rem, 3vw, 2rem);
+      grid-template-areas: "photos" "controls" "code";
+      gap: 1.25rem;
+      padding: clamp(1rem, 3vw, 1.75rem);
       font-size: 0.875rem;
       background: var(--color-surface);
       border: 1px solid var(--color-rule);
       border-radius: var(--radius);
+
+      @media (width >= 48rem) {
+        grid-template-areas: "controls preview";
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+        gap: 2rem;
+      }
     }
 
     .controls {
+      grid-area: controls;
       display: grid;
       gap: 1.25rem;
       align-content: start;
+      min-inline-size: 0;
+    }
+
+    .controls-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem 1rem;
+
+      p {
+        margin: 0;
+        color: var(--color-text-muted);
+      }
     }
 
     fieldset {
-      display: grid;
-      gap: 0.5rem;
       min-inline-size: 0;
       margin: 0;
       padding: 0;
@@ -277,40 +298,40 @@ const ranges = [
       font-variation-settings: var(--heading-width);
     }
 
-    /* The colors fill two columns when there is room */
-    .colors {
-      grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr));
-      gap: 0.75rem 1rem;
-    }
-
-    label {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.25rem 0.75rem;
-    }
-
-    label code {
-      display: block;
-      inline-size: fit-content;
-      margin-block-start: 0.125rem;
-      overflow-wrap: anywhere;
-    }
-
-    /* The swatch and its name side by side, even in a narrow column */
-    .color {
-      flex-wrap: nowrap;
-    }
-
-    .color span {
-      flex: 1 1 0;
+    /* The label, with its variable in small print under it */
+    .name {
+      display: grid;
       min-inline-size: 0;
+      line-height: 1.3;
+
+      /* Plain small print, not the boxed inline code of the page */
+      code {
+        padding: 0;
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+        background: none;
+        border: 0;
+        overflow-wrap: anywhere;
+      }
+    }
+
+    .colors {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr));
+      gap: 0.625rem 1rem;
+    }
+
+    .color {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      cursor: pointer;
     }
 
     input[type="color"] {
       flex: none;
-      inline-size: 2.75rem;
-      block-size: 2rem;
+      inline-size: 2.25rem;
+      block-size: 1.75rem;
       padding: 0.125rem;
       background: var(--color-bg);
       border: 1px solid var(--color-rule);
@@ -318,23 +339,53 @@ const ranges = [
       cursor: pointer;
     }
 
-    .range span {
-      flex-basis: 100%;
+    /* One row per range: the name, the slider and the value */
+    .ranges {
+      display: grid;
+      gap: 0.625rem;
+    }
+
+    .range {
+      display: grid;
+      grid-template-columns: minmax(0, 12rem) minmax(0, 1fr) 4.5ch;
+      align-items: center;
+      gap: 0.75rem;
     }
 
     input[type="range"] {
-      flex: 1 1 8rem;
+      inline-size: 100%;
       min-inline-size: 0;
+      margin: 0;
     }
 
     output {
-      min-inline-size: 4.5ch;
       font-variant-numeric: tabular-nums;
+      text-align: end;
+    }
+
+    /* A prop on one row: its name, then its options */
+    .prop {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.375rem 1.25rem;
+
+      legend {
+        float: inline-start;
+        min-inline-size: 6rem;
+        margin: 0;
+      }
+
+      label {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        cursor: pointer;
+      }
     }
 
     button {
-      justify-self: start;
-      padding: 0.5rem 1rem;
+      padding: 0.375rem 0.875rem;
       color: var(--color-text);
       background: var(--color-bg);
       border: 1px solid var(--color-rule);
@@ -346,33 +397,50 @@ const ranges = [
       }
     }
 
-    /* The photos and the code stay in view while the controls scroll */
+    /* On phones the preview's children join the grid of the playground: see its areas */
     .preview {
-      display: grid;
-      gap: 1rem;
-      align-content: start;
-      align-self: start;
-      min-inline-size: 0;
+      display: contents;
 
       @media (width >= 48rem) {
+        grid-area: preview;
+        display: grid;
+        gap: 1rem;
+        align-content: start;
+        align-self: start;
+        min-inline-size: 0;
         position: sticky;
         top: var(--sticky-top);
       }
     }
 
-    .preview-images {
+    .scope {
+      min-inline-size: 0;
+
+      /* Kept in view under the site header while the controls scroll */
+      @media (width < 48rem) {
+        grid-area: photos;
+        position: sticky;
+        top: var(--header-offset);
+        z-index: 1;
+        margin: -0.5rem -0.5rem 0;
+        padding: 0.5rem;
+        background: var(--color-surface);
+      }
+    }
+
+    .photos {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 0.75rem;
-    }
 
-    .choices {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem 1.25rem;
-
-      label {
+      /* Short strips on phones, so the sticky photos leave room for the controls */
+      @media (width < 48rem) {
         gap: 0.5rem;
+
+        :global(img) {
+          block-size: 5.5rem;
+          object-fit: cover;
+        }
       }
     }
 
@@ -381,6 +449,10 @@ const ranges = [
       overflow-x: auto;
       color: #e6edf3;
       background: #0d1117;
+
+      @media (width < 48rem) {
+        grid-area: code;
+      }
     }
   }
 </style>
