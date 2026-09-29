@@ -29,7 +29,6 @@ describe('<ImageZoom>', () => {
     const { attributes } = await render();
     expect(Object.fromEntries(attributes)).toMatchObject({
       class: 'astro-image-zoom-wrapper',
-      'data-keyboard': 'true',
       'data-close-backdrop': 'true',
       'data-close-image': 'true',
       'data-close-scroll': 'true',
@@ -41,11 +40,11 @@ describe('<ImageZoom>', () => {
     });
     // No theme and no duration: the variables of the site apply
     expect(attributes.has('style')).toBe(false);
+    expect(attributes.has('data-ignore')).toBe(false);
   });
 
   it('renders every option as its data attribute', async () => {
     const { attributes } = await render({
-      keyboardNavigation: false,
       closeOnBackdrop: false,
       closeOnImage: false,
       closeOnScroll: false,
@@ -58,7 +57,6 @@ describe('<ImageZoom>', () => {
     });
     expect(Object.fromEntries(attributes)).toMatchObject({
       class: 'astro-image-zoom-wrapper portfolio',
-      'data-keyboard': 'false',
       'data-close-backdrop': 'false',
       'data-close-image': 'false',
       'data-close-scroll': 'false',
@@ -72,11 +70,21 @@ describe('<ImageZoom>', () => {
 
   it('turns the theme and the duration into --zoom-* variables', async () => {
     const { attributes } = await render({
-      theme: { backgroundColor: '#050a1a', closeButtonColor: 'white', navigationColor: 'rgb(1, 2, 3)' },
+      theme: {
+        backgroundColor: '#050a1a',
+        closeButtonColor: 'white',
+        closeButtonBackground: 'black',
+        navigationColor: 'rgb(1, 2, 3)',
+        navigationBackground: 'navy',
+        captionColor: 'red',
+        captionBackground: 'light-dark(#fff, #000)',
+      },
       animationDuration: 800,
     });
     expect(attributes.get('style')).toBe(
-      '--zoom-bg: #050a1a; --zoom-close-color: white; --zoom-nav-color: rgb(1, 2, 3); --zoom-animation-duration: 800ms'
+      '--zoom-bg: #050a1a; --zoom-close-color: white; --zoom-close-bg: black; ' +
+        '--zoom-nav-color: rgb(1, 2, 3); --zoom-nav-bg: navy; --zoom-caption-color: red; ' +
+        '--zoom-caption-bg: light-dark(#fff, #000); --zoom-animation-duration: 800ms'
     );
   });
 
@@ -87,6 +95,20 @@ describe('<ImageZoom>', () => {
     expect((await render({ animationDuration: 0 })).attributes.get('style')).toBe(
       '--zoom-animation-duration: 0ms'
     );
+  });
+
+  it('leaves out the images of the ignore prop and hands the selectors to the client', async () => {
+    const { html, attributes } = await render(
+      { ignore: ".logo, [alt='']" },
+      '<img class="logo" src="/logo.svg" alt="Logo"><img src="/deco.jpg" alt=""><img src="/photo.jpg" alt="A photo">'
+    );
+    expect(attributes.get('data-ignore')).toBe(".logo, [alt='']");
+    expect(html).toContain('<img class="logo" src="/logo.svg" alt="Logo"><img src="/deco.jpg" alt="">');
+    expect(html.match(/data-zoom-generated/g)).toHaveLength(1);
+  });
+
+  it('fails the build on a selector the server cannot match', async () => {
+    await expect(render({ ignore: 'article img' })).rejects.toThrow(/unsupported selector/);
   });
 
   it('declares its display in its own shadow root, with no stylesheet on the page', async () => {

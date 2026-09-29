@@ -4,16 +4,27 @@
  * Medium-style zoom overlay with accessibility and performance features
  */
 
-import { wrapImages } from "./wrapImages";
+import { parseIgnore, wrapImages } from "./wrapImages";
 
 export interface Props {
   /**
-   * Theme configuration
+   * Colors of the overlay; each one sets a --zoom-* variable and wins over it
    */
   theme?: {
+    /** Overlay background (--zoom-bg) */
     backgroundColor?: string;
+    /** Close icon (--zoom-close-color) */
     closeButtonColor?: string;
+    /** Close button (--zoom-close-bg) */
+    closeButtonBackground?: string;
+    /** Arrows and counter (--zoom-nav-color) */
     navigationColor?: string;
+    /** Navigation bar, or each arrow in the sides layout (--zoom-nav-bg) */
+    navigationBackground?: string;
+    /** Caption text (--zoom-caption-color) */
+    captionColor?: string;
+    /** Caption box (--zoom-caption-bg) */
+    captionBackground?: string;
   };
 
   /**
@@ -21,11 +32,6 @@ export interface Props {
    * --zoom-animation-duration CSS variable (300ms by default)
    */
   animationDuration?: number;
-
-  /**
-   * Enable keyboard navigation
-   */
-  keyboardNavigation?: boolean;
 
   /**
    * Close on backdrop click
@@ -68,6 +74,12 @@ export interface Props {
   captionPosition?: "bottom" | "top";
 
   /**
+   * Images left out of the zoom and the gallery: simple selectors separated by commas, matched
+   * against each image and the elements around it, such as ".logo, .avatar, [alt='']"
+   */
+  ignore?: string;
+
+  /**
    * Custom CSS class for the zoom container
    */
   class?: string;
@@ -76,7 +88,6 @@ export interface Props {
 const {
   theme = {},
   animationDuration,
-  keyboardNavigation = true,
   closeOnBackdrop = true,
   closeOnImage = true,
   closeOnScroll = true,
@@ -85,6 +96,7 @@ const {
   showCounter = true,
   showCaption = true,
   captionPosition = "bottom",
+  ignore = "",
   class: className = "",
 } = Astro.props;
 
@@ -93,7 +105,11 @@ const {
 const variables = Object.entries({
   "--zoom-bg": theme.backgroundColor,
   "--zoom-close-color": theme.closeButtonColor,
+  "--zoom-close-bg": theme.closeButtonBackground,
   "--zoom-nav-color": theme.navigationColor,
+  "--zoom-nav-bg": theme.navigationBackground,
+  "--zoom-caption-color": theme.captionColor,
+  "--zoom-caption-bg": theme.captionBackground,
   "--zoom-animation-duration": animationDuration === undefined ? undefined : `${animationDuration}ms`,
 })
   .filter(([, value]) => value)
@@ -104,7 +120,7 @@ const wrapperClasses = ["astro-image-zoom-wrapper", className]
   .join(" ");
 
 // Wrap the slot's images in accessible links
-const slotContent = wrapImages(await Astro.slots.render("default"));
+const slotContent = wrapImages(await Astro.slots.render("default"), parseIgnore(ignore));
 
 // The element only groups its content and must not add a box. Its own declarative shadow root says
 // so, with no stylesheet on the page: any rule of the site, layered or not, wins over :host. A string,
@@ -115,7 +131,6 @@ const shadowRoot =
 
 <astro-image-zoom
   class={wrapperClasses}
-  data-keyboard={keyboardNavigation ? "true" : "false"}
   data-close-backdrop={closeOnBackdrop ? "true" : "false"}
   data-close-image={closeOnImage ? "true" : "false"}
   data-close-scroll={closeOnScroll ? "true" : "false"}
@@ -124,6 +139,7 @@ const shadowRoot =
   data-show-counter={showCounter ? "true" : "false"}
   data-show-caption={showCaption ? "true" : "false"}
   data-caption-position={captionPosition}
+  data-ignore={ignore.trim() || undefined}
   style={variables || undefined}
 >
   <Fragment set:html={shadowRoot + slotContent} />

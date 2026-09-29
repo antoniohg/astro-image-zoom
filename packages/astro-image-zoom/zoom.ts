@@ -261,7 +261,6 @@ class Zoom {
   };
 
   private options = {
-    keyboardNavigation: true,
     closeOnBackdrop: true,
     closeOnImage: true,
     closeOnScroll: true,
@@ -289,7 +288,6 @@ class Zoom {
     this.wrapper = wrapper;
 
     // Get configuration from data attributes
-    this.options.keyboardNavigation = wrapper.dataset.keyboard !== 'false';
     this.options.closeOnBackdrop = wrapper.dataset.closeBackdrop !== 'false';
     this.options.closeOnImage = wrapper.dataset.closeImage !== 'false';
     this.options.closeOnScroll = wrapper.dataset.closeScroll !== 'false';
@@ -316,6 +314,7 @@ class Zoom {
     const links = this.wrapper.querySelectorAll<HTMLAnchorElement>('a[data-zoom-generated], a[data-zoom]');
 
     this.state.images = Array.from(links)
+      .filter((anchor) => !this.isIgnored(anchor))
       .map((anchor) => {
         const img = anchor.querySelector('img');
         return {
@@ -326,6 +325,27 @@ class Zoom {
         };
       })
       .filter(({ src }) => src);
+  }
+
+  // data-zoom-ignore, or a selector of the ignore prop, on the image of a link or on an element
+  // around it, up to the wrapper, leaves the link out of the zoom and the gallery. The generated
+  // links are the images the server kept: matching them here, with the new <a> in between, could
+  // leave out images the server wrapped. Only the site's own links with data-zoom are checked
+  private isIgnored(anchor: HTMLAnchorElement): boolean {
+    if (anchor.hasAttribute('data-zoom-generated')) return false;
+    const start = anchor.querySelector('img') ?? anchor;
+    const inside = (match: Element | null): boolean =>
+      match !== null && match !== this.wrapper && this.wrapper.contains(match);
+    if (inside(start.closest('[data-zoom-ignore]'))) return true;
+
+    const ignore = this.wrapper.dataset.ignore;
+    if (!ignore) return false;
+    try {
+      return inside(start.closest(ignore));
+    } catch {
+      // An invalid selector: ImageZoom.astro rejects them at build time, ZoomClass users may not
+      return false;
+    }
   }
 
   private setupEventListeners(): void {
@@ -471,10 +491,8 @@ class Zoom {
       this.overlay.classList.add('is-open');
     });
 
-    // Add keyboard listener
-    if (this.options.keyboardNavigation) {
-      document.addEventListener('keydown', this.handleKeydown, { signal });
-    }
+    // Arrow keys move through the gallery
+    document.addEventListener('keydown', this.handleKeydown, { signal });
 
     // Horizontal swipes scroll the track natively; the slide on screen follows the scroll
     this.track.addEventListener('scroll', this.handleScroll, { passive: true, signal });
@@ -520,17 +538,27 @@ class Zoom {
     this.setSlideOffset(0, false);
     this.jumpToSlide(this.state.currentIndex);
 
+    // Closed during the opening: the close starts from where the image and the backdrop are, read
+    // before the opening stops, not from the end of it
+    if (this.overlay.classList.contains('is-opening')) {
+      const image = getComputedStyle(this.imageElement);
+      this.imageElement.style.setProperty('--transform-now', image.transform);
+      this.imageElement.style.setProperty('--clip-now', image.clipPath);
+      this.backdrop.style.setProperty('--backdrop-now', getComputedStyle(this.backdrop).opacity);
+    }
+
+    // The box the animation moves, without its transform: during the opening, the rect on screen
+    // is the one of a moving image. The slide is the offset parent of the image
+    const slideRect = (this.imageElement.offsetParent as HTMLElement).getBoundingClientRect();
+    const { offsetLeft, offsetTop, offsetWidth, offsetHeight } = this.imageElement;
+    const startRect = new DOMRect(slideRect.left + offsetLeft, slideRect.top + offsetTop, offsetWidth, offsetHeight);
+
     this.overlay.classList.remove('is-open', 'is-opening');
     this.overlay.classList.add('is-closing');
 
-    const startRect = this.imageElement.getBoundingClientRect();
+    // To the thumbnail of the image on screen, which may not be the one the opening started from
     const targetRect = sourceImg.getBoundingClientRect();
-
-    // Calculate transform for closing animation
-    const transform = flipTransform(targetRect, startRect, thumbnailFit(sourceImg));
-
-    // Set CSS variables for closing animation
-    this.setAnimationVariables(transform);
+    this.setAnimationVariables(flipTransform(targetRect, startRect, thumbnailFit(sourceImg)));
 
     // If closed by scroll, unlock scroll immediately and use special animation
     if (byScroll) {
@@ -779,7 +807,10 @@ class Zoom {
 
     // The dialog stays open, transparent, until the end: the gesture that closes it goes on over
     // it. The image and the backdrop stay in the shadow root: they keep the overlay styles and
-    // the CSS of the page still cannot reach them. The backdrop first, so the image covers it
+    // the CSS of the page still cannot reach them. The backdrop first, so the image covers it.
+    // Mouse wheels and Chrome go on scrolling the page with the same gesture. Firefox touchpads and
+    // touch screens keep a gesture on the element it started on, the overlay, even once it is gone:
+    // the page scrolls from the next gesture. Closing the dialog earlier does not change that
     (this.overlay.getRootNode() as ShadowRoot).append(this.backdrop, image);
 
     void Promise.all([
@@ -830,6 +861,7 @@ class Zoom {
 
     this.overlay.close();
     this.overlay.classList.remove('is-closing');
+    this.backdrop.style.removeProperty('--backdrop-now');
     document.body.style.overflow = '';
 
     // The slides belong to the instance that opened the overlay: discard them

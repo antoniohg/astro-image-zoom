@@ -5,6 +5,8 @@
 Medium-style image zoom for Astro: a click grows each image from its place on the page to fill the
 screen, and the images of a gallery become a carousel you can swipe.
 
+**[Live demo and docs](https://antoniohg.com/astro-image-zoom/)**
+
 > **Beta.** The API may still change before 1.0. Feedback and bug reports are welcome in the
 > [issues](https://github.com/antoniohg/astro-image-zoom/issues).
 
@@ -112,6 +114,41 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 </ImageZoom>
 ```
 
+### Leaving Images Out
+
+Logos, icons, avatars and decorative images inside a wrapped article should not zoom. List them in
+the `ignore` prop: an ignored image is not wrapped in a link, does not open, and does not count in
+the gallery.
+
+```astro
+<ImageZoom ignore=".logo, .author, [alt='']">
+  <img src="/photo.jpg" alt="Harbor at dawn" />
+  <img class="logo" src="/logo.svg" alt="Harbor Co." />
+  <img src="/divider.svg" alt="" />
+  <aside class="author">
+    <img src="/avatar.jpg" alt="The author" />
+  </aside>
+</ImageZoom>
+```
+
+Each selector is checked against the image and every element around it inside `<ImageZoom>`, so
+`.author` leaves out every image in the aside. `[alt='']` leaves out the images marked as
+decorative, which screen readers skip too.
+
+The images are wrapped on the server, without a DOM, so `ignore` takes simple selectors only: a tag
+name, `.classes`, `#ids` and `[attributes]`, with or without `=value`, combined as in
+`img.logo[alt='']`. Spaces, combinators (`article img`, `>`) and pseudo-classes fail the build with
+an error that names the selector.
+
+For a single image, `data-zoom-ignore` on the image or on an element around it does the same without
+the prop:
+
+```astro
+<img src="/signature.svg" alt="Signature" data-zoom-ignore />
+```
+
+A link with `data-zoom` inside an ignored element stays a plain link.
+
 ### High-Resolution Images
 
 Use `data-zoom-src` to load higher resolution images in the zoom:
@@ -170,7 +207,6 @@ const optimizedImage = await getImage({
     navigationColor: '#ffffff'
   }}
   animationDuration={300}
-  keyboardNavigation={true}
   closeOnBackdrop={true}
   showNavigation={true}
   class="my-custom-class"
@@ -183,10 +219,13 @@ const optimizedImage = await getImage({
 |------|------|---------|-------------|
 | `theme` | `object` | `{}` | Theme configuration object |
 | `theme.backgroundColor` | `string` | light or dark, following the page | Overlay background color (`--zoom-bg`) |
-| `theme.closeButtonColor` | `string` | light or dark, following the page | Close button color (`--zoom-close-color`) |
+| `theme.closeButtonColor` | `string` | light or dark, following the page | Close icon color (`--zoom-close-color`) |
+| `theme.closeButtonBackground` | `string` | translucent, following the page | Close button background (`--zoom-close-bg`) |
 | `theme.navigationColor` | `string` | light or dark, following the page | Arrows and counter color (`--zoom-nav-color`) |
+| `theme.navigationBackground` | `string` | translucent, following the page | Navigation bar background, or each arrow in the sides layout (`--zoom-nav-bg`) |
+| `theme.captionColor` | `string` | light or dark, following the page | Caption text color (`--zoom-caption-color`) |
+| `theme.captionBackground` | `string` | translucent, following the page | Caption box background (`--zoom-caption-bg`) |
 | `animationDuration` | `number` | — | Animation duration in milliseconds; overrides `--zoom-animation-duration` (300ms by default) |
-| `keyboardNavigation` | `boolean` | `true` | Enable keyboard shortcuts |
 | `closeOnBackdrop` | `boolean` | `true` | Close when clicking backdrop |
 | `closeOnImage` | `boolean` | `true` | Close when clicking the zoomed image |
 | `closeOnScroll` | `boolean` | `true` | Close when scrolling/wheeling |
@@ -195,6 +234,7 @@ const optimizedImage = await getImage({
 | `showCounter` | `boolean` | `true` | Show the position in the gallery, such as "3 / 8" |
 | `showCaption` | `boolean` | `true` | Show the caption of the zoomed image |
 | `captionPosition` | `'bottom' \| 'top'` | `'bottom'` | Where the caption sits on the screen |
+| `ignore` | `string` | `''` | Images left out of the zoom: simple selectors separated by commas, such as `".logo, [alt='']"` ([Leaving Images Out](#leaving-images-out)) |
 | `class` | `string` | `''` | Custom CSS class |
 
 ### Custom Styling
@@ -217,14 +257,14 @@ You can override the default styles using CSS variables:
   /* Layout */
   --zoom-padding: 0; /* space between the zoomed image and the screen edges */
   --zoom-image-radius: 0; /* corners of the zoomed image */
-  --zoom-button-size: 44px; /* arrows and close button */
+  --zoom-button-size: 40px; /* arrows and close button; 36px on phones */
   --zoom-button-radius: 999px; /* shape of the buttons and the navigation bar */
-  --zoom-controls-offset: 20px; /* distance from the controls and the caption to the edges */
-  --zoom-caption-max-width: 70%; /* 90% on phones */
+  --zoom-controls-offset: 16px; /* distance from the controls and the caption to the edges; 12px on phones */
+  --zoom-caption-max-width: 70%; /* 100% on phones */
   --zoom-caption-font: inherit; /* the font of your site */
-  --zoom-caption-font-size: 13px;
+  --zoom-caption-font-size: 13px; /* 12px on phones */
   --zoom-color-scheme: light dark; /* set "dark" or "light" to follow your own theme toggle */
-  --zoom-caption-radius: 6px;
+  --zoom-caption-radius: 10px;
 }
 ```
 
@@ -406,7 +446,9 @@ itself:
 ```
 
 `ZoomClass` reads the options from the `data-*` attributes that `<ImageZoom>` renders; the theme and
-the duration come from the `--zoom-*` variables.
+the duration come from the `--zoom-*` variables. Without `<ImageZoom>`, `data-ignore` on the wrapper
+takes any CSS selector, since the browser matches it; images are not wrapped then, so only links
+with `data-zoom` count.
 
 ## Examples
 

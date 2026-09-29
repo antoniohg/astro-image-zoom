@@ -22,7 +22,6 @@ import {
   props,
 } from "@data/reference";
 import type { ComponentProps } from "astro/types";
-import ArrowsLeftRightIcon from "../assets/icons/arrows-left-right.svg";
 import SelectionBackgroundIcon from "../assets/icons/selection-background.svg";
 import MagnifyingGlassMinusIcon from "../assets/icons/magnifying-glass-minus.svg";
 import MouseScrollIcon from "../assets/icons/mouse-scroll.svg";
@@ -50,14 +49,6 @@ const options: ExampleData[] = [
     sketch: { nav: "none" },
     names: ["orionEarthMoon", "orionArray", "orionMoon"],
     zoom: { showNavigation: false },
-  },
-  {
-    title: "No arrow keys",
-    description: "The arrow keys do nothing. Escape still closes.",
-    code: "<ImageZoom keyboardNavigation={false}>",
-    icon: ArrowsLeftRightIcon,
-    names: ["saturnShadow", "saturn", "pluto"],
-    zoom: { keyboardNavigation: false },
   },
   {
     title: "Stays open on a backdrop click",
