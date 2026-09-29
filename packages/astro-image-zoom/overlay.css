@@ -233,21 +233,39 @@
   }
 }
 
+/*
+ * The spinner: a thin ring in currentColor, its track a faint part of it. In the middle of the slide,
+ * in the color of the controls; on the thumbnail that was clicked while the zoom opens (zoom.ts sets
+ * its center and size, in the viewport), white with a soft shadow, to show on any photo
+ */
 .astro-image-zoom-slide.is-loading::after {
+  --astro-image-zoom-spinner: var(--astro-image-zoom-spinner-size, 40px);
   content: '';
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 48px;
-  height: 48px;
-  border: 4px solid light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.1));
-  border-left-color: light-dark(rgba(0, 0, 0, 0.8), rgba(255, 255, 255, 0.9));
+  box-sizing: border-box;
+  width: var(--astro-image-zoom-spinner);
+  height: var(--astro-image-zoom-spinner);
+  color: var(--astro-image-zoom-on-surface);
+  border: max(2px, calc(var(--astro-image-zoom-spinner) / 16)) solid;
+  border-color: color-mix(in srgb, currentColor 35%, transparent);
+  border-left-color: currentColor;
   border-radius: 50%;
   visibility: hidden;
   animation:
     astro-image-zoom-spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite,
     astro-image-zoom-reveal 0s 200ms forwards;
+}
+
+/* Fixed, not for every slide: a neighbor loading off screen would show its spinner in the middle */
+.astro-image-zoom-slide.is-loading.is-from-thumbnail::after {
+  position: fixed;
+  top: var(--astro-image-zoom-spinner-y);
+  left: var(--astro-image-zoom-spinner-x);
+  color: #fff;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.6));
 }
 
 @keyframes astro-image-zoom-reveal {
@@ -538,6 +556,14 @@
   .astro-image-zoom-toolbar,
   .astro-image-zoom-caption {
     border: 1px solid CanvasText;
+  }
+
+  /* Forced colors paint every border alike: system colors keep the arc apart from its track */
+  .astro-image-zoom-slide.is-loading::after {
+    forced-color-adjust: none;
+    border-color: GrayText;
+    border-left-color: CanvasText;
+    filter: none;
   }
 }
 

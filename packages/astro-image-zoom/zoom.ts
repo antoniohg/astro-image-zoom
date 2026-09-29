@@ -477,6 +477,7 @@ class Zoom {
 
     this.buildSlides();
     this.renderActive(index);
+    this.placeSpinner(this.slides[index].figure, sourceRect);
     this.emit('open');
     // Hidden until the image is ready, so the FLIP animation starts from a clean frame. Before any
     // layout, so its opacity transition does not run: it would show the image for a frame
@@ -729,6 +730,15 @@ class Zoom {
 
     img.style.backgroundImage = `url(${JSON.stringify(thumbnail.currentSrc)})`;
     return true;
+  }
+
+  // While the opening waits for the image, the backdrop is not there yet: the spinner goes on the
+  // thumbnail that was clicked, where the eyes are, and no bigger than a part of it
+  private placeSpinner(figure: HTMLElement, { left, top, width, height }: DOMRect): void {
+    figure.classList.add('is-from-thumbnail');
+    figure.style.setProperty('--astro-image-zoom-spinner-x', `${left + width / 2}px`);
+    figure.style.setProperty('--astro-image-zoom-spinner-y', `${top + height / 2}px`);
+    figure.style.setProperty('--astro-image-zoom-spinner-size', `${Math.min(32, Math.min(width, height) * 0.4)}px`);
   }
 
   private preloadNeighbors(index: number): void {

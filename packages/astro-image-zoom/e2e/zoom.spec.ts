@@ -191,6 +191,17 @@ test.describe('open and close', () => {
           .evaluate((slide) => getComputedStyle(slide, '::after').visibility)
       )
       .toBe('visible');
+    // On the thumbnail that was clicked: the backdrop is not there yet
+    const spinner = await page
+      .locator('.astro-image-zoom-slide.is-active')
+      .evaluate((slide) => {
+        const { left, top, position } = getComputedStyle(slide, '::after');
+        return { x: parseFloat(left), y: parseFloat(top), position };
+      });
+    const thumbnail = (await links(page, 'single').first().locator('img').boundingBox())!;
+    expect(spinner.position).toBe('fixed');
+    expect(spinner.x).toBeCloseTo(thumbnail.x + thumbnail.width / 2, 0);
+    expect(spinner.y).toBeCloseTo(thumbnail.y + thumbnail.height / 2, 0);
 
     await page.keyboard.press('Escape');
     await expectClosed(page);
