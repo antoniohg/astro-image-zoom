@@ -808,13 +808,13 @@ class Zoom {
     image.classList.add('is-detached');
     this.backdrop.classList.add('is-detached');
 
-    // The image and the backdrop stay in the shadow root: they keep the overlay styles and the CSS
-    // of the page still cannot reach them. The backdrop first, so the image covers it
+    // The dialog stays open, transparent, until the end: the gesture that closes it goes on over
+    // it. The image and the backdrop stay in the shadow root: they keep the overlay styles and
+    // the CSS of the page still cannot reach them. The backdrop first, so the image covers it.
+    // Mouse wheels and Chrome go on scrolling the page with the same gesture. Firefox touchpads and
+    // touch screens keep a gesture on the element it started on, the overlay, even once it is gone:
+    // the page scrolls from the next gesture. Closing the dialog earlier does not change that
     (this.overlay.getRootNode() as ShadowRoot).append(this.backdrop, image);
-
-    // Nothing is left in the dialog: close it now. A modal dialog makes the page inert, and Firefox
-    // and mobile browsers hold the gesture that closed it until it goes, instead of scrolling
-    this.overlay.close();
 
     void Promise.all([
       animationsFinished(image, CLOSE_ANIMATIONS),

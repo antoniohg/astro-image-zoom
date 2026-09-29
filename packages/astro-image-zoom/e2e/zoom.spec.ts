@@ -100,8 +100,6 @@ test.describe('open and close', () => {
               backdropInDialog: backdrop.closest('dialog') !== null,
               imageAbove: Number(getComputedStyle(image).zIndex) > Number(getComputedStyle(backdrop).zIndex),
               backdropFading: backdrop.getAnimations().some((a) => (a as CSSAnimation).animationName === 'astro-image-zoom-backdrop-out'),
-              // Closed at once: a modal dialog keeps the page inert, and Firefox and phones would not scroll
-              dialogOpen: root.querySelector('dialog')!.open,
             });
           });
           observer.observe(root, { childList: true });
@@ -110,7 +108,7 @@ test.describe('open and close', () => {
 
     await page.mouse.move(640, 360);
     await page.mouse.wheel(0, 400);
-    expect(await layers).toEqual({ backdropInDialog: false, imageAbove: true, backdropFading: true, dialogOpen: false });
+    expect(await layers).toEqual({ backdropInDialog: false, imageAbove: true, backdropFading: true });
     await expectClosed(page);
 
     // The backdrop is back in the dialog for the next opening
