@@ -4,6 +4,7 @@ import Layout from "@layouts/Layout.astro";
 import Section from "@components/Section.astro";
 import Case from "@components/Case.astro";
 import CodeSample from "@components/CodeSample.astro";
+import InstallCommand from "@components/InstallCommand.astro";
 import Photo from "@components/Photo.astro";
 import KeyboardIcon from "../assets/icons/keyboard.svg";
 import UserSoundIcon from "../assets/icons/user-sound.svg";
@@ -138,7 +139,7 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
           Click any photo on this page. It grows from its place to fill the
           screen, and a group of photos becomes a gallery you can swipe.
         </p>
-        <CodeSample code="pnpm add astro-image-zoom@beta" lang="sh" open />
+        <InstallCommand id="hero" />
       </div>
     </header>
 
@@ -256,7 +257,7 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
       <ol class="rows wide" role="list">
         <li>
           <Case title="Install" number={1}>
-            <CodeSample code="pnpm add astro-image-zoom@beta" lang="sh" open />
+            <InstallCommand id="steps" />
           </Case>
         </li>
         <li>

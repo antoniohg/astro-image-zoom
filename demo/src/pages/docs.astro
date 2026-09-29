@@ -4,6 +4,7 @@ import ImageZoom from "astro-image-zoom/ImageZoom.astro";
 import Layout from "@layouts/Layout.astro";
 import Section from "@components/Section.astro";
 import CodeSample from "@components/CodeSample.astro";
+import InstallCommand from "@components/InstallCommand.astro";
 import CssPlayground from "@components/CssPlayground.astro";
 import Example from "@components/Example.astro";
 import ExamplePhotos from "@components/ExamplePhotos.astro";
@@ -222,7 +223,7 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
     <article class="flow content">
       <!-- Usage -->
       <Section title="Usage" id="usage">
-        <CodeSample code="pnpm add astro-image-zoom@beta" lang="sh" open />
+        <InstallCommand id="docs" />
         <p>
           Put <code>{`<ImageZoom>`}</code> around any markup with images. It
           wraps each one in a link to its full-size file, so without JavaScript
