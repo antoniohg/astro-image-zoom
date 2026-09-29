@@ -133,7 +133,7 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
 >
   <article class="flow">
     <header class="hero wide">
-      <h1>Image zoom for Astro</h1>
+      <h1>Image <span class="accent">zoom</span> for Astro</h1>
       <div class="pitch">
         <p class="lead">
           Click any photo on this page. It grows from its place to fill the
@@ -318,6 +318,11 @@ const fullSize = await getImage({ src: photo, width: photo.width });
         font-weight: 800;
         line-height: 0.95;
         letter-spacing: -0.04em;
+
+        /* The word of the logo, in its color: large text, so 3:1 is enough */
+        .accent {
+          color: var(--color-accent);
+        }
       }
 
       :global(pre) {
@@ -470,7 +475,7 @@ const fullSize = await getImage({ src: photo, width: photo.width });
       aspect-ratio: 1;
       margin-block-end: 0.5rem;
       color: var(--color-accent);
-      background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+      background: color-mix(in oklab, var(--color-accent) 18%, transparent);
       border-radius: 50%;
     }
 

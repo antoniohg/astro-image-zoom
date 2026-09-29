@@ -1,8 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 20 216 216">
-  <!-- Magnifying glass plus, Phosphor Icons (MIT), in the orange of the logo -->
-  <style>
-    path { fill: #c43e00; }
-    @media (prefers-color-scheme: dark) { path { fill: #ff5d01; } }
-  </style>
-  <path d="M229.66,218.34,179.6,168.28a88.21,88.21,0,1,0-11.32,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM144,120H120v24a8,8,0,0,1-16,0V120H80a8,8,0,0,1,0-16h24V80a8,8,0,0,1,16,0v24h24a8,8,0,0,1,0,16Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20">
+  <!-- square-rounded-letter-z (filled), Tabler Icons, MIT, Copyright (c) 2020-2026 Paweł Kuna.
+       In the coral of the demo; the z is cut out, so it takes the color of the tab -->
+  <path fill="#e0452f" d="M11.676 2.001l.324 -.001c7.752 0 10 2.248 10 10l-.005 .642c-.126 7.235 -2.461 9.358 -9.995 9.358l-.642 -.005c-7.13 -.125 -9.295 -2.395 -9.358 -9.67v-.325c0 -7.643 2.185 -9.936 9.676 -9.999m2.324 4.999h-4a1 1 0 0 0 -1 1l.007 .117a1 1 0 0 0 .993 .883h2.382l-3.276 6.553a1 1 0 0 0 .894 1.447h4a1 1 0 0 0 1 -1l-.007 -.117a1 1 0 0 0 -.993 -.883h-2.382l3.276 -6.553a1 1 0 0 0 -.894 -1.447"/>
 </svg>

@@ -1,4 +1,5 @@
 ---
+import { Code } from "astro:components";
 import ImageZoom from "astro-image-zoom/ImageZoom.astro";
 import Photo from "@components/Photo.astro";
 import type { PhotoName } from "@data/photos";
@@ -9,16 +10,16 @@ interface Props {
 
 const { images } = Astro.props;
 
-// Starting values of the controls, the defaults of the overlay; nothing is applied until a control
-// changes
+// Starting values of the controls: the ranges at the defaults of the overlay, the colors at a dark
+// theme in the accent of the site. Nothing is applied until a control changes
 const colors = [
   { name: "--zoom-bg", label: "Background", value: "#050814" },
-  { name: "--zoom-close-color", label: "Close icon", value: "#ffb454" },
+  { name: "--zoom-close-color", label: "Close icon", value: "#ff7a66" },
   { name: "--zoom-close-bg", label: "Close button", value: "#1b2238" },
-  { name: "--zoom-nav-color", label: "Arrow icons", value: "#ffb454" },
+  { name: "--zoom-nav-color", label: "Arrow icons", value: "#ff7a66" },
   { name: "--zoom-nav-bg", label: "Arrow buttons", value: "#1b2238" },
   { name: "--zoom-caption-color", label: "Caption text", value: "#050814" },
-  { name: "--zoom-caption-bg", label: "Caption box", value: "#ffb454" },
+  { name: "--zoom-caption-bg", label: "Caption box", value: "#ff7a66" },
 ];
 
 const ranges = [
@@ -153,8 +154,8 @@ const ranges = [
         </div>
       </ImageZoom>
     </div>
-    <!-- Focusable, as Astro's <Code> blocks: a long line scrolls sideways, also with the keyboard -->
-    <pre class="snippet" tabindex="0"><code>/* Change a value to see the code */</code></pre>
+    <!-- Rendered by Shiki in the theme of every code block; the script only swaps its text -->
+    <Code class="snippet" code="/* Change a value to see the code */" lang="css" theme="github-dark-default" />
   </div>
 </css-playground>
 
@@ -446,9 +447,6 @@ const ranges = [
 
     .snippet {
       margin: 0;
-      overflow-x: auto;
-      color: #e6edf3;
-      background: #0d1117;
 
       @media (width < 48rem) {
         grid-area: code;
