@@ -480,8 +480,15 @@ The events report, they do not decide: `preventDefault()` does not stop an openi
 `open` comes when the zoom starts to open, before the image has loaded, and every `open` gets its
 `close`, also when the zoom closes while the image is still loading.
 
-In TypeScript, `event.detail` is typed once the package is part of the project (any import of
-`astro-image-zoom` or of `ImageZoom.astro`).
+In TypeScript, the events are typed on elements, the document and the window once the package's
+types are in the project. Using `<ImageZoom>` is not enough: add one line to a declaration file,
+such as `src/env.d.ts`, and every script gets them:
+
+```ts
+import type {} from 'astro-image-zoom';
+```
+
+The detail has its own type too: `import type { ZoomEventDetail } from 'astro-image-zoom'`.
 
 ### Programmatic Control (Advanced)
 

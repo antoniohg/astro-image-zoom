@@ -42,10 +42,12 @@ type ZoomEvents = {
   'astro-image-zoom:close': CustomEvent<ZoomEventDetail>;
 };
 
-// Typed addEventListener for the events, on elements and on the document they bubble to
+// Typed addEventListener for the events, on any element (HTMLElementEventMap extends this one), and
+// on the document and the window they bubble to
 declare global {
-  interface HTMLElementEventMap extends ZoomEvents {}
+  interface ElementEventMap extends ZoomEvents {}
   interface DocumentEventMap extends ZoomEvents {}
+  interface WindowEventMap extends ZoomEvents {}
 }
 
 // One slide of the carousel: the overlay holds a slide per image, scrolled and snapped natively
