@@ -120,10 +120,25 @@ const image = (name: string) => `${base}images/${name}.svg`;
       </section>
 
       <section id="hidden">
-        <h2>No caption, no counter, no keyboard</h2>
-        <ImageZoom showCaption={false} showCounter={false} keyboardNavigation={false}>
+        <h2>No caption, no counter</h2>
+        <ImageZoom showCaption={false} showCounter={false}>
           <img src={image("wide")} alt="Wide one" data-zoom-caption="Hidden caption" />
           <img src={image("portrait")} alt="Portrait two" data-zoom-caption="Hidden caption two" />
+        </ImageZoom>
+      </section>
+
+      <section id="ignore">
+        <h2>Images left out with the ignore prop and data-zoom-ignore</h2>
+        <ImageZoom ignore=".logo, [alt='']">
+          <img src={image("square")} alt="Kept one" />
+          <img class="logo" src={image("wide")} alt="Logo" />
+          <img src={image("wide")} alt="" />
+          <img src={image("wide")} alt="Marked by hand" data-zoom-ignore />
+          <div data-zoom-ignore>
+            <img src={image("portrait")} alt="Ignored by its parent" />
+            <a href={image("portrait")} data-zoom><img src={image("portrait")} alt="Ignored link" /></a>
+          </div>
+          <img src={image("landscape")} alt="Kept two" />
         </ImageZoom>
       </section>
 

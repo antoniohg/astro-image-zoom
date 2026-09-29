@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { wrapImages } from '../wrapImages';
+import { parseIgnore, wrapImages } from '../wrapImages';
 
 describe('wrapImages', () => {
   it('wraps an image in a link to its source, named after the image', () => {
@@ -51,6 +51,61 @@ describe('wrapImages', () => {
     expect(wrapImages(picture)).toBe(
       `<a href="/a-large.jpg" data-zoom-generated aria-label="Enlarge image: Moon">${picture}</a>`
     );
+  });
+
+  describe('data-zoom-ignore', () => {
+    it('leaves out an image with it, and every image inside an element with it', () => {
+      const html =
+        '<img src="/logo.svg" alt="" data-zoom-ignore>' +
+        '<div data-zoom-ignore="true"><div><img src="/1.jpg" alt=""></div><img src="/2.jpg" alt=""></div>';
+      expect(wrapImages(html)).toBe(html);
+    });
+
+    it('leaves a <picture> alone when its image has it', () => {
+      const picture = '<picture><source srcset="/a.avif"><img src="/a.jpg" alt="" data-zoom-ignore></picture>';
+      expect(wrapImages(picture)).toBe(picture);
+    });
+  });
+
+  describe('the ignore selectors', () => {
+    const wrapped = (src: string) =>
+      `<a href="${src}" data-zoom-generated aria-label="Enlarge image"><img src="${src}" alt=""></a>`;
+
+    it('leaves out the images a selector matches, all of its parts: tag, class, id and attribute', () => {
+      // The alt is matched as the DOM reads it, with its character references decoded
+      const ignore = parseIgnore('.logo, #hero, [data-icon], img[alt="Salt & pepper"], picture.big');
+      const html =
+        '<img class="big logo" src="/1.jpg" alt=""><img id="hero" src="/2.jpg" alt="">' +
+        '<img data-icon src="/3.jpg" alt=""><img src="/4.jpg" alt="Salt &amp; pepper">' +
+        '<img class="&#108;ogo" src="/6.jpg" alt=""><img id="&#x68;ero" src="/7.jpg" alt="">';
+      expect(wrapImages(`${html}<img class="big" src="/5.jpg" alt="">`, ignore)).toBe(
+        html + '<a href="/5.jpg" data-zoom-generated aria-label="Enlarge image"><img class="big" src="/5.jpg" alt=""></a>'
+      );
+    });
+
+    it('leaves out every image inside an element a selector matches', () => {
+      const aside = '<aside class="author"><p><img src="/1.jpg" alt=""></p></aside>';
+      expect(wrapImages(`${aside}<img src="/2.jpg" alt="">`, parseIgnore('aside.author'))).toBe(
+        aside + wrapped('/2.jpg')
+      );
+    });
+
+    it('splits the list on commas, not on those inside a quoted value', () => {
+      expect(parseIgnore(' .a , [alt="Last, First"], ')).toHaveLength(2);
+      expect(parseIgnore('')).toEqual([]);
+    });
+
+    it('rejects what the server cannot match: combinators and pseudo-classes', () => {
+      expect(() => parseIgnore('article img')).toThrow(/unsupported selector.*"article img"/);
+      expect(() => parseIgnore('.a > img')).toThrow(/unsupported selector/);
+      expect(() => parseIgnore('img:first-child')).toThrow(/unsupported selector/);
+      expect(() => parseIgnore('[alt^="x"]')).toThrow(/unsupported selector/);
+      expect(() => parseIgnore('[alt=a=b]')).toThrow(/unsupported selector/);
+      // Not CSS identifiers: the browser would reject them in closest()
+      for (const selector of ['.123', '#1a', '[1foo]', '[xlink:href]']) {
+        expect(() => parseIgnore(selector)).toThrow(/unsupported selector/);
+      }
+    });
   });
 
   it('leaves a <picture> without an image alone', () => {

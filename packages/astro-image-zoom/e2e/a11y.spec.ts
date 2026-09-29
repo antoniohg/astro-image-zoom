@@ -33,7 +33,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
       test(`the open zoom has no violations: ${name}`, async ({ page }) => {
         await page.goto('/');
         await links(page, id).first().click();
-        await expect(dialog(page)).toHaveClass(/is-open/);
+        await expect(dialog(page)).toHaveClass(/\bis-open\b/);
         // Contrast is measured on the final frame, not in the middle of a fade
         await settle(page);
         expect(await analyze(page)).toEqual([]);
@@ -43,7 +43,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     test('an optimized image opens without violations', async ({ page }) => {
       await page.goto('/hostile/');
       await page.locator('astro-image-zoom a').first().click();
-      await expect(dialog(page)).toHaveClass(/is-open/);
+      await expect(dialog(page)).toHaveClass(/\bis-open\b/);
       await settle(page);
       expect(await analyze(page)).toEqual([]);
     });

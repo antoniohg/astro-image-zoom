@@ -5,7 +5,7 @@ import { dialog, focusRing, settle } from './helpers';
 async function overlayStyles(page: Page, url: string): Promise<Record<string, string>> {
   await page.goto(url);
   await page.locator('astro-image-zoom a').nth(1).click();
-  await expect(dialog(page)).toHaveClass(/is-open/);
+  await expect(dialog(page)).toHaveClass(/\bis-open\b/);
   await settle(page);
 
   return page.evaluate(() => {
@@ -94,5 +94,5 @@ test('a page parsed by a client router, which ignores declarative shadow roots, 
   expect(await zoom.evaluate((element) => element.querySelector('template'))).toBeNull();
 
   await zoom.locator('a').first().click();
-  await expect(dialog(page)).toHaveClass(/is-open/);
+  await expect(dialog(page)).toHaveClass(/\bis-open\b/);
 });

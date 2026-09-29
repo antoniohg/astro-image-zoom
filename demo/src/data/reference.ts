@@ -20,25 +20,33 @@ export const colorVariables: ReferenceRow[] = [
   {
     name: "--zoom-close-color",
     description: "Close icon",
-    default: "light-dark(rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.92))",
+    default: "light-dark(rgba(0, 0, 0, 0.88), rgba(255, 255, 255, 0.92))",
   },
   {
     name: "--zoom-close-bg",
-    description: "Close button",
-    default: "light-dark(rgba(255, 255, 255, 0.9), rgba(30, 30, 32, 0.85))",
+    description: "Close button, translucent over a blur",
+    default: "light-dark(rgba(255, 255, 255, 0.75), rgba(28, 28, 30, 0.7))",
   },
   {
     name: "--zoom-nav-color",
     description: "Arrows and counter",
-    default: "light-dark(rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.92))",
+    default: "light-dark(rgba(0, 0, 0, 0.88), rgba(255, 255, 255, 0.92))",
   },
   {
     name: "--zoom-nav-bg",
-    description: "Navigation bar (or each arrow in the sides layout)",
-    default: "light-dark(rgba(255, 255, 255, 0.9), rgba(30, 30, 32, 0.85))",
+    description: "Navigation bar (or each arrow in the sides layout), translucent over a blur",
+    default: "light-dark(rgba(255, 255, 255, 0.75), rgba(28, 28, 30, 0.7))",
   },
-  { name: "--zoom-caption-color", description: "Caption text", default: "#fff" },
-  { name: "--zoom-caption-bg", description: "Caption box", default: "rgba(0, 0, 0, 0.9)" },
+  {
+    name: "--zoom-caption-color",
+    description: "Caption text",
+    default: "light-dark(rgba(0, 0, 0, 0.88), rgba(255, 255, 255, 0.92))",
+  },
+  {
+    name: "--zoom-caption-bg",
+    description: "Caption box, translucent over a blur",
+    default: "light-dark(rgba(255, 255, 255, 0.75), rgba(28, 28, 30, 0.7))",
+  },
 ];
 
 // Spacing, corners, controls and caption
@@ -52,7 +60,7 @@ export const layoutVariables: ReferenceRow[] = [
   {
     name: "--zoom-button-size",
     description: "Size of the arrows and the close button",
-    default: "44px",
+    default: "40px (36px on phones)",
   },
   {
     name: "--zoom-button-radius",
@@ -62,20 +70,20 @@ export const layoutVariables: ReferenceRow[] = [
   {
     name: "--zoom-controls-offset",
     description: "Distance from the controls and the caption to the screen edges",
-    default: "20px",
+    default: "16px (12px on phones)",
   },
   {
     name: "--zoom-caption-max-width",
     description: "Widest the caption can get",
-    default: "70% (90% on phones)",
+    default: "70% (100% on phones)",
   },
   { name: "--zoom-caption-font", description: "Font family of the caption", default: "inherit" },
   {
     name: "--zoom-caption-font-size",
     description: "Font size of the caption",
-    default: "13px",
+    default: "13px (12px on phones)",
   },
-  { name: "--zoom-caption-radius", description: "Corners of the caption box", default: "6px" },
+  { name: "--zoom-caption-radius", description: "Corners of the caption box", default: "10px" },
 ];
 
 // Color scheme and motion
@@ -119,7 +127,8 @@ export const parts: ReferenceRow[] = [
 export const props: ReferenceRow[] = [
   {
     name: "theme",
-    description: "`backgroundColor`, `closeButtonColor` and `navigationColor` for this gallery",
+    description:
+      "The colors of this gallery: `backgroundColor`, `closeButtonColor`, `closeButtonBackground`, `navigationColor`, `navigationBackground`, `captionColor` and `captionBackground`",
     type: "object",
     default: "{}",
   },
@@ -160,10 +169,11 @@ export const props: ReferenceRow[] = [
     default: "\"bottom\"",
   },
   {
-    name: "keyboardNavigation",
-    description: "Arrow keys move through the gallery",
-    type: "boolean",
-    default: "true",
+    name: "ignore",
+    description:
+      "Images left out of the zoom and the gallery: simple selectors (tag, `.class`, `#id`, `[attribute]`) matched on each image and the elements around it",
+    type: "string",
+    default: "\"\"",
   },
   {
     name: "closeOnBackdrop",
@@ -200,5 +210,10 @@ export const attributes: ReferenceRow[] = [
     name: "data-zoom",
     description:
       "On an `<a href>` around an image: the zoom opens its `href`. The component leaves the link as it is",
+  },
+  {
+    name: "data-zoom-ignore",
+    description:
+      "On an image or any element around it: left out of the zoom and the gallery, like the `ignore` prop for a single image",
   },
 ];

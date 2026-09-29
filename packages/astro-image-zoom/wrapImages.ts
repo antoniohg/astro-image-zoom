@@ -55,10 +55,108 @@ function wrap(html: string, image: Attributes): string {
   return `<a href="${escapeQuotes(src)}" data-zoom-generated${captionAttribute} aria-label="${escapeQuotes(label)}">${html}</a>`;
 }
 
-export function wrapImages(html: string): string {
+// Elements without a closing tag: a match on them never opens an ignored scope
+const VOID_ELEMENTS = new Set([
+  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'
+]);
+
+/**
+ * One compound selector: an optional tag name, then classes, ids and attributes, such as
+ * `img.logo[alt=""]`. The server has no DOM, so combinators and pseudo-classes are not supported.
+ */
+export interface Selector {
+  tag?: string;
+  classes: string[];
+  ids: string[];
+  attributes: { name: string; value?: string }[];
+}
+
+// A CSS identifier without escapes: what classes, ids, attribute names and unquoted values must be
+// for the browser's closest() to take the same selector (not .123, #1a or [xlink:href])
+const IDENT = String.raw`-?[_a-zA-Z\u00a0-\uffff][\w\u00a0-\uffff-]*`;
+const SIMPLE = new RegExp(
+  String.raw`\.(${IDENT})|#(${IDENT})|\[\s*(${IDENT})\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|(${IDENT}))\s*)?\]`,
+  'y'
+);
+
+function parseSelector(source: string): Selector {
+  const text = source.trim();
+  const selector: Selector = { classes: [], ids: [], attributes: [] };
+  const tag = /^(?:[a-zA-Z][\w-]*|\*)/.exec(text);
+  let index = 0;
+  if (tag) {
+    if (tag[0] !== '*') selector.tag = tag[0].toLowerCase();
+    index = tag[0].length;
+  }
+  while (index < text.length) {
+    SIMPLE.lastIndex = index;
+    const match = SIMPLE.exec(text);
+    if (!match) {
+      throw new Error(
+        `astro-image-zoom: unsupported selector in "ignore": "${source.trim()}". Use tag names, ` +
+          '.classes, #ids and [attributes] (with or without =value), without spaces or combinators.'
+      );
+    }
+    const [, className, id, name, double, single, bare] = match;
+    if (className) selector.classes.push(className);
+    else if (id) selector.ids.push(id);
+    else selector.attributes.push({ name: name.toLowerCase(), value: double ?? single ?? bare });
+    index = SIMPLE.lastIndex;
+  }
+  return selector;
+}
+
+/** Parses the ignore prop, a list of simple selectors separated by commas */
+export function parseIgnore(ignore = ''): Selector[] {
+  // Commas inside a quoted value, as in [alt="Last, First"], do not split; a trailing comma is forgiven
+  const parts = ignore.match(/(?:"[^"]*"|'[^']*'|[^,])+/g) ?? [];
+  return parts.filter((part) => part.trim()).map(parseSelector);
+}
+
+// data-zoom-ignore always leaves an image out, with or without the ignore prop
+const ALWAYS_IGNORED: Selector = { classes: [], ids: [], attributes: [{ name: 'data-zoom-ignore' }] };
+
+// The character references Astro and hand-written HTML use in attribute values
+const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+
+// Attribute values as the DOM sees them, so selectors match like in CSS: alt="Salt &amp; pepper"
+// is matched by [alt="Salt & pepper"]. Numeric references and the five named ones Astro writes are
+// decoded; other named ones (&copy;), rare in rendered HTML, would need the whole HTML table, a
+// dependency, and are compared as written
+const decode = (value: string): string =>
+  value.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (_, entity: string) =>
+    entity.startsWith('#')
+      ? String.fromCodePoint(/^#x/i.test(entity) ? Number.parseInt(entity.slice(2), 16) : Number(entity.slice(1)))
+      : ENTITIES[entity.toLowerCase()]
+  );
+
+function matches(name: string, attributes: Attributes, selector: Selector): boolean {
+  if (selector.tag && selector.tag !== name) return false;
+  const value = (attribute: string): string | undefined => {
+    const raw = attributes.get(attribute);
+    return raw === undefined ? undefined : decode(raw);
+  };
+  const classes = (value('class') ?? '').split(/\s+/);
+  return (
+    selector.classes.every((className) => classes.includes(className)) &&
+    selector.ids.every((id) => value('id') === id) &&
+    selector.attributes.every(
+      ({ name: attribute, value: expected }) =>
+        attributes.has(attribute) && (expected === undefined || value(attribute) === expected)
+    )
+  );
+}
+
+export function wrapImages(html: string, ignore: Selector[] = []): string {
+  const selectors = [ALWAYS_IGNORED, ...ignore];
+  const isIgnored = (name: string, attributes: Attributes): boolean =>
+    selectors.some((selector) => matches(name, attributes, selector));
+
   let output = '';
   let cursor = 0;
   let anchorDepth = 0;
+  // Inside an ignored element: its name, and how deep elements of that name nest in it
+  let ignored: { name: string; depth: number } | null = null;
   // A <picture> is wrapped as a whole: <a> is not valid inside it
   let picture: { start: number; image?: Attributes } | null = null;
 
@@ -69,6 +167,22 @@ export function wrapImages(html: string): string {
     const name = rawName.toLowerCase();
     const start = match.index;
     const end = start + tag.length;
+
+    // Nothing inside an ignored element is wrapped, whatever it holds
+    if (ignored) {
+      if (name === ignored.name) ignored.depth += closing ? -1 : 1;
+      if (ignored.depth === 0) ignored = null;
+      continue;
+    }
+    if (
+      !closing &&
+      !VOID_ELEMENTS.has(name) &&
+      !/\/\s*$/.test(rawAttributes) &&
+      isIgnored(name, parseAttributes(rawAttributes))
+    ) {
+      ignored = { name, depth: 1 };
+      continue;
+    }
 
     if (name === 'a') {
       anchorDepth = Math.max(0, anchorDepth + (closing ? -1 : 1));
@@ -91,7 +205,10 @@ export function wrapImages(html: string): string {
       }
     } else if (name === 'img' && !closing) {
       const image = parseAttributes(rawAttributes);
-      if (picture) {
+      if (isIgnored('img', image)) {
+        // An ignored image leaves its <picture> unwrapped too
+        if (picture) picture = null;
+      } else if (picture) {
         picture.image ??= image;
       } else if (getSource(image)) {
         output += html.slice(cursor, start) + wrap(tag, image);
