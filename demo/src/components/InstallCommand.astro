@@ -1,0 +1,167 @@
+---
+/**
+ * The install command for each package manager, picked with tabs that are native radio buttons:
+ * arrow keys and screen readers work as with any radio group, and the CSS shows the command of the
+ * checked one. The <install-command> element checks the same manager in every instance and
+ * remembers it across pages; without JavaScript, each instance keeps its own choice.
+ */
+import { Code } from "astro:components";
+
+interface Props {
+  /** Names the radio group: radio groups are page-wide by name, so each instance needs its own */
+  id: string;
+}
+
+const { id } = Astro.props;
+
+const managers = [
+  { name: "npm", command: "npm install astro-image-zoom@beta" },
+  { name: "pnpm", command: "pnpm add astro-image-zoom@beta" },
+  { name: "yarn", command: "yarn add astro-image-zoom@beta" },
+  { name: "bun", command: "bun add astro-image-zoom@beta" },
+];
+---
+
+<install-command>
+  <fieldset class="install">
+    <legend class="visually-hidden">Package manager</legend>
+    <div class="tabs">
+      {
+        managers.map(({ name }, index) => (
+          <label>
+            <input type="radio" name={`install-${id}`} value={name} checked={index === 0} />
+            {name}
+          </label>
+        ))
+      }
+    </div>
+    {
+      managers.map(({ name, command }) => (
+        <div class="command" data-manager={name}>
+          <Code code={command} lang="sh" theme="github-dark-default" />
+        </div>
+      ))
+    }
+  </fieldset>
+</install-command>
+
+<script>
+  // One choice for every instance on the page, remembered for the next pages and visits
+  const KEY = "package-manager";
+
+  const read = (): string | null => {
+    try {
+      return localStorage.getItem(KEY);
+    } catch {
+      // Storage unavailable (private mode, blocked): the choice is not remembered
+      return null;
+    }
+  };
+
+  const write = (manager: string) => {
+    try {
+      localStorage.setItem(KEY, manager);
+    } catch {
+      // Not remembered, as above
+    }
+  };
+
+  class InstallCommand extends HTMLElement {
+    connectedCallback() {
+      this.addEventListener("change", this.handleChange);
+      const saved = read();
+      if (saved) this.select(saved);
+    }
+
+    disconnectedCallback() {
+      this.removeEventListener("change", this.handleChange);
+    }
+
+    select(manager: string) {
+      const inputs = [...this.querySelectorAll("input")];
+      // A remembered manager that is no longer listed would leave every tab unchecked
+      if (!inputs.some(({ value }) => value === manager)) return;
+      for (const input of inputs) input.checked = input.value === manager;
+    }
+
+    private handleChange = (event: Event) => {
+      const { value } = event.target as HTMLInputElement;
+      for (const element of document.querySelectorAll<InstallCommand>("install-command")) element.select(value);
+      write(value);
+    };
+  }
+
+  customElements.define("install-command", InstallCommand);
+</script>
+
+<style>
+  @layer components {
+    install-command {
+      display: block;
+    }
+
+    .install {
+      min-inline-size: 0;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 1rem;
+      margin-block-end: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+    }
+
+    label {
+      padding-block: 0.125rem;
+      color: var(--color-text-muted);
+      border-block-end: 2px solid transparent;
+      cursor: pointer;
+
+      &:hover {
+        color: var(--color-text);
+      }
+
+      &:has(:checked) {
+        color: var(--color-text);
+        border-block-end-color: var(--color-accent);
+      }
+
+      /* The radio is the tab: its focus ring goes on the label */
+      &:has(:focus-visible) {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-offset);
+      }
+    }
+
+    /* Kept in the page for the keyboard and screen readers, drawn by the label */
+    input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .command {
+      display: none;
+    }
+
+    .install:has([value="npm"]:checked) [data-manager="npm"],
+    .install:has([value="pnpm"]:checked) [data-manager="pnpm"],
+    .install:has([value="yarn"]:checked) [data-manager="yarn"],
+    .install:has([value="bun"]:checked) [data-manager="bun"] {
+      display: block;
+    }
+  }
+</style>

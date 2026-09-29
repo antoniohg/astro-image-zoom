@@ -1,5 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <circle cx="13" cy="13" r="9" fill="none" stroke="#7e22ce" stroke-width="3.5"/>
-  <path d="M20 20l8 8" stroke="#7e22ce" stroke-width="4" stroke-linecap="round"/>
-  <path d="M13 9v8M9 13h8" stroke="#7e22ce" stroke-width="2.5" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20">
+  <!-- square-rounded-letter-z (filled) from Tabler Icons, Copyright (c) 2020-2026 Paweł Kuna,
+       MIT License (full text in demo/src/assets/icons/LICENSE-tabler in the repository).
+       In the coral of the demo; the z is cut out, so it takes the color of the tab -->
+  <path fill="#e0452f" d="M11.676 2.001l.324 -.001c7.752 0 10 2.248 10 10l-.005 .642c-.126 7.235 -2.461 9.358 -9.995 9.358l-.642 -.005c-7.13 -.125 -9.295 -2.395 -9.358 -9.67v-.325c0 -7.643 2.185 -9.936 9.676 -9.999m2.324 4.999h-4a1 1 0 0 0 -1 1l.007 .117a1 1 0 0 0 .993 .883h2.382l-3.276 6.553a1 1 0 0 0 .894 1.447h4a1 1 0 0 0 1 -1l-.007 -.117a1 1 0 0 0 -.993 -.883h-2.382l3.276 -6.553a1 1 0 0 0 -.894 -1.447"/>
 </svg>

@@ -4,9 +4,16 @@ import Layout from "@layouts/Layout.astro";
 import Section from "@components/Section.astro";
 import Case from "@components/Case.astro";
 import CodeSample from "@components/CodeSample.astro";
+import InstallCommand from "@components/InstallCommand.astro";
 import Photo from "@components/Photo.astro";
-import { Icon } from "astro-icon/components";
+import KeyboardIcon from "../assets/icons/keyboard.svg";
+import UserSoundIcon from "../assets/icons/user-sound.svg";
+import HandSwipeRightIcon from "../assets/icons/hand-swipe-right.svg";
+import LinkIcon from "../assets/icons/link.svg";
+import ShieldCheckIcon from "../assets/icons/shield-check.svg";
+import PackageIcon from "../assets/icons/package.svg";
 import type { PhotoName } from "@data/photos";
+import type { SvgComponent } from "astro/types";
 
 type LocalPhoto = Exclude<PhotoName, "blueMarble">;
 
@@ -83,34 +90,34 @@ const galleries: { title: string; names: LocalPhoto[] }[] = [
   { title: "The Moon", names: ["aldrinWalk", "aldrinFlag", "schmittFlag"] },
 ];
 
-const features: { icon: string; title: string; text: string }[] = [
+const features: { icon: SvgComponent; title: string; text: string }[] = [
   {
-    icon: "lucide:keyboard",
+    icon: KeyboardIcon,
     title: "Keyboard",
     text: "Tab to a photo and press Enter. The arrow keys move through the gallery, Escape closes, and focus goes back where it was.",
   },
   {
-    icon: "lucide:speech",
+    icon: UserSoundIcon,
     title: "Screen readers",
     text: "A native dialog with labelled controls. The caption is announced as you move, and every image keeps its alt text.",
   },
   {
-    icon: "lucide:hand",
+    icon: HandSwipeRightIcon,
     title: "Touch and touchpad",
     text: "Swipe between photos with the inertia of a real carousel. A vertical swipe or a scroll closes the zoom.",
   },
   {
-    icon: "lucide:link",
+    icon: LinkIcon,
     title: "Works without JavaScript",
     text: "Each photo is wrapped in a link to its full-size file, so it still opens before the script loads, or without it.",
   },
   {
-    icon: "lucide:shield-check",
+    icon: ShieldCheckIcon,
     title: "Safe from your CSS",
     text: "The overlay lives in a shadow root, so the styles of your site can't break it, and it doesn't style your page: your thumbnails keep your design. You change the zoom on purpose, with CSS variables.",
   },
   {
-    icon: "lucide:package",
+    icon: PackageIcon,
     title: "Zero dependencies",
     text: "One Astro component and a small script. It follows light and dark mode, reduced motion and forced colors.",
   },
@@ -126,13 +133,13 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
 >
   <article class="flow">
     <header class="hero wide">
-      <h1>Image zoom for Astro</h1>
+      <h1>Image <span class="accent">zoom</span> for Astro</h1>
       <div class="pitch">
         <p class="lead">
           Click any photo on this page. It grows from its place to fill the
           screen, and a group of photos becomes a gallery you can swipe.
         </p>
-        <CodeSample code="pnpm add astro-image-zoom@beta" lang="sh" open />
+        <InstallCommand id="hero" />
       </div>
     </header>
 
@@ -234,10 +241,10 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
 
     <Section title="Built in" id="features" wide>
       <ul class="features wide" role="list">
-        {features.map(({ icon, title, text }) => (
+        {features.map(({ icon: Icon, title, text }) => (
           <li>
             <span class="icon">
-              <Icon name={icon} size={24} aria-hidden="true" />
+              <Icon width={24} height={24} aria-hidden="true" />
             </span>
             <h3>{title}</h3>
             <p>{text}</p>
@@ -250,7 +257,7 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
       <ol class="rows wide" role="list">
         <li>
           <Case title="Install" number={1}>
-            <CodeSample code="pnpm add astro-image-zoom@beta" lang="sh" open />
+            <InstallCommand id="steps" />
           </Case>
         </li>
         <li>
@@ -311,6 +318,11 @@ const fullSize = await getImage({ src: photo, width: photo.width });
         font-weight: 800;
         line-height: 0.95;
         letter-spacing: -0.04em;
+
+        /* The word of the logo, in its color: large text, so 3:1 is enough */
+        .accent {
+          color: var(--color-accent);
+        }
       }
 
       :global(pre) {
@@ -463,7 +475,7 @@ const fullSize = await getImage({ src: photo, width: photo.width });
       aspect-ratio: 1;
       margin-block-end: 0.5rem;
       color: var(--color-accent);
-      background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+      background: color-mix(in oklab, var(--color-accent) 18%, transparent);
       border-radius: 50%;
     }
 
