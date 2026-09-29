@@ -291,6 +291,34 @@ test.describe('gallery', () => {
     await expect(counter(page)).toHaveText('2 / 3');
   });
 
+  test('tells the page when it opens, moves to another image and closes', async ({ page }) => {
+    // One listener on the document hears the events of every gallery: they bubble
+    await page.evaluate(() => {
+      const log: unknown[] = [];
+      (window as unknown as { zoomEvents: unknown[] }).zoomEvents = log;
+      for (const type of ['open', 'change', 'close'] as const) {
+        document.addEventListener(`astro-image-zoom:${type}`, ({ detail, target }) => {
+          const { index, total, src, alt, caption, link } = detail;
+          const from = (target as Element).closest('section')?.id;
+          log.push({ type, index, total, src: src.split('/').pop(), alt, caption, link: link.tagName, from });
+        });
+      }
+    });
+
+    await openZoom(page, 'gallery');
+    await page.keyboard.press('ArrowRight');
+    await expect(counter(page)).toHaveText('2 / 3');
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+
+    const common = { total: 3, link: 'A', from: 'gallery' };
+    expect(await page.evaluate(() => (window as unknown as { zoomEvents: unknown[] }).zoomEvents)).toEqual([
+      { type: 'open', index: 0, src: 'portrait.svg', alt: 'Pink portrait', caption: 'First', ...common },
+      { type: 'change', index: 1, src: 'square.svg', alt: 'Green square', caption: 'Second', ...common },
+      { type: 'close', index: 1, src: 'square.svg', alt: 'Green square', caption: 'Second', ...common },
+    ]);
+  });
+
   test('clicks on the caption and the controls do not close the zoom', async ({ page }) => {
     await openZoom(page, 'gallery');
     await caption(page).click();
