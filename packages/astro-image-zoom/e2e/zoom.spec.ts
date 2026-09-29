@@ -181,6 +181,8 @@ test.describe('open and close', () => {
     await links(page, 'single').first().click();
     await expect(dialog(page)).toHaveAttribute('open');
     await expect(dialog(page)).not.toHaveClass(/is-opening|is-open/);
+    // The controls are hidden, not only transparent: nothing invisible to Tab to or click
+    await expect(page.getByRole('button', { name: 'Close zoom overlay' })).toBeHidden();
     // The spinner shows once the wait lasts
     await expect
       .poll(() =>
@@ -458,9 +460,14 @@ test.describe('theming', () => {
       }
       return { before, seen };
     });
-    // Only shrinking and fading from there: the image never grows back, the backdrop never darkens
-    expect(Math.max(...seen.map(({ width }) => width))).toBeLessThanOrEqual(before.width + 1);
-    expect(Math.max(...seen.map(({ opacity }) => opacity))).toBeLessThanOrEqual(before.opacity + 0.02);
+    // The close starts where the opening was, give or take the few ms WebKit's clock moves on
+    // between reads (a jump to full size would be hundreds of px), then only shrinks and fades
+    expect(seen[0].width).toBeLessThanOrEqual(before.width * 1.02);
+    expect(seen[0].opacity).toBeLessThanOrEqual(before.opacity + 0.02);
+    for (let frame = 1; frame < seen.length; frame++) {
+      expect(seen[frame].width).toBeLessThanOrEqual(seen[frame - 1].width + 0.5);
+      expect(seen[frame].opacity).toBeLessThanOrEqual(seen[frame - 1].opacity + 0.005);
+    }
     await expectClosed(page);
   });
 

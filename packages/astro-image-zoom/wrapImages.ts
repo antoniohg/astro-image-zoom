@@ -71,7 +71,9 @@ export interface Selector {
   attributes: { name: string; value?: string }[];
 }
 
-const SIMPLE = /\.([\w-]+)|#([\w-]+)|\[\s*([\w:-]+)\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|([^\]\s"']+))\s*)?\]/y;
+// An unquoted attribute value must be a CSS identifier, as in [data-kind=logo]
+const SIMPLE =
+  /\.([\w-]+)|#([\w-]+)|\[\s*([\w:-]+)\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|(-?[_a-zA-Z\u00a0-\uffff][\w\u00a0-\uffff-]*))\s*)?\]/y;
 
 function parseSelector(source: string): Selector {
   const text = source.trim();
@@ -114,7 +116,9 @@ const ALWAYS_IGNORED: Selector = { classes: [], ids: [], attributes: [{ name: 'd
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
 
 // Attribute values as the DOM sees them, so selectors match like in CSS: alt="Salt &amp; pepper"
-// is matched by [alt="Salt & pepper"]
+// is matched by [alt="Salt & pepper"]. Numeric references and the five named ones Astro writes are
+// decoded; other named ones (&copy;), rare in rendered HTML, would need the whole HTML table, a
+// dependency, and are compared as written
 const decode = (value: string): string =>
   value.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (_, entity: string) =>
     entity.startsWith('#')

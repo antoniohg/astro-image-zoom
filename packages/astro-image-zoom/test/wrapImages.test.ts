@@ -100,6 +100,7 @@ describe('wrapImages', () => {
       expect(() => parseIgnore('.a > img')).toThrow(/unsupported selector/);
       expect(() => parseIgnore('img:first-child')).toThrow(/unsupported selector/);
       expect(() => parseIgnore('[alt^="x"]')).toThrow(/unsupported selector/);
+      expect(() => parseIgnore('[alt=a=b]')).toThrow(/unsupported selector/);
     });
   });
 

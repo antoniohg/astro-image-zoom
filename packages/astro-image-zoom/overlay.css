@@ -382,19 +382,23 @@
  * on close, so the image flies back alone. Transitions, not animations: a close during the fade in
  * turns it around from where it got to. The fade in ends with the zoom, as the opening does.
  */
+/* Hidden, not only transparent, while the image loads: out of the tab order and the hit testing */
 .astro-image-zoom-close,
 .astro-image-zoom-bottom {
   opacity: 0;
+  visibility: hidden;
 }
 
 .astro-image-zoom-overlay:is(.is-opening, .is-open) :is(.astro-image-zoom-close, .astro-image-zoom-bottom) {
   opacity: 1;
+  visibility: visible;
   transition:
     opacity calc(var(--astro-image-zoom-duration) * 0.4) ease-out calc(var(--astro-image-zoom-duration) * 0.6),
     background-color 0.15s ease;
 }
 
 .astro-image-zoom-overlay.is-closing :is(.astro-image-zoom-close, .astro-image-zoom-bottom) {
+  visibility: visible;
   transition: opacity calc(var(--astro-image-zoom-duration) * 0.3) ease-in;
 }
 
