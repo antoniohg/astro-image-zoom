@@ -6,6 +6,7 @@ import Section from "@components/Section.astro";
 import CodeSample from "@components/CodeSample.astro";
 import InstallCommand from "@components/InstallCommand.astro";
 import CssPlayground from "@components/CssPlayground.astro";
+import EventsConsole from "@components/EventsConsole.astro";
 import Example from "@components/Example.astro";
 import ExamplePhotos from "@components/ExamplePhotos.astro";
 import OverlaySketch from "@components/OverlaySketch.astro";
@@ -16,6 +17,8 @@ import { photos, type PhotoName } from "@data/photos";
 import {
   attributes,
   colorVariables,
+  eventDetail,
+  events,
   layoutVariables,
   otherVariables,
   parts,
@@ -191,6 +194,7 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
       { id: "parts", title: "Parts" },
     ],
   },
+  { id: "events", title: "Events" },
   { id: "api", title: "API" },
 ];
 ---
@@ -591,6 +595,38 @@ a[data-zoom-generated] img {
             hostile CSS that breaks the rest of the page.
           </p>
         </Section>
+      </Section>
+
+      <!-- Events -->
+      <Section title="Events" id="events">
+        <p>
+          Each <code>{`<astro-image-zoom>`}</code> dispatches an event when the
+          zoom opens, moves to another image and closes, for analytics or to
+          sync something else on the page. They bubble, so one listener on the
+          document hears every gallery. Open a photo and watch the log.
+        </p>
+        <EventsConsole names={["saturnShadow", "saturn", "pluto"]} />
+        <CodeSample
+          open
+          code={`<script>
+  document.addEventListener('astro-image-zoom:open', (event) => {
+    const { index, total, src } = event.detail;
+    console.log(\`Opened \${index + 1} of \${total}: \${src}\`);
+  });
+
+  // Only one gallery: listen on its element instead
+  document.querySelector('.portfolio')?.addEventListener('astro-image-zoom:change', (event) => {
+    console.log('Now showing', event.detail.caption);
+  });
+</script>`}
+        />
+        <Reference rows={events} />
+        <h3>Event detail</h3>
+        <p>
+          Every event carries the image on screen in its <code>detail</code>,
+          typed as <code>ZoomEventDetail</code>.
+        </p>
+        <Reference rows={eventDetail} />
       </Section>
 
       <!-- API -->
