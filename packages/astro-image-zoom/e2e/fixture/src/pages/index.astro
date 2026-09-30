@@ -47,16 +47,32 @@ const image = (name: string) => `${base}images/${name}.svg`;
       <section id="single">
         <h2>One image</h2>
         <ImageZoom>
-          <img src={image("landscape")} alt="Blue landscape" data-image-zoom-caption="A single image" />
+          <img
+            src={image("landscape")}
+            alt="Blue landscape"
+            data-image-zoom-caption="A single image"
+          />
         </ImageZoom>
       </section>
 
       <section id="gallery">
         <h2>Gallery</h2>
         <ImageZoom>
-          <img src={image("portrait")} alt="Pink portrait" data-image-zoom-caption="First" />
-          <img src={image("square")} alt="Green square" data-image-zoom-caption="Second" />
-          <img src={image("wide")} alt="Orange panorama" data-image-zoom-caption="Third" />
+          <img
+            src={image("portrait")}
+            alt="Pink portrait"
+            data-image-zoom-caption="First"
+          />
+          <img
+            src={image("square")}
+            alt="Green square"
+            data-image-zoom-caption="Second"
+          />
+          <img
+            src={image("wide")}
+            alt="Orange panorama"
+            data-image-zoom-caption="Third"
+          />
         </ImageZoom>
       </section>
 
@@ -64,7 +80,9 @@ const image = (name: string) => `${base}images/${name}.svg`;
         <h2>A normal link with an image</h2>
         <ImageZoom>
           <img src={image("wide")} alt="Zoomable panorama" />
-          <a href={`${base}hostile/`}><img src={image("square")} alt="Card linking to another page" /></a>
+          <a href={`${base}hostile/`}>
+            <img src={image("square")} alt="Card linking to another page" />
+          </a>
         </ImageZoom>
       </section>
 
@@ -72,26 +90,43 @@ const image = (name: string) => `${base}images/${name}.svg`;
         <h2>A data-image-zoom link without an image</h2>
         <ImageZoom>
           <img src={image("portrait")} alt="Zoomable portrait" />
-          <a href={image("wide")} data-image-zoom>Open the panorama</a>
+          <a href={image("wide")} data-image-zoom>
+            Open the panorama
+          </a>
         </ImageZoom>
       </section>
 
       <section id="sources">
         <h2>Zoom sources</h2>
         <ImageZoom>
-          <img src={image("square")} data-image-zoom-src={image("landscape")} alt="Thumbnail with data-image-zoom-src" />
-          <a href={image("wide")} data-image-zoom><img src={image("portrait")} alt="Thumbnail in a link" /></a>
+          <img
+            src={image("square")}
+            data-image-zoom-src={image("landscape")}
+            alt="Thumbnail with data-image-zoom-src"
+          />
+          <a href={image("wide")} data-image-zoom>
+            <img src={image("portrait")} alt="Thumbnail in a link" />
+          </a>
         </ImageZoom>
       </section>
 
       <section id="theme">
         <h2>Theme and duration props</h2>
-        <ImageZoom theme={{ backgroundColor: "rgb(5, 10, 26)", closeButtonColor: "rgb(142, 203, 255)" }} animationDuration={800}>
+        <ImageZoom
+          theme={{
+            backgroundColor: "rgb(5, 10, 26)",
+            closeButtonColor: "rgb(142, 203, 255)",
+          }}
+          animationDuration={800}
+        >
           <img src={image("square")} alt="Themed square" />
         </ImageZoom>
       </section>
 
-      <section id="variables" style="--zoom-image-radius: 16px; --zoom-padding: 40px; --zoom-bg: rgb(30, 0, 40);">
+      <section
+        id="variables"
+        style="--zoom-image-radius: 16px; --zoom-padding: 40px; --zoom-bg: rgb(30, 0, 40);"
+      >
         <h2>Variables around the gallery</h2>
         <ImageZoom>
           <img src={image("landscape")} alt="Landscape with variables" />
@@ -100,7 +135,11 @@ const image = (name: string) => `${base}images/${name}.svg`;
 
       <section id="no-close">
         <h2>No close on backdrop or image</h2>
-        <ImageZoom closeOnBackdrop={false} closeOnImage={false} closeOnScroll={false}>
+        <ImageZoom
+          closeOnBackdrop={false}
+          closeOnImage={false}
+          closeOnScroll={false}
+        >
           <img src={image("portrait")} alt="Portrait that stays open" />
         </ImageZoom>
       </section>
@@ -108,8 +147,16 @@ const image = (name: string) => `${base}images/${name}.svg`;
       <section id="layout">
         <h2>Caption at the top, arrows at the sides</h2>
         <ImageZoom captionPosition="top" navigationLayout="sides">
-          <img src={image("landscape")} alt="Landscape one" data-image-zoom-caption="Top caption" />
-          <img src={image("square")} alt="Square two" data-image-zoom-caption="Top caption two" />
+          <img
+            src={image("landscape")}
+            alt="Landscape one"
+            data-image-zoom-caption="Top caption"
+          />
+          <img
+            src={image("square")}
+            alt="Square two"
+            data-image-zoom-caption="Top caption two"
+          />
         </ImageZoom>
       </section>
 
@@ -130,8 +177,16 @@ const image = (name: string) => `${base}images/${name}.svg`;
       <section id="hidden">
         <h2>No caption, no counter</h2>
         <ImageZoom showCaption={false} showCounter={false}>
-          <img src={image("wide")} alt="Wide one" data-image-zoom-caption="Hidden caption" />
-          <img src={image("portrait")} alt="Portrait two" data-image-zoom-caption="Hidden caption two" />
+          <img
+            src={image("wide")}
+            alt="Wide one"
+            data-image-zoom-caption="Hidden caption"
+          />
+          <img
+            src={image("portrait")}
+            alt="Portrait two"
+            data-image-zoom-caption="Hidden caption two"
+          />
         </ImageZoom>
       </section>
 
@@ -141,10 +196,16 @@ const image = (name: string) => `${base}images/${name}.svg`;
           <img src={image("square")} alt="Kept one" />
           <img class="logo" src={image("wide")} alt="Logo" />
           <img src={image("wide")} alt="" />
-          <img src={image("wide")} alt="Marked by hand" data-image-zoom-ignore />
+          <img
+            src={image("wide")}
+            alt="Marked by hand"
+            data-image-zoom-ignore
+          />
           <div data-image-zoom-ignore>
             <img src={image("portrait")} alt="Ignored by its parent" />
-            <a href={image("portrait")} data-image-zoom><img src={image("portrait")} alt="Ignored link" /></a>
+            <a href={image("portrait")} data-image-zoom>
+              <img src={image("portrait")} alt="Ignored link" />
+            </a>
           </div>
           <img src={image("landscape")} alt="Kept two" />
         </ImageZoom>
@@ -161,15 +222,21 @@ const image = (name: string) => `${base}images/${name}.svg`;
       <section id="zoom-class">
         <h2>ZoomClass on markup without ImageZoom</h2>
         <div class="standalone" data-image-zoom-show-counter="false">
-          <a href={image("landscape")} data-image-zoom><img src={image("landscape")} alt="Standalone one" /></a>
-          <a href={image("portrait")} data-image-zoom><img src={image("portrait")} alt="Standalone two" /></a>
+          <a href={image("landscape")} data-image-zoom>
+            <img src={image("landscape")} alt="Standalone one" />
+          </a>
+          <a href={image("portrait")} data-image-zoom>
+            <img src={image("portrait")} alt="Standalone two" />
+          </a>
         </div>
       </section>
     </main>
     <script>
       import { ZoomClass } from "astro-image-zoom";
 
-      new ZoomClass(document.querySelector<HTMLElement>("#zoom-class .standalone")!);
+      new ZoomClass(
+        document.querySelector<HTMLElement>("#zoom-class .standalone")!,
+      );
     </script>
   </body>
 </html>

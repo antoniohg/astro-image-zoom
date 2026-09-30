@@ -19,21 +19,69 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hostile CSS · astro-image-zoom</title>
     <style is:inline id="hostile" media="not all">
-      html { font-size: 8px !important; }
-      body { color: red !important; letter-spacing: 4px !important; line-height: 3 !important; text-transform: uppercase !important; cursor: crosshair !important; }
-      * { transition: all 2s !important; box-sizing: content-box !important; }
-      button { all: unset !important; background: red !important; color: red !important; }
-      svg { display: none !important; width: 1em !important; fill: red !important; stroke: none !important; }
-      path { stroke: transparent !important; }
-      img { border-radius: 50% !important; filter: grayscale(1) !important; opacity: 0.6 !important; }
-      p { font-size: 32px !important; color: red !important; }
-      span { display: none !important; }
-      div { padding: 40px !important; border: 2px dashed red !important; }
-      figure { margin: 80px !important; }
-      dialog { background: red !important; border: 10px solid lime !important; max-width: 200px !important; }
-      dialog::backdrop { background: red !important; }
-      [hidden] { display: block !important; }
-      :focus, :focus-visible { outline: 4px solid red !important; outline-offset: 0 !important; }
+      html {
+        font-size: 8px !important;
+      }
+      body {
+        color: red !important;
+        letter-spacing: 4px !important;
+        line-height: 3 !important;
+        text-transform: uppercase !important;
+        cursor: crosshair !important;
+      }
+      * {
+        transition: all 2s !important;
+        box-sizing: content-box !important;
+      }
+      button {
+        all: unset !important;
+        background: red !important;
+        color: red !important;
+      }
+      svg {
+        display: none !important;
+        width: 1em !important;
+        fill: red !important;
+        stroke: none !important;
+      }
+      path {
+        stroke: transparent !important;
+      }
+      img {
+        border-radius: 50% !important;
+        filter: grayscale(1) !important;
+        opacity: 0.6 !important;
+      }
+      p {
+        font-size: 32px !important;
+        color: red !important;
+      }
+      span {
+        display: none !important;
+      }
+      div {
+        padding: 40px !important;
+        border: 2px dashed red !important;
+      }
+      figure {
+        margin: 80px !important;
+      }
+      dialog {
+        background: red !important;
+        border: 10px solid lime !important;
+        max-width: 200px !important;
+      }
+      dialog::backdrop {
+        background: red !important;
+      }
+      [hidden] {
+        display: block !important;
+      }
+      :focus,
+      :focus-visible {
+        outline: 4px solid red !important;
+        outline-offset: 0 !important;
+      }
     </style>
     <script is:inline>
       if (new URLSearchParams(location.search).has("hostile")) {
@@ -52,7 +100,12 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
           data-image-zoom-src={full.src}
           data-image-zoom-caption="The Blue Marble"
         />
-        <img src={`${base}images/square.svg`} alt="Green square" width="240" data-image-zoom-caption="A square" />
+        <img
+          src={`${base}images/square.svg`}
+          alt="Green square"
+          width="240"
+          data-image-zoom-caption="A square"
+        />
       </ImageZoom>
     </main>
   </body>

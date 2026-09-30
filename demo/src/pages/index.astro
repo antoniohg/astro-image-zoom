@@ -26,7 +26,13 @@ type Crop = { width: number; height?: number; sizes: string };
 const desktop = "(min-width: 48rem)";
 // priority: the largest image of the first screen (LCP), the cliffs from 48rem and the rocket on
 // phones, fetched first
-const wall: { name: LocalPhoto; tile: string; phone: Crop; wide: Crop; priority?: boolean }[] = [
+const wall: {
+  name: LocalPhoto;
+  tile: string;
+  phone: Crop;
+  wide: Crop;
+  priority?: boolean;
+}[] = [
   {
     name: "cosmicCliffs",
     tile: "cliffs",
@@ -133,7 +139,9 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
 >
   <article class="flow">
     <header class="hero wide">
-      <h1>Image <span class="accent">zoom</span> for Astro</h1>
+      <h1>
+        Image <span class="accent">zoom</span> for Astro
+      </h1>
       <div class="pitch">
         <p class="lead">
           Click any photo on this page. It grows from its place to fill the
@@ -146,21 +154,19 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
     <!-- The first thing to try: one gallery with a photo of every shape, above the fold -->
     <ImageZoom>
       <div class="wall wide">
-        {
-          wall.map(({ name, tile, phone, wide, priority }) => (
-            <div class:list={["tile", tile]}>
-              <Photo
-                name={name}
-                {...phone}
-                sources={[{ media: desktop, ...wide }]}
-                caption={false}
-                fill
-                loading="eager"
-                fetchpriority={priority ? "high" : undefined}
-              />
-            </div>
-          ))
-        }
+        {wall.map(({ name, tile, phone, wide, priority }) => (
+          <div class:list={["tile", tile]}>
+            <Photo
+              name={name}
+              {...phone}
+              sources={[{ media: desktop, ...wide }]}
+              caption={false}
+              fill
+              loading="eager"
+              fetchpriority={priority ? "high" : undefined}
+            />
+          </div>
+        ))}
       </div>
     </ImageZoom>
 
@@ -263,8 +269,8 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
         <li>
           <Case title="Wrap your images" number={2}>
             <p slot="description">
-              Point <code>data-image-zoom-src</code> at a full-size version when the
-              image on the page is resized.
+              Point <code>data-image-zoom-src</code> at a full-size version when
+              the image on the page is resized.
             </p>
             <CodeSample
               open
@@ -289,10 +295,12 @@ const fullSize = await getImage({ src: photo, width: photo.width });
         <li>
           <Case title="Make it yours" number={3}>
             <p class="next">
-              Options for the navigation, the caption and how it closes;
-              colors, spacing and shapes with CSS variables.
+              Options for the navigation, the caption and how it closes; colors,
+              spacing and shapes with CSS variables.
             </p>
-            <a class="button" href={docs}>Read the docs</a>
+            <a class="button" href={docs}>
+              Read the docs
+            </a>
           </Case>
         </li>
       </ol>

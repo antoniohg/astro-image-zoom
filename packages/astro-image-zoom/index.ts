@@ -4,5 +4,5 @@
  * it in the site that installs it, and TypeScript reads its types directly
  */
 
-export { Zoom as ZoomClass } from './zoom';
-export type { ZoomEventDetail } from './zoom';
+export { Zoom as ZoomClass } from "./zoom";
+export type { ZoomEventDetail } from "./zoom";

@@ -64,7 +64,13 @@ const captionY = caption === "top" ? edge + 3 : barY - 11;
       <circle cx={edge + 6} cy="40" r="6" />
       <circle cx={120 - edge - 6} cy="40" r="6" />
       {counter && (
-        <rect x="52" y={barY + 2} width="16" height="9" rx={square ? radius : 4.5} />
+        <rect
+          x="52"
+          y={barY + 2}
+          width="16"
+          height="9"
+          rx={square ? radius : 4.5}
+        />
       )}
     </g>
   )}

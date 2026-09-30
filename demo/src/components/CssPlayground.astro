@@ -137,16 +137,29 @@ const ranges: {
 
     <fieldset class="prop">
       <legend>Caption</legend>
-      <label><input type="radio" name="captionPosition" value="bottom" checked /> Bottom</label>
-      <label><input type="radio" name="captionPosition" value="top" /> Top</label>
-      <label><input type="checkbox" name="showCaption" checked /> Shown</label>
+      <label>
+        <input type="radio" name="captionPosition" value="bottom" checked />{" "}
+        Bottom
+      </label>
+      <label>
+        <input type="radio" name="captionPosition" value="top" /> Top
+      </label>
+      <label>
+        <input type="checkbox" name="showCaption" checked /> Shown
+      </label>
     </fieldset>
 
     <fieldset class="prop">
       <legend>Navigation</legend>
-      <label><input type="radio" name="navigationLayout" value="bar" checked /> Bar</label>
-      <label><input type="radio" name="navigationLayout" value="sides" /> Sides</label>
-      <label><input type="checkbox" name="showCounter" checked /> Counter</label>
+      <label>
+        <input type="radio" name="navigationLayout" value="bar" checked /> Bar
+      </label>
+      <label>
+        <input type="radio" name="navigationLayout" value="sides" /> Sides
+      </label>
+      <label>
+        <input type="checkbox" name="showCounter" checked /> Counter
+      </label>
     </fieldset>
   </form>
 
@@ -168,7 +181,12 @@ const ranges: {
       </ImageZoom>
     </div>
     <!-- Rendered by Shiki in the theme of every code block; the script only swaps its text -->
-    <Code class="snippet" code="/* Change a value to see the code */" lang="css" theme="github-dark-default" />
+    <Code
+      class="snippet"
+      code="/* Change a value to see the code */"
+      lang="css"
+      theme="github-dark-default"
+    />
   </div>
 </css-playground>
 
@@ -176,9 +194,15 @@ const ranges: {
   // Mirrors each changed control into a CSS variable on the element around the gallery, and the
   // caption and navigation controls into the props (data attributes) of its <astro-image-zoom>
   const PROPS = {
-    captionPosition: { attribute: "imageZoomCaptionPosition", initial: "bottom" },
+    captionPosition: {
+      attribute: "imageZoomCaptionPosition",
+      initial: "bottom",
+    },
     showCaption: { attribute: "imageZoomShowCaption", initial: "true" },
-    navigationLayout: { attribute: "imageZoomNavigationLayout", initial: "bar" },
+    navigationLayout: {
+      attribute: "imageZoomNavigationLayout",
+      initial: "bar",
+    },
     showCounter: { attribute: "imageZoomShowCounter", initial: "true" },
   } as const;
 
@@ -214,9 +238,13 @@ const ranges: {
 
     // The sliders the user has not moved show the default of the overlay for this screen
     private showDefaults = () => {
-      for (const input of this.form.querySelectorAll<HTMLInputElement>("input[data-phone]")) {
+      for (const input of this.form.querySelectorAll<HTMLInputElement>(
+        "input[data-phone]",
+      )) {
         if (this.changed.has(input.name)) continue;
-        input.value = this.phone.matches ? input.dataset.phone! : input.defaultValue;
+        input.value = this.phone.matches
+          ? input.dataset.phone!
+          : input.defaultValue;
         const output = input.parentElement?.querySelector("output");
         if (output) output.value = input.value + (input.dataset.unit ?? "");
       }
@@ -228,7 +256,8 @@ const ranges: {
 
       if (input.name in PROPS) {
         const { attribute } = PROPS[input.name as keyof typeof PROPS];
-        this.zoom.dataset[attribute] = input.type === "checkbox" ? String(input.checked) : input.value;
+        this.zoom.dataset[attribute] =
+          input.type === "checkbox" ? String(input.checked) : input.value;
       } else {
         const value = input.value + (input.dataset.unit ?? "");
         this.changed.set(input.name, value);
@@ -240,10 +269,13 @@ const ranges: {
     };
 
     private handleReset = () => {
-      for (const name of this.changed.keys()) this.scope.style.removeProperty(name);
+      for (const name of this.changed.keys())
+        this.scope.style.removeProperty(name);
       this.changed.clear();
-      for (const { attribute, initial } of Object.values(PROPS)) this.zoom.dataset[attribute] = initial;
-      for (const output of this.form.querySelectorAll("output")) output.value = output.dataset.default ?? "";
+      for (const { attribute, initial } of Object.values(PROPS))
+        this.zoom.dataset[attribute] = initial;
+      for (const output of this.form.querySelectorAll("output"))
+        output.value = output.dataset.default ?? "";
       // The form puts the sliders back after this event: set the ones of this screen then
       requestAnimationFrame(this.showDefaults);
       this.render();
@@ -253,18 +285,26 @@ const ranges: {
     private render() {
       const { dataset } = this.zoom;
       const props = [
-        dataset.imageZoomCaptionPosition === "top" ? ' captionPosition="top"' : "",
+        dataset.imageZoomCaptionPosition === "top"
+          ? ' captionPosition="top"'
+          : "",
         dataset.imageZoomShowCaption === "false" ? " showCaption={false}" : "",
-        dataset.imageZoomNavigationLayout === "sides" ? ' navigationLayout="sides"' : "",
+        dataset.imageZoomNavigationLayout === "sides"
+          ? ' navigationLayout="sides"'
+          : "",
         dataset.imageZoomShowCounter === "false" ? " showCounter={false}" : "",
       ].join("");
       const css = this.changed.size
         ? `.gallery {\n${[...this.changed].map(([name, value]) => `  ${name}: ${value};`).join("\n")}\n}`
         : "";
       // The variables go on the component through a class, so the code works as it is
-      const markup = css || props ? `<ImageZoom${css ? ' class="gallery"' : ""}${props}>` : "";
+      const markup =
+        css || props
+          ? `<ImageZoom${css ? ' class="gallery"' : ""}${props}>`
+          : "";
       this.querySelector(".snippet code")!.textContent =
-        [css, markup].filter(Boolean).join("\n\n") || "/* Change a value to see the code */";
+        [css, markup].filter(Boolean).join("\n\n") ||
+        "/* Change a value to see the code */";
     }
   }
 

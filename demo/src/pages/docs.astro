@@ -55,7 +55,8 @@ const options: ExampleData[] = [
   },
   {
     title: "Stays open on a backdrop click",
-    description: "A click on the backdrop does nothing; the close button and Escape still work.",
+    description:
+      "A click on the backdrop does nothing; the close button and Escape still work.",
     code: "<ImageZoom closeOnBackdrop={false}>",
     icon: SelectionBackgroundIcon,
     names: ["edWhite"],
@@ -83,7 +84,8 @@ const options: ExampleData[] = [
 const navigation: ExampleData[] = [
   {
     title: "Arrows at the sides",
-    description: "The arrows move to the screen edges; the counter stays at the bottom.",
+    description:
+      "The arrows move to the screen edges; the counter stays at the bottom.",
     code: `<ImageZoom navigationLayout="sides">`,
     sketch: { nav: "sides", highlight: ["nav"] },
     names: ["gordiiFossae", "arabiaTerra", "galeDaybreak"],
@@ -91,7 +93,8 @@ const navigation: ExampleData[] = [
   },
   {
     title: "No counter",
-    description: "Only the arrows in the bar, without the position in the gallery.",
+    description:
+      "Only the arrows in the bar, without the position in the gallery.",
     code: "<ImageZoom showCounter={false}>",
     sketch: { counter: false, highlight: ["nav"] },
     names: ["seoulNight", "beanLadder"],
@@ -110,7 +113,8 @@ const captions: ExampleData[] = [
   },
   {
     title: "No caption",
-    description: "For photos that speak for themselves. The image keeps its alt text.",
+    description:
+      "For photos that speak for themselves. The image keeps its alt text.",
     code: "<ImageZoom showCaption={false}>",
     sketch: { caption: "none" },
     names: ["bootprint"],
@@ -140,7 +144,8 @@ const spacing: ExampleData[] = [
   },
   {
     title: "Buttons and caption",
-    description: "Square buttons, a flat caption in the accent color, everything closer to the edges.",
+    description:
+      "Square buttons, a flat caption in the accent color, everything closer to the edges.",
     code: cssRule(".custom-controls", customControls),
     lang: "css",
     vars: customControls,
@@ -256,10 +261,11 @@ const fullSize = await getImage({ src: photo, width: photo.width });
           <p>
             <strong>Your thumbnails, your styles.</strong> The component doesn't
             style the images on your page, not even their focus ring. Each one
-            gets an inline <code>{`<a data-image-zoom-generated>`}</code> with your
-            link styles, and if your images are <code>display: block</code>, the
-            outline of that link doesn't wrap them. Draw your focus ring on the
-            image instead, as this page does, and add a zoom cursor if you like.
+            gets an inline <code>{`<a data-image-zoom-generated>`}</code> with
+            your link styles, and if your images are <code>display: block</code>
+            , the outline of that link doesn't wrap them. Draw your focus ring
+            on the image instead, as this page does, and add a zoom cursor if
+            you like.
           </p>
           <CodeSample
             lang="css"
@@ -444,13 +450,15 @@ a[data-image-zoom-generated] img {
         <figure class="default-layout">
           <OverlaySketch />
           <figcaption>
-            <p><strong>The default layout</strong></p>
+            <p>
+              <strong>The default layout</strong>
+            </p>
             <ul>
               <li>The close button at the top right</li>
               <li>The caption at the bottom, over the image</li>
               <li>
-                A bar with the arrows and the counter, in galleries of more
-                than one photo
+                A bar with the arrows and the counter, in galleries of more than
+                one photo
               </li>
             </ul>
           </figcaption>
@@ -472,8 +480,8 @@ a[data-image-zoom-generated] img {
 
         <Section title="Caption" id="caption" level={3}>
           <p>
-            The caption comes from <code>data-image-zoom-caption</code>, and sits at
-            the bottom by default.
+            The caption comes from <code>data-image-zoom-caption</code>, and
+            sits at the bottom by default.
           </p>
           <ul class="examples" role="list">
             {captions.map(({ names, zoom, ...example }) => (

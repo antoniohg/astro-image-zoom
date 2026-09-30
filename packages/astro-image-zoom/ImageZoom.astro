@@ -110,7 +110,8 @@ const variables = Object.entries({
   "--zoom-nav-bg": theme.navigationBackground,
   "--zoom-caption-color": theme.captionColor,
   "--zoom-caption-bg": theme.captionBackground,
-  "--zoom-animation-duration": animationDuration === undefined ? undefined : `${animationDuration}ms`,
+  "--zoom-animation-duration":
+    animationDuration === undefined ? undefined : `${animationDuration}ms`,
 })
   .filter(([, value]) => value)
   .map(([name, value]) => `${name}: ${value}`)
@@ -120,7 +121,10 @@ const wrapperClasses = ["astro-image-zoom-wrapper", className]
   .join(" ");
 
 // Wrap the slot's images in accessible links
-const slotContent = wrapImages(await Astro.slots.render("default"), parseIgnore(ignore));
+const slotContent = wrapImages(
+  await Astro.slots.render("default"),
+  parseIgnore(ignore),
+);
 
 // The element only groups its content and must not add a box. Its own declarative shadow root says
 // so, with no stylesheet on the page: any rule of the site, layered or not, wins over :host. A string,
@@ -157,9 +161,13 @@ const shadowRoot =
       // The browser attaches the declarative shadow root while parsing, but not in pages parsed
       // with DOMParser, as the client router of Astro does: attach it from the template then
       if (!this.shadowRoot) {
-        const template = this.querySelector<HTMLTemplateElement>(":scope > template[shadowrootmode]");
+        const template = this.querySelector<HTMLTemplateElement>(
+          ":scope > template[shadowrootmode]",
+        );
         if (template) {
-          this.attachShadow({ mode: "open" }).append(template.content.cloneNode(true));
+          this.attachShadow({ mode: "open" }).append(
+            template.content.cloneNode(true),
+          );
           template.remove();
         }
       }

@@ -22,6 +22,15 @@ pnpm build     # astro check and build the demo
 pnpm preview   # serve the built demo
 ```
 
+Code is formatted with [Prettier](https://prettier.io) and its
+[Astro plugin](https://github.com/withastro/prettier-plugin-astro), with the setup the
+[Astro docs](https://docs.astro.build/en/editor-setup/#prettier) recommend:
+
+```bash
+pnpm format        # format every file
+pnpm format:check  # what CI runs
+```
+
 ## Tests
 
 The package carries its own tests, as the packages of Astro itself do: unit tests in
@@ -76,9 +85,9 @@ gestures, and a screen reader.
 
 ### Continuous integration
 
-GitHub Actions type-checks and runs both suites on every push to `main` and every pull request
-([`.github/workflows/test.yml`](./.github/workflows/test.yml)). When the end-to-end tests fail, the
-Playwright report is attached to the run.
+GitHub Actions checks the formatting, type-checks and runs both suites on every push to `main` and
+every pull request ([`.github/workflows/test.yml`](./.github/workflows/test.yml)). When the
+end-to-end tests fail, the Playwright report is attached to the run.
 
 ## License
 

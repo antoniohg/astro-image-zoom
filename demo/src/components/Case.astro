@@ -13,8 +13,7 @@ const { title, id, number } = Astro.props;
 <div class="case" id={id}>
   <div class="text">
     <h3>
-      {number !== undefined && <span class="number">{number}.</span>}{" "}
-      {title}
+      {number !== undefined && <span class="number">{number}.</span>} {title}
     </h3>
     <slot name="description" />
   </div>

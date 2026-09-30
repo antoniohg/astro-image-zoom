@@ -14,20 +14,30 @@ const { names } = Astro.props;
   <ExamplePhotos names={names} />
   <div class="panel">
     <div class="head">
-      <p class="title" id="events-log-title">Event log</p>
-      <button type="button" disabled>Clear</button>
+      <p class="title" id="events-log-title">
+        Event log
+      </p>
+      <button type="button" disabled>
+        Clear
+      </button>
     </div>
     <div class="log" role="log" aria-labelledby="events-log-title" tabindex="0">
       <ol></ol>
     </div>
-    <p class="empty">Open a photo and move through the gallery to see its events here.</p>
+    <p class="empty">
+      Open a photo and move through the gallery to see its events here.
+    </p>
   </div>
 </events-console>
 
 <script>
   import type { ZoomEventDetail } from "astro-image-zoom";
 
-  const EVENTS = ["astro-image-zoom:open", "astro-image-zoom:change", "astro-image-zoom:close"] as const;
+  const EVENTS = [
+    "astro-image-zoom:open",
+    "astro-image-zoom:change",
+    "astro-image-zoom:close",
+  ] as const;
   // Enough to follow a visit to the gallery; older entries drop off the end
   const MAX_ENTRIES = 30;
 
@@ -46,7 +56,8 @@ const { names } = Astro.props;
     }
 
     disconnectedCallback() {
-      for (const type of EVENTS) this.removeEventListener(type, this.handleEvent);
+      for (const type of EVENTS)
+        this.removeEventListener(type, this.handleEvent);
       this.clear.removeEventListener("click", this.handleClear);
     }
 
@@ -63,7 +74,8 @@ const { names } = Astro.props;
       detail.textContent = `index ${index} · total ${total}${caption ? ` · ${caption}` : ""}`;
       entry.append(name, detail);
       this.log.prepend(entry);
-      while (this.log.children.length > MAX_ENTRIES) this.log.lastElementChild!.remove();
+      while (this.log.children.length > MAX_ENTRIES)
+        this.log.lastElementChild!.remove();
       this.clear.disabled = false;
     };
 

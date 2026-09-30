@@ -46,7 +46,9 @@ const photo = photos[name];
 // does not upscale
 const srcsetWidths = (shown: number) => [
   ...new Set(
-    [0.5, 1, 1.5, 2].map((scale) => Math.min(Math.round(shown * scale), photo.src.width)),
+    [0.5, 1, 1.5, 2].map((scale) =>
+      Math.min(Math.round(shown * scale), photo.src.width),
+    ),
   ),
 ];
 const widths = Astro.props.widths ?? srcsetWidths(width);
@@ -67,7 +69,8 @@ const artSources = await Promise.all(
       sizes,
       srcset: image.srcSet.attribute,
       width,
-      height: height ?? Math.round((width * photo.src.height) / photo.src.width),
+      height:
+        height ?? Math.round((width * photo.src.height) / photo.src.width),
     };
   }),
 );
