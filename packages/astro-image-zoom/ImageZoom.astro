@@ -131,15 +131,15 @@ const shadowRoot =
 
 <astro-image-zoom
   class={wrapperClasses}
-  data-close-backdrop={closeOnBackdrop ? "true" : "false"}
-  data-close-image={closeOnImage ? "true" : "false"}
-  data-close-scroll={closeOnScroll ? "true" : "false"}
-  data-show-nav={showNavigation ? "true" : "false"}
-  data-navigation-layout={navigationLayout}
-  data-show-counter={showCounter ? "true" : "false"}
-  data-show-caption={showCaption ? "true" : "false"}
-  data-caption-position={captionPosition}
-  data-ignore={ignore.trim() || undefined}
+  data-image-zoom-close-backdrop={closeOnBackdrop ? "true" : "false"}
+  data-image-zoom-close-image={closeOnImage ? "true" : "false"}
+  data-image-zoom-close-scroll={closeOnScroll ? "true" : "false"}
+  data-image-zoom-show-nav={showNavigation ? "true" : "false"}
+  data-image-zoom-navigation-layout={navigationLayout}
+  data-image-zoom-show-counter={showCounter ? "true" : "false"}
+  data-image-zoom-show-caption={showCaption ? "true" : "false"}
+  data-image-zoom-caption-position={captionPosition}
+  data-image-zoom-ignore-selector={ignore.trim() || undefined}
   style={variables || undefined}
 >
   <Fragment set:html={shadowRoot + slotContent} />

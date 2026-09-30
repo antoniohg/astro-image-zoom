@@ -176,10 +176,10 @@ const ranges: {
   // Mirrors each changed control into a CSS variable on the element around the gallery, and the
   // caption and navigation controls into the props (data attributes) of its <astro-image-zoom>
   const PROPS = {
-    captionPosition: { attribute: "captionPosition", initial: "bottom" },
-    showCaption: { attribute: "showCaption", initial: "true" },
-    navigationLayout: { attribute: "navigationLayout", initial: "bar" },
-    showCounter: { attribute: "showCounter", initial: "true" },
+    captionPosition: { attribute: "imageZoomCaptionPosition", initial: "bottom" },
+    showCaption: { attribute: "imageZoomShowCaption", initial: "true" },
+    navigationLayout: { attribute: "imageZoomNavigationLayout", initial: "bar" },
+    showCounter: { attribute: "imageZoomShowCounter", initial: "true" },
   } as const;
 
   class CssPlayground extends HTMLElement {
@@ -253,10 +253,10 @@ const ranges: {
     private render() {
       const { dataset } = this.zoom;
       const props = [
-        dataset.captionPosition === "top" ? ' captionPosition="top"' : "",
-        dataset.showCaption === "false" ? " showCaption={false}" : "",
-        dataset.navigationLayout === "sides" ? ' navigationLayout="sides"' : "",
-        dataset.showCounter === "false" ? " showCounter={false}" : "",
+        dataset.imageZoomCaptionPosition === "top" ? ' captionPosition="top"' : "",
+        dataset.imageZoomShowCaption === "false" ? " showCaption={false}" : "",
+        dataset.imageZoomNavigationLayout === "sides" ? ' navigationLayout="sides"' : "",
+        dataset.imageZoomShowCounter === "false" ? " showCounter={false}" : "",
       ].join("");
       const css = this.changed.size
         ? `.gallery {\n${[...this.changed].map(([name, value]) => `  ${name}: ${value};`).join("\n")}\n}`

@@ -236,18 +236,18 @@ const fullSize = await getImage({ src: photo, width: photo.width });
 ---
 <ImageZoom>
   <Image src={photo} alt="Earth rising above the Moon" width={800}
-    data-zoom-src={fullSize.src} data-zoom-caption="Earthrise — Apollo 8, 1968" />
+    data-image-zoom-src={fullSize.src} data-image-zoom-caption="Earthrise — Apollo 8, 1968" />
 </ImageZoom>`}
         />
         <div class="note">
           <p>
             <strong>
-              Why <code>data-zoom-src</code>?
+              Why <code>data-image-zoom-src</code>?
             </strong>{" "}
             Astro's <code>{`<Image width={800}>`}</code> generates an
             800&nbsp;px file, and the zoom never shows an image bigger than it
             is: it would open that small file, at 800&nbsp;px. Point
-            <code>data-zoom-src</code> at a bigger version. Plain{" "}
+            <code>data-image-zoom-src</code> at a bigger version. Plain{" "}
             <code>{`<img>`}</code> tags don't need it: the zoom opens the same
             file.
           </p>
@@ -256,23 +256,23 @@ const fullSize = await getImage({ src: photo, width: photo.width });
           <p>
             <strong>Your thumbnails, your styles.</strong> The component doesn't
             style the images on your page, not even their focus ring. Each one
-            gets an inline <code>{`<a data-zoom-generated>`}</code> with your
+            gets an inline <code>{`<a data-image-zoom-generated>`}</code> with your
             link styles, and if your images are <code>display: block</code>, the
             outline of that link doesn't wrap them. Draw your focus ring on the
             image instead, as this page does, and add a zoom cursor if you like.
           </p>
           <CodeSample
             lang="css"
-            code={`a[data-zoom-generated]:focus-visible {
+            code={`a[data-image-zoom-generated]:focus-visible {
   outline: none;
 }
 
-a[data-zoom-generated]:focus-visible img {
+a[data-image-zoom-generated]:focus-visible img {
   outline: 2px solid green; /* your focus ring */
   outline-offset: 3px; /* negative if a parent with overflow: hidden clips it */
 }
 
-a[data-zoom-generated] img {
+a[data-image-zoom-generated] img {
   cursor: zoom-in;
 }`}
           />
@@ -314,8 +314,8 @@ a[data-zoom-generated] img {
                   widths={[300, 600]}
                   sizes="(min-width: 32rem) 300px, 94vw"
                   formats={["avif", "webp"]}
-                  data-zoom-src={sunflowerFull.src}
-                  data-zoom-caption={`${photos.sunflower.caption} — ${photos.sunflower.mission}`}
+                  data-image-zoom-src={sunflowerFull.src}
+                  data-image-zoom-caption={`${photos.sunflower.caption} — ${photos.sunflower.mission}`}
                 />
                 <p class="label">
                   <code>{`<Picture>`}</code> · Sunflower galaxy
@@ -328,10 +328,10 @@ a[data-zoom-generated] img {
                   alt={photos.blueMarble.alt}
                   width="640"
                   height="640"
-                  data-zoom-src={`${base}images/as17-148-22727.jpg`}
+                  data-image-zoom-src={`${base}images/as17-148-22727.jpg`}
                   loading="lazy"
                   decoding="async"
-                  data-zoom-caption={`${photos.blueMarble.caption} — ${photos.blueMarble.mission}, ${photos.blueMarble.year}`}
+                  data-image-zoom-caption={`${photos.blueMarble.caption} — ${photos.blueMarble.mission}, ${photos.blueMarble.year}`}
                 />
                 <p class="label">
                   <code>{`<img>`}</code> from <code>public/</code> · The Blue
@@ -346,7 +346,7 @@ a[data-zoom-generated] img {
                   height="1767"
                   loading="lazy"
                   decoding="async"
-                  data-zoom-caption={remote.caption}
+                  data-image-zoom-caption={remote.caption}
                 />
                 <p class="label">
                   Remote <code>{`<img>`}</code> · Mystic Mountain
@@ -356,9 +356,9 @@ a[data-zoom-generated] img {
           </ImageZoom>
           <CodeSample
             code={`<ImageZoom>
-  <Image src={photo} alt="…" width={640} data-zoom-src={fullSize.src} />
-  <Picture src={photo} alt="…" widths={[640]} formats={['avif', 'webp']} data-zoom-src={fullSize.src} />
-  <img src="/images/blue-marble-small.jpg" alt="…" data-zoom-src="/images/blue-marble.jpg" />
+  <Image src={photo} alt="…" width={640} data-image-zoom-src={fullSize.src} />
+  <Picture src={photo} alt="…" widths={[640]} formats={['avif', 'webp']} data-image-zoom-src={fullSize.src} />
+  <img src="/images/blue-marble-small.jpg" alt="…" data-image-zoom-src="/images/blue-marble.jpg" />
   <img src="https://images-assets.nasa.gov/image/PIA15985/PIA15985~large.jpg" alt="…" />
 </ImageZoom>`}
           />
@@ -472,7 +472,7 @@ a[data-zoom-generated] img {
 
         <Section title="Caption" id="caption" level={3}>
           <p>
-            The caption comes from <code>data-zoom-caption</code>, and sits at
+            The caption comes from <code>data-image-zoom-caption</code>, and sits at
             the bottom by default.
           </p>
           <ul class="examples" role="list">

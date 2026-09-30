@@ -35,9 +35,9 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
-// The zoom URL of an image: data-zoom-src wins over src, and unsafe URLs are ignored
+// The zoom URL of an image: data-image-zoom-src wins over src, and unsafe URLs are ignored
 const getSource = (image: Attributes): string | undefined => {
-  const src = image.get('data-zoom-src') || image.get('src');
+  const src = image.get('data-image-zoom-src') || image.get('src');
   return src && isSafeUrl(src) ? src : undefined;
 };
 
@@ -46,13 +46,13 @@ function wrap(html: string, image: Attributes): string {
   const src = getSource(image);
   if (!src) return html;
 
-  const caption = image.get('data-zoom-caption');
+  const caption = image.get('data-image-zoom-caption');
   const alt = image.get('alt');
 
-  const captionAttribute = caption ? ` data-zoom-caption="${escapeQuotes(caption)}"` : '';
+  const captionAttribute = caption ? ` data-image-zoom-caption="${escapeQuotes(caption)}"` : '';
   const label = alt ? `Enlarge image: ${alt}` : 'Enlarge image';
 
-  return `<a href="${escapeQuotes(src)}" data-zoom-generated${captionAttribute} aria-label="${escapeQuotes(label)}">${html}</a>`;
+  return `<a href="${escapeQuotes(src)}" data-image-zoom-generated${captionAttribute} aria-label="${escapeQuotes(label)}">${html}</a>`;
 }
 
 // Elements whose content is text, not markup: an "<img" in a script, a style or a textarea is not an
@@ -119,8 +119,8 @@ export function parseIgnore(ignore = ''): Selector[] {
   return parts.filter((part) => part.trim()).map(parseSelector);
 }
 
-// data-zoom-ignore always leaves an image out, with or without the ignore prop
-const ALWAYS_IGNORED: Selector = { classes: [], ids: [], attributes: [{ name: 'data-zoom-ignore' }] };
+// data-image-zoom-ignore always leaves an image out, with or without the ignore prop
+const ALWAYS_IGNORED: Selector = { classes: [], ids: [], attributes: [{ name: 'data-image-zoom-ignore' }] };
 
 // The character references Astro and hand-written HTML use in attribute values
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };

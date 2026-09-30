@@ -124,8 +124,8 @@ const caption = ({
           width={640}
           format="avif"
           loading="eager"
-          data-zoom-src={singleFull}
-          data-zoom-caption={caption(single)}
+          data-image-zoom-src={singleFull}
+          data-image-zoom-caption={caption(single)}
         />
       </ImageZoom>
 
@@ -139,8 +139,8 @@ const caption = ({
             width={320}
             format="avif"
             loading="eager"
-            data-zoom-src={galleryFull[index]}
-            data-zoom-caption={caption(photo)}
+            data-image-zoom-src={galleryFull[index]}
+            data-image-zoom-caption={caption(photo)}
           />
         ))}
       </ImageZoom>

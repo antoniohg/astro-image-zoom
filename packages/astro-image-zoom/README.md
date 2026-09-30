@@ -56,7 +56,7 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 
 <ImageZoom>
   <!-- Optimized Astro image -->
-  <Image src={photo} alt="Mountain landscape at sunset" width={400} data-zoom-src={fullSize.src} />
+  <Image src={photo} alt="Mountain landscape at sunset" width={400} data-image-zoom-src={fullSize.src} />
 
   <!-- Plain image from public/ -->
   <img src="/photos/city.jpg" alt="City skyline at night" />
@@ -68,11 +68,11 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 
 ### Which image the zoom shows
 
-- **An image on its own** opens the URL in its `data-zoom-src`, or its own `src` without it. Plain
+- **An image on its own** opens the URL in its `data-image-zoom-src`, or its own `src` without it. Plain
   images work out of the box: `<img src="/photo.jpg">` opens that same file, at full size.
-- **An image inside a link with `data-zoom`** (`<a href="…" data-zoom>`) opens the `href` of the
-  link. Put `data-zoom-caption` (or `title`) on the link: the image inside gives only its `alt`, and
-  its own `data-zoom-src` and `data-zoom-caption` are ignored. See
+- **An image inside a link with `data-image-zoom`** (`<a href="…" data-image-zoom>`) opens the `href` of the
+  link. Put `data-image-zoom-caption` (or `title`) on the link: the image inside gives only its `alt`, and
+  its own `data-image-zoom-src` and `data-image-zoom-caption` are ignored. See
   [Gallery with Links](#gallery-with-links).
 - **An image inside any other link** is left alone: the link keeps working as a link (a card, a
   logo) and the image is not part of the gallery. So are the images of other elements whose clicks
@@ -82,7 +82,7 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 > **Resized images barely grow when zoomed.** The zoom shows each image at most at its real size,
 > never enlarged. If the image on the page is a smaller version (a thumbnail, or Astro's
 > `<Image width={400}>`, which generates a 400 px file), the zoom opens that small file and it
-> stays small. Add `data-zoom-src` with the full-size version, as shown in
+> stays small. Add `data-image-zoom-src` with the full-size version, as shown in
 > [High-Resolution Images](#high-resolution-images) and
 > [Using with Astro Assets](#using-with-astro-assets-optimized-images).
 
@@ -93,12 +93,12 @@ const fullSize = await getImage({ src: photo, width: 1920 });
   <img
     src="/image1.jpg"
     alt="Beautiful landscape"
-    data-zoom-caption="Sunset over the mountains"
+    data-image-zoom-caption="Sunset over the mountains"
   />
   <img
     src="/image2.jpg"
     alt="City skyline"
-    data-zoom-caption="Downtown at night"
+    data-image-zoom-caption="Downtown at night"
   />
 </ImageZoom>
 ```
@@ -107,16 +107,16 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 
 ```astro
 <ImageZoom>
-  <a href="/full-res-image1.jpg" data-zoom>
+  <a href="/full-res-image1.jpg" data-image-zoom>
     <img src="/thumbnail1.jpg" alt="Thumbnail 1" />
   </a>
-  <a href="/full-res-image2.jpg" data-zoom>
+  <a href="/full-res-image2.jpg" data-image-zoom>
     <img src="/thumbnail2.jpg" alt="Thumbnail 2" />
   </a>
 </ImageZoom>
 ```
 
-The zoom grows from the image inside the link, so a `data-zoom` link without one stays a plain link.
+The zoom grows from the image inside the link, so a `data-image-zoom` link without one stays a plain link.
 
 ### Leaving Images Out
 
@@ -144,24 +144,24 @@ name, `.classes`, `#ids` and `[attributes]`, with or without `=value`, combined 
 `img.logo[alt='']`. Spaces, combinators (`article img`, `>`) and pseudo-classes fail the build with
 an error that names the selector.
 
-For a single image, `data-zoom-ignore` on the image or on an element around it does the same without
+For a single image, `data-image-zoom-ignore` on the image or on an element around it does the same without
 the prop:
 
 ```astro
-<img src="/signature.svg" alt="Signature" data-zoom-ignore />
+<img src="/signature.svg" alt="Signature" data-image-zoom-ignore />
 ```
 
-A link with `data-zoom` inside an ignored element stays a plain link.
+A link with `data-image-zoom` inside an ignored element stays a plain link.
 
 ### High-Resolution Images
 
-Use `data-zoom-src` to load higher resolution images in the zoom:
+Use `data-image-zoom-src` to load higher resolution images in the zoom:
 
 ```astro
 <ImageZoom>
   <img
     src="/thumbnail.jpg"
-    data-zoom-src="/full-resolution.jpg"
+    data-image-zoom-src="/full-resolution.jpg"
     alt="High quality image"
   />
 </ImageZoom>
@@ -191,12 +191,12 @@ const optimizedImage = await getImage({
     src={myImage}
     alt="A beautiful optimized image"
     width={600}
-    data-zoom-src={optimizedImage.src}
+    data-image-zoom-src={optimizedImage.src}
   />
 </ImageZoom>
 ```
 
-> **Note:** Do not pass the `Image` component directly to `data-zoom-src` or call it as a function. The zoom script expects a string URL for the `data-zoom-src` attribute.
+> **Note:** Do not pass the `Image` component directly to `data-image-zoom-src` or call it as a function. The zoom script expects a string URL for the `data-image-zoom-src` attribute.
 
 
 ## Configuration
@@ -315,7 +315,7 @@ their focus ring. It only wraps each image in a link, so it opens with the keybo
 JavaScript, links to the full-size image:
 
 ```html
-<a href="/full-size.jpg" data-zoom-generated aria-label="Enlarge image: A red car">
+<a href="/full-size.jpg" data-image-zoom-generated aria-label="Enlarge image: A red car">
   <img src="/photo.jpg" alt="A red car" />
 </a>
 ```
@@ -326,11 +326,11 @@ doesn't wrap them: depending on the browser it is invisible or spans the whole l
 focus ring on the image instead, in your own style:
 
 ```css
-a[data-zoom-generated]:focus-visible {
+a[data-image-zoom-generated]:focus-visible {
   outline: none;
 }
 
-a[data-zoom-generated]:focus-visible img {
+a[data-image-zoom-generated]:focus-visible img {
   outline: 2px solid green; /* your focus ring */
   outline-offset: 3px; /* negative if a parent with overflow: hidden clips it */
 }
@@ -339,7 +339,7 @@ a[data-zoom-generated]:focus-visible img {
 A zoom cursor, if you want one, is also yours to add:
 
 ```css
-a[data-zoom-generated] img {
+a[data-image-zoom-generated] img {
   cursor: zoom-in;
 }
 ```
@@ -506,8 +506,8 @@ one with `ZoomClass` on the element around the links:
 
 ```astro
 <div class="my-gallery">
-  <a href="/large-1.jpg" data-zoom><img src="/small-1.jpg" alt="Harbor at dawn" /></a>
-  <a href="/large-2.jpg" data-zoom><img src="/small-2.jpg" alt="Harbor at noon" /></a>
+  <a href="/large-1.jpg" data-image-zoom><img src="/small-1.jpg" alt="Harbor at dawn" /></a>
+  <a href="/large-2.jpg" data-image-zoom><img src="/small-2.jpg" alt="Harbor at noon" /></a>
 </div>
 
 <script>
@@ -521,9 +521,9 @@ one with `ZoomClass` on the element around the links:
 ```
 
 `ZoomClass` reads the options from the same `data-*` attributes that `<ImageZoom>` renders on its
-element (`data-show-counter="false"`, `data-close-scroll="false"`…); the theme and the duration come
-from the `--zoom-*` variables. Images are not wrapped then, so only links with `data-zoom` count, and
-`data-ignore` on the wrapper takes any CSS selector, since the browser matches it.
+element (`data-image-zoom-show-counter="false"`, `data-image-zoom-close-scroll="false"`…); the theme and the duration come
+from the `--zoom-*` variables. Images are not wrapped then, so only links with `data-image-zoom` count, and
+`data-image-zoom-ignore-selector` on the wrapper takes any CSS selector, since the browser matches it.
 
 ## Examples
 
@@ -543,7 +543,7 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
       <img
         src="/trip-photo-1.jpg"
         alt="Mountain landscape"
-        data-zoom-caption="The view from the summit"
+        data-image-zoom-caption="The view from the summit"
       />
       <figcaption>Summit view</figcaption>
     </figure>
@@ -552,7 +552,7 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
       <img
         src="/trip-photo-2.jpg"
         alt="Lake reflection"
-        data-zoom-caption="Perfect morning reflection"
+        data-image-zoom-caption="Perfect morning reflection"
       />
       <figcaption>Lake reflection</figcaption>
     </figure>
@@ -578,9 +578,9 @@ const projects = [
     {projects.map(project => (
       <img
         src={project.thumb}
-        data-zoom-src={project.full}
+        data-image-zoom-src={project.full}
         alt={project.title}
-        data-zoom-caption={project.title}
+        data-image-zoom-caption={project.title}
       />
     ))}
   </div>

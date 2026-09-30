@@ -199,20 +199,20 @@ export const props: ReferenceRow[] = [
 // Attributes of each image
 export const attributes: ReferenceRow[] = [
   {
-    name: "data-zoom-src",
+    name: "data-image-zoom-src",
     description: "Full-size image for the zoom. Needed when the image on the page is resized",
   },
   {
-    name: "data-zoom-caption",
-    description: "Caption shown with the zoomed image; on the `<a>` itself for a link with `data-zoom`",
+    name: "data-image-zoom-caption",
+    description: "Caption shown with the zoomed image; on the `<a>` itself for a link with `data-image-zoom`",
   },
   {
-    name: "data-zoom",
+    name: "data-image-zoom",
     description:
       "On an `<a href>` around an image: the zoom opens its `href`. The component leaves the link as it is",
   },
   {
-    name: "data-zoom-ignore",
+    name: "data-image-zoom-ignore",
     description:
       "On an image or any element around it: left out of the zoom and the gallery, like the `ignore` prop for a single image",
   },

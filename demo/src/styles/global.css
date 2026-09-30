@@ -170,7 +170,7 @@
    * Zoom links: astro-image-zoom wraps each image in an inline link, whose outline doesn't wrap a
    * block image, so the ring goes on the image. A box that clips it sets a negative --focus-offset
    */
-  a[data-zoom-generated] {
+  a[data-image-zoom-generated] {
     &:focus-visible {
       outline: none;
     }
