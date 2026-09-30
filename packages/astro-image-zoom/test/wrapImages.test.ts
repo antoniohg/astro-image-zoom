@@ -73,6 +73,16 @@ describe('wrapImages', () => {
     );
   });
 
+  it('leaves alone the text of scripts, styles and textareas, and wraps the images after them', () => {
+    const text =
+      `<script>el.innerHTML = "<img src='/a.jpg'>";</script>` +
+      '<style>/* <img src="/b.jpg"> */</style>' +
+      '<textarea><img src="/c.jpg"></textarea>';
+    expect(wrapImages(`${text}<img src="/d.jpg" alt="">`)).toBe(
+      `${text}<a href="/d.jpg" data-zoom-generated aria-label="Enlarge image"><img src="/d.jpg" alt=""></a>`
+    );
+  });
+
   describe('data-zoom-ignore', () => {
     it('leaves out an image with it, and every image inside an element with it', () => {
       const html =

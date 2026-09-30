@@ -55,6 +55,12 @@ function wrap(html: string, image: Attributes): string {
   return `<a href="${escapeQuotes(src)}" data-zoom-generated${captionAttribute} aria-label="${escapeQuotes(label)}">${html}</a>`;
 }
 
+// Elements whose content is text, not markup: an "<img" in a script, a style or a textarea is not an
+// image, and wrapping it would change that text (a JavaScript string could stop parsing)
+const RAW_TEXT_ELEMENTS = new Set([
+  'script', 'style', 'textarea', 'title', 'xmp', 'iframe', 'noembed', 'noframes'
+]);
+
 // Elements without a closing tag: a match on them never opens an ignored scope
 const VOID_ELEMENTS = new Set([
   'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'
@@ -165,13 +171,24 @@ export function wrapImages(html: string, ignore: Selector[] = []): string {
   // A <picture> is wrapped as a whole: <a> is not valid inside it
   let picture: { start: number; image?: Attributes } | null = null;
 
-  for (const match of html.matchAll(TOKEN)) {
+  // A copy of its own: the loop moves lastIndex past the content of raw text elements
+  const token = new RegExp(TOKEN.source, 'g');
+  let match: RegExpExecArray | null;
+  while ((match = token.exec(html))) {
     const [tag, closing, rawName, rawAttributes] = match;
     if (!rawName) continue; // comment
 
     const name = rawName.toLowerCase();
     const start = match.index;
     const end = start + tag.length;
+
+    // Its content goes on up to its closing tag, whatever it looks like
+    if (!closing && RAW_TEXT_ELEMENTS.has(name)) {
+      const closingTag = new RegExp(`</${name}[\\s/>]`, 'ig');
+      closingTag.lastIndex = end;
+      token.lastIndex = closingTag.exec(html)?.index ?? html.length;
+      continue;
+    }
 
     // Nothing inside an ignored element is wrapped, whatever it holds
     if (ignored) {
