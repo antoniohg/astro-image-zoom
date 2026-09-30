@@ -501,24 +501,29 @@ The detail has its own type too: `import type { ZoomEventDetail } from 'astro-im
 
 ### Programmatic Control (Advanced)
 
+`<ImageZoom>` sets up its own zoom. For markup it does not render, such as HTML from a CMS, create
+one with `ZoomClass` on the element around the links:
+
 ```astro
-<ImageZoom class="my-gallery" />
+<div class="my-gallery">
+  <a href="/large-1.jpg" data-zoom><img src="/small-1.jpg" alt="Harbor at dawn" /></a>
+  <a href="/large-2.jpg" data-zoom><img src="/small-2.jpg" alt="Harbor at noon" /></a>
+</div>
 
 <script>
   import { ZoomClass } from 'astro-image-zoom';
 
-  const wrapper = document.querySelector('.my-gallery');
-  const zoom = new ZoomClass(wrapper);
+  const zoom = new ZoomClass(document.querySelector('.my-gallery'));
 
   // Later, if needed:
   // zoom.destroy();
 </script>
 ```
 
-`ZoomClass` reads the options from the `data-*` attributes that `<ImageZoom>` renders; the theme and
-the duration come from the `--zoom-*` variables. Without `<ImageZoom>`, `data-ignore` on the wrapper
-takes any CSS selector, since the browser matches it; images are not wrapped then, so only links
-with `data-zoom` count.
+`ZoomClass` reads the options from the same `data-*` attributes that `<ImageZoom>` renders on its
+element (`data-show-counter="false"`, `data-close-scroll="false"`…); the theme and the duration come
+from the `--zoom-*` variables. Images are not wrapped then, so only links with `data-zoom` count, and
+`data-ignore` on the wrapper takes any CSS selector, since the browser matches it.
 
 ## Examples
 

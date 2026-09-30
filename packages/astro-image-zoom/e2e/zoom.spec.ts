@@ -283,6 +283,22 @@ test.describe('open and close', () => {
   });
 });
 
+test.describe('ZoomClass', () => {
+  test('zooms the data-zoom links of markup without ImageZoom, with its data-* options', async ({ page }) => {
+    const standalone = page.locator('#zoom-class .standalone a');
+    await standalone.first().click();
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    await expect(zoomedImage(page)).toHaveAttribute('src', /landscape\.svg$/);
+    // data-show-counter="false" on the wrapper, as ImageZoom would render it
+    await expect(counter(page)).toBeHidden();
+
+    await page.keyboard.press('ArrowRight');
+    await expect(zoomedImage(page)).toHaveAttribute('src', /portrait\.svg$/);
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+  });
+});
+
 test.describe('focus', () => {
   test('moves to the close button, cycles through the controls and returns to the image', async ({
     page,
