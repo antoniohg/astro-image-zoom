@@ -350,6 +350,17 @@ test.describe('focus', () => {
     expect(await linkRing()).toBe(true);
   });
 
+  test('draws no focus ring on the link after a close with the mouse, even after earlier keys', async ({ page }) => {
+    // The dialog gives the focus back to the link the click focused, with the browser's own ring:
+    // after any key press on the page, Chromium drew it
+    await page.keyboard.press('Tab');
+    await openZoom(page, 'single');
+    await page.getByRole('button', { name: 'Close zoom overlay' }).click();
+    await expectClosed(page);
+    await expect(links(page, 'single').first()).toBeFocused();
+    expect(await links(page, 'single').first().evaluate((link) => link.matches(':focus-visible'))).toBe(false);
+  });
+
   test('returns to the link of the image on screen, not to the one that opened the zoom', async ({ page }) => {
     await openZoom(page, 'gallery');
     await page.keyboard.press('ArrowRight');

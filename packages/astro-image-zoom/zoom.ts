@@ -151,6 +151,12 @@ const OVERLAY_HTML = `
   </div>
 </dialog>`;
 
+// Whether a click came from the keyboard (Enter or Space): it has no pointer. Not by its click count
+// alone: Firefox gives Enter on a link a count of 1, like a mouse click
+function fromKeyboard(e: MouseEvent): boolean {
+  return e.detail === 0 || (e as PointerEvent).pointerType === '';
+}
+
 // Resolves when the named CSS animations of the element or its descendants end or are cancelled,
 // and at once when none runs. The durations live in CSS only: with reduced motion they are 0s.
 function animationsFinished(element: Element, names: string[]): Promise<unknown> {
@@ -421,8 +427,7 @@ class Zoom {
         if (index === -1) return;
 
         e.preventDefault();
-        // A click from the keyboard (Enter on the link) has no pointer, so no click count
-        this.open(index, e.detail === 0);
+        this.open(index, fromKeyboard(e));
       },
       { signal: this.controller.signal }
     );
@@ -435,7 +440,7 @@ class Zoom {
     this.overlay.addEventListener('keydown', (e) => (this.escapePressed = e.key === 'Escape'), { signal });
     this.overlay.addEventListener('cancel', this.handleCancel, { signal });
 
-    this.closeButton.addEventListener('click', (e) => this.close(false, e.detail === 0), { signal });
+    this.closeButton.addEventListener('click', (e) => this.close(false, fromKeyboard(e)), { signal });
 
     if (this.options.showNavigation) {
       this.prevButton.addEventListener('click', () => this.prev(), { signal });
@@ -1032,8 +1037,10 @@ class Zoom {
     this.captionElement.textContent = '';
     this.slides = [];
 
-    // Restore focus
+    // Restore focus. close() may have given it back already to the link a click focused, with the
+    // browser's own ring: focus() on the focused element does nothing, so it leaves first
     if (this.returnFocus) {
+      if (document.activeElement === this.returnFocus) this.returnFocus.blur();
       this.returnFocus.focus({ preventScroll: true, focusVisible: this.returnFocusVisible });
       this.returnFocus = null;
     }
