@@ -28,7 +28,8 @@ export async function settle(page: Page): Promise<void> {
 export async function expectClosed(page: Page): Promise<void> {
   await expect(dialog(page)).not.toHaveAttribute('open');
   await expect(dialog(page)).not.toHaveClass(/is-(opening|open|closing)/);
-  expect(await page.evaluate(() => document.body.style.overflow)).toBe('');
+  // The scroll lock leaves no inline style on <html>
+  expect(await page.evaluate(() => document.documentElement.getAttribute('style') ?? '')).toBe('');
 
   // No thumbnail stays hidden, no image is left outside the dialog
   const hidden = await page.$$eval('astro-image-zoom img', (images) =>

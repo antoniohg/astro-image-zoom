@@ -68,6 +68,14 @@ const image = (name: string) => `${base}images/${name}.svg`;
         </ImageZoom>
       </section>
 
+      <section id="text-link">
+        <h2>A data-zoom link without an image</h2>
+        <ImageZoom>
+          <img src={image("portrait")} alt="Zoomable portrait" />
+          <a href={image("wide")} data-zoom>Open the panorama</a>
+        </ImageZoom>
+      </section>
+
       <section id="sources">
         <h2>Zoom sources</h2>
         <ImageZoom>
@@ -149,6 +157,19 @@ const image = (name: string) => `${base}images/${name}.svg`;
           <img src={image("landscape")} alt="Landscape in a grid" />
         </ImageZoom>
       </section>
+
+      <section id="zoom-class">
+        <h2>ZoomClass on markup without ImageZoom</h2>
+        <div class="standalone" data-show-counter="false">
+          <a href={image("landscape")} data-zoom><img src={image("landscape")} alt="Standalone one" /></a>
+          <a href={image("portrait")} data-zoom><img src={image("portrait")} alt="Standalone two" /></a>
+        </div>
+      </section>
     </main>
+    <script>
+      import { ZoomClass } from "astro-image-zoom";
+
+      new ZoomClass(document.querySelector<HTMLElement>("#zoom-class .standalone")!);
+    </script>
   </body>
 </html>

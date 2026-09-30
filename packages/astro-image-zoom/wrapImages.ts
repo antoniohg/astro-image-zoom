@@ -55,6 +55,12 @@ function wrap(html: string, image: Attributes): string {
   return `<a href="${escapeQuotes(src)}" data-zoom-generated${captionAttribute} aria-label="${escapeQuotes(label)}">${html}</a>`;
 }
 
+// Elements whose content is text, not markup: an "<img" in a script, a style or a textarea is not an
+// image, and wrapping it would change that text (a JavaScript string could stop parsing)
+const RAW_TEXT_ELEMENTS = new Set([
+  'script', 'style', 'textarea', 'title', 'xmp', 'iframe', 'noembed', 'noframes'
+]);
+
 // Elements without a closing tag: a match on them never opens an ignored scope
 const VOID_ELEMENTS = new Set([
   'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'
@@ -147,6 +153,11 @@ function matches(name: string, attributes: Attributes, selector: Selector): bool
   );
 }
 
+// Elements whose clicks already do something: a link, a button, the label of a form control, the
+// summary that opens a <details>. A zoom link inside them would take their clicks (and <a> is not
+// valid inside <a> or <button>), so their images are left alone
+const INTERACTIVE_ELEMENTS = new Set(['a', 'button', 'label', 'summary']);
+
 export function wrapImages(html: string, ignore: Selector[] = []): string {
   const selectors = [ALWAYS_IGNORED, ...ignore];
   const isIgnored = (name: string, attributes: Attributes): boolean =>
@@ -154,19 +165,30 @@ export function wrapImages(html: string, ignore: Selector[] = []): string {
 
   let output = '';
   let cursor = 0;
-  let anchorDepth = 0;
+  let interactiveDepth = 0;
   // Inside an ignored element: its name, and how deep elements of that name nest in it
   let ignored: { name: string; depth: number } | null = null;
   // A <picture> is wrapped as a whole: <a> is not valid inside it
   let picture: { start: number; image?: Attributes } | null = null;
 
-  for (const match of html.matchAll(TOKEN)) {
+  // A copy of its own: the loop moves lastIndex past the content of raw text elements
+  const token = new RegExp(TOKEN.source, 'g');
+  let match: RegExpExecArray | null;
+  while ((match = token.exec(html))) {
     const [tag, closing, rawName, rawAttributes] = match;
     if (!rawName) continue; // comment
 
     const name = rawName.toLowerCase();
     const start = match.index;
     const end = start + tag.length;
+
+    // Its content goes on up to its closing tag, whatever it looks like
+    if (!closing && RAW_TEXT_ELEMENTS.has(name)) {
+      const closingTag = new RegExp(`</${name}[\\s/>]`, 'ig');
+      closingTag.lastIndex = end;
+      token.lastIndex = closingTag.exec(html)?.index ?? html.length;
+      continue;
+    }
 
     // Nothing inside an ignored element is wrapped, whatever it holds
     if (ignored) {
@@ -184,13 +206,11 @@ export function wrapImages(html: string, ignore: Selector[] = []): string {
       continue;
     }
 
-    if (name === 'a') {
-      anchorDepth = Math.max(0, anchorDepth + (closing ? -1 : 1));
+    if (INTERACTIVE_ELEMENTS.has(name)) {
+      interactiveDepth = Math.max(0, interactiveDepth + (closing ? -1 : 1));
       continue;
     }
-
-    // Images that already live inside a link are left alone
-    if (anchorDepth > 0) continue;
+    if (interactiveDepth > 0) continue;
 
     if (name === 'picture') {
       if (!closing) {
@@ -205,7 +225,8 @@ export function wrapImages(html: string, ignore: Selector[] = []): string {
       }
     } else if (name === 'img' && !closing) {
       const image = parseAttributes(rawAttributes);
-      if (isIgnored('img', image)) {
+      // An image map is a set of links already
+      if (isIgnored('img', image) || image.has('usemap')) {
         // An ignored image leaves its <picture> unwrapped too
         if (picture) picture = null;
       } else if (picture) {

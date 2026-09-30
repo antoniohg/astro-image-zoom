@@ -116,6 +116,62 @@ test.describe('open and close', () => {
     await expect(page.locator('dialog .astro-image-zoom-backdrop')).toHaveCSS('opacity', '1');
   });
 
+  test('stays open on a touchpad pinch (a wheel with Ctrl)', async ({ page }) => {
+    await openZoom(page, 'single');
+    await page.mouse.move(640, 360);
+    await page.keyboard.down('Control');
+    await page.mouse.wheel(0, 400);
+    await page.keyboard.up('Control');
+    await page.waitForTimeout(300);
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+  });
+
+  test('locks the page scroll, also when the site sets overflow on <html>', async ({ page }) => {
+    await page.addStyleTag({ content: 'html, body { overflow-x: hidden; } body { min-height: 300vh; }' });
+    await openZoom(page, 'no-close');
+    const scrollY = await page.evaluate(() => window.scrollY);
+    await page.mouse.move(640, 360);
+    await page.mouse.wheel(0, 400);
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
+
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+  });
+
+  test('keeps the page in place when the scrollbar goes away', async ({ page }) => {
+    // Classic scrollbars, as on Windows; headless browsers overlay theirs
+    await page.addStyleTag({
+      content: '::-webkit-scrollbar { width: 17px; } ::-webkit-scrollbar-thumb { background: gray; } body { min-height: 300vh; }',
+    });
+    // WebKit applies the scrollbar style once the page's scroller is built again
+    const scrollbar = await page.evaluate(() => {
+      const root = document.documentElement;
+      root.style.overflow = 'hidden';
+      void root.offsetWidth;
+      root.removeAttribute('style');
+      return window.innerWidth - root.clientWidth;
+    });
+    test.skip(scrollbar === 0, 'no classic scrollbar in this browser');
+    const bodyWidth = () => page.evaluate(() => document.body.getBoundingClientRect().width);
+    const before = await bodyWidth();
+
+    await openZoom(page, 'single');
+    expect(await bodyWidth()).toBe(before);
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+    expect(await bodyWidth()).toBe(before);
+  });
+
+  test('shows the thumbnail when the full-size image fails to load', async ({ page }) => {
+    const link = links(page, 'single').first();
+    await link.evaluate((anchor: HTMLAnchorElement) => (anchor.href = '/missing.jpg'));
+    await openZoom(page, 'single');
+    const thumbnail = await link.locator('img').evaluate((img: HTMLImageElement) => img.currentSrc);
+    await expect(zoomedImage(page)).toHaveAttribute('src', thumbnail);
+    expect(await zoomedImage(page).evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  });
+
   test('stays open when every close option is off, except Escape', async ({ page }) => {
     await openZoom(page, 'no-close');
     await zoomedImage(page).click();
@@ -166,6 +222,20 @@ test.describe('open and close', () => {
     await expect(page).toHaveURL(/\/hostile\/$/);
   });
 
+  test('leaves a data-zoom link without an image alone: it navigates and is not part of the gallery', async ({
+    page,
+  }) => {
+    // The zoom animates from the image of the link: without one, there is nothing to open
+    await links(page, 'text-link').first().click();
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    await expect(page.locator('.astro-image-zoom-toolbar')).toBeHidden();
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+
+    await page.getByRole('link', { name: 'Open the panorama' }).click();
+    await expect(page).toHaveURL(/wide\.svg$/);
+  });
+
   test('closes at once while the image is still loading, and never opens later', async ({ page }) => {
     // A new URL for the zoom, so neither the cache nor a thumbnail serves it
     await links(page, 'single').first().evaluate((link: HTMLAnchorElement) => {
@@ -213,6 +283,22 @@ test.describe('open and close', () => {
   });
 });
 
+test.describe('ZoomClass', () => {
+  test('zooms the data-zoom links of markup without ImageZoom, with its data-* options', async ({ page }) => {
+    const standalone = page.locator('#zoom-class .standalone a');
+    await standalone.first().click();
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    await expect(zoomedImage(page)).toHaveAttribute('src', /landscape\.svg$/);
+    // data-show-counter="false" on the wrapper, as ImageZoom would render it
+    await expect(counter(page)).toBeHidden();
+
+    await page.keyboard.press('ArrowRight');
+    await expect(zoomedImage(page)).toHaveAttribute('src', /portrait\.svg$/);
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+  });
+});
+
 test.describe('focus', () => {
   test('moves to the close button, cycles through the controls and returns to the image', async ({
     page,
@@ -230,6 +316,72 @@ test.describe('focus', () => {
 
     await page.keyboard.press('Escape');
     await expectClosed(page);
+    await expect(links(page, 'gallery').first()).toBeFocused();
+  });
+
+  test('shows the focus ring of the close button only when the zoom opens from the keyboard', async ({ page }) => {
+    const closeRing = () =>
+      page.evaluate(
+        () =>
+          document
+            .querySelector('astro-image-zoom-overlay')!
+            .shadowRoot!.querySelector('.astro-image-zoom-close')!
+            .matches(':focus-visible')
+      );
+
+    // Safari drew it after a click or a tap, and then on the thumbnail the close focuses
+    await openZoom(page, 'single');
+    expect(await focusedLabel(page)).toBe('Close zoom overlay');
+    expect(await closeRing()).toBe(false);
+    await page.getByRole('button', { name: 'Close zoom overlay' }).click();
+    await expectClosed(page);
+
+    // Nor on the thumbnail the close focuses, after a click; after Escape, where it goes on
+    const linkRing = () => links(page, 'single').first().evaluate((link) => link.matches(':focus-visible'));
+    await expect(links(page, 'single').first()).toBeFocused();
+    expect(await linkRing()).toBe(false);
+
+    await links(page, 'single').first().focus();
+    await page.keyboard.press('Enter');
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    expect(await closeRing()).toBe(true);
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+    expect(await linkRing()).toBe(true);
+  });
+
+  test('draws no focus ring on the link after a close with the mouse, even after earlier keys', async ({ page }) => {
+    // The dialog gives the focus back to the link the click focused, with the browser's own ring:
+    // after any key press on the page, Chromium drew it
+    await page.keyboard.press('Tab');
+    await openZoom(page, 'single');
+    await page.getByRole('button', { name: 'Close zoom overlay' }).click();
+    await expectClosed(page);
+    await expect(links(page, 'single').first()).toBeFocused();
+    expect(await links(page, 'single').first().evaluate((link) => link.matches(':focus-visible'))).toBe(false);
+  });
+
+  test('returns to the link of the image on screen, not to the one that opened the zoom', async ({ page }) => {
+    await openZoom(page, 'gallery');
+    await page.keyboard.press('ArrowRight');
+    await expect(counter(page)).toHaveText('2 / 3');
+
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+    await expect(links(page, 'gallery').nth(1)).toBeFocused();
+  });
+
+  test('scrolls the page to the thumbnail when it is off screen, so the close and the focus land in view', async ({
+    page,
+  }) => {
+    await openZoom(page, 'gallery');
+    // The page under the overlay moves away from the gallery, as a long gallery would
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect(links(page, 'gallery').first()).not.toBeInViewport();
+
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+    await expect(links(page, 'gallery').first().locator('img')).toBeInViewport({ ratio: 1 });
     await expect(links(page, 'gallery').first()).toBeFocused();
   });
 

@@ -75,7 +75,9 @@ const fullSize = await getImage({ src: photo, width: 1920 });
   its own `data-zoom-src` and `data-zoom-caption` are ignored. See
   [Gallery with Links](#gallery-with-links).
 - **An image inside any other link** is left alone: the link keeps working as a link (a card, a
-  logo) and the image is not part of the gallery.
+  logo) and the image is not part of the gallery. So are the images of other elements whose clicks
+  already do something (a `<button>`, the `<label>` of a form control, the `<summary>` of a
+  `<details>`) and image maps (`<img usemap>`).
 
 > **Resized images barely grow when zoomed.** The zoom shows each image at most at its real size,
 > never enlarged. If the image on the page is a smaller version (a thumbnail, or Astro's
@@ -113,6 +115,8 @@ const fullSize = await getImage({ src: photo, width: 1920 });
   </a>
 </ImageZoom>
 ```
+
+The zoom grows from the image inside the link, so a `data-zoom` link without one stays a plain link.
 
 ### Leaving Images Out
 
@@ -497,24 +501,29 @@ The detail has its own type too: `import type { ZoomEventDetail } from 'astro-im
 
 ### Programmatic Control (Advanced)
 
+`<ImageZoom>` sets up its own zoom. For markup it does not render, such as HTML from a CMS, create
+one with `ZoomClass` on the element around the links:
+
 ```astro
-<ImageZoom class="my-gallery" />
+<div class="my-gallery">
+  <a href="/large-1.jpg" data-zoom><img src="/small-1.jpg" alt="Harbor at dawn" /></a>
+  <a href="/large-2.jpg" data-zoom><img src="/small-2.jpg" alt="Harbor at noon" /></a>
+</div>
 
 <script>
   import { ZoomClass } from 'astro-image-zoom';
 
-  const wrapper = document.querySelector('.my-gallery');
-  const zoom = new ZoomClass(wrapper);
+  const zoom = new ZoomClass(document.querySelector('.my-gallery'));
 
   // Later, if needed:
   // zoom.destroy();
 </script>
 ```
 
-`ZoomClass` reads the options from the `data-*` attributes that `<ImageZoom>` renders; the theme and
-the duration come from the `--zoom-*` variables. Without `<ImageZoom>`, `data-ignore` on the wrapper
-takes any CSS selector, since the browser matches it; images are not wrapped then, so only links
-with `data-zoom` count.
+`ZoomClass` reads the options from the same `data-*` attributes that `<ImageZoom>` renders on its
+element (`data-show-counter="false"`, `data-close-scroll="false"`…); the theme and the duration come
+from the `--zoom-*` variables. Images are not wrapped then, so only links with `data-zoom` count, and
+`data-ignore` on the wrapper takes any CSS selector, since the browser matches it.
 
 ## Examples
 

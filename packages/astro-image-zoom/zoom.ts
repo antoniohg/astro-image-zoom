@@ -151,6 +151,12 @@ const OVERLAY_HTML = `
   </div>
 </dialog>`;
 
+// Whether a click came from the keyboard (Enter or Space): it has no pointer. Not by its click count
+// alone: Firefox gives Enter on a link a count of 1, like a mouse click
+function fromKeyboard(e: MouseEvent): boolean {
+  return e.detail === 0 || (e as PointerEvent).pointerType === '';
+}
+
 // Resolves when the named CSS animations of the element or its descendants end or are cancelled,
 // and at once when none runs. The durations live in CSS only: with reduced motion they are 0s.
 function animationsFinished(element: Element, names: string[]): Promise<unknown> {
@@ -319,9 +325,15 @@ class Zoom {
   };
 
   private isClosing = false;
+  // The inline styles of <html> that lockScroll() changed, to restore them; null while unlocked
+  private lockedStyles: Record<'overflow-x' | 'overflow-y' | 'padding-right', [string, string]> | null = null;
   // True from open() until the image is ready and the opening animation starts
   private openPending = false;
-  private previousFocus: HTMLElement | null = null;
+  private returnFocus: HTMLElement | null = null;
+  // Whether the link that gets the focus back draws its ring: only after a close from the keyboard
+  private returnFocusVisible = false;
+  // The dialog's cancel event comes from Escape, but also from the back gesture on Android
+  private escapePressed = false;
   private touchStartX = 0;
   private touchStartY = 0;
   // timeStamp of the last horizontal wheel event; none yet, so the first vertical one always counts
@@ -360,12 +372,13 @@ class Zoom {
   }
 
   // Only the links the component generated and those the site marks with data-zoom: any other link
-  // with an image (a card, a logo) keeps navigating
+  // with an image (a card, a logo) keeps navigating. So does a data-zoom link without an image: the
+  // zoom grows from the image of the link
   private collectImages(): void {
     const links = this.wrapper.querySelectorAll<HTMLAnchorElement>('a[data-zoom-generated], a[data-zoom]');
 
     this.state.images = Array.from(links)
-      .filter((anchor) => !this.isIgnored(anchor))
+      .filter((anchor) => anchor.querySelector('img') && !this.isIgnored(anchor))
       .map((anchor) => {
         const img = anchor.querySelector('img');
         return {
@@ -414,7 +427,7 @@ class Zoom {
         if (index === -1) return;
 
         e.preventDefault();
-        this.open(index);
+        this.open(index, fromKeyboard(e));
       },
       { signal: this.controller.signal }
     );
@@ -423,9 +436,11 @@ class Zoom {
   // The overlay is shared, so only the instance that has it open may listen to it
   private bindOverlayListeners(signal: AbortSignal): void {
     // Handle native dialog cancel (Escape key), also while the image is loading
+    this.escapePressed = false;
+    this.overlay.addEventListener('keydown', (e) => (this.escapePressed = e.key === 'Escape'), { signal });
     this.overlay.addEventListener('cancel', this.handleCancel, { signal });
 
-    this.closeButton.addEventListener('click', () => this.close(), { signal });
+    this.closeButton.addEventListener('click', (e) => this.close(false, fromKeyboard(e)), { signal });
 
     if (this.options.showNavigation) {
       this.prevButton.addEventListener('click', () => this.prev(), { signal });
@@ -451,15 +466,11 @@ class Zoom {
     return this.slides[this.state.currentIndex].img;
   }
 
-  private async open(index: number): Promise<void> {
+  private async open(index: number, byKeyboard = false): Promise<void> {
     if (this.state.isOpen) return;
 
     // Identifies this opening; close() increments it to cancel a pending open
     const currentOpenId = ++this.openId;
-
-    // Focus goes back to the link that opened the zoom. Not document.activeElement: Safari does not
-    // focus a link on click, so it would be <body>
-    this.previousFocus = this.state.images[index].element;
 
     // Update state
     this.state.isOpen = true;
@@ -505,7 +516,7 @@ class Zoom {
       'data-navigation-layout',
       NAVIGATION_LAYOUTS.includes(navigationLayout) ? navigationLayout : 'bar'
     );
-    document.body.style.overflow = 'hidden';
+    this.lockScroll();
 
     // Show the slide of the image, without letting a swipe move it away while it loads
     this.track.style.overflowX = 'hidden';
@@ -557,11 +568,12 @@ class Zoom {
       this.overlay.addEventListener('wheel', this.handleWheel, { passive: true, signal });
     }
 
-    // The modal dialog traps the focus natively
-    this.closeButton.focus();
+    // The modal dialog traps the focus natively. Its ring only after a keyboard opening: Safari
+    // draws it after a click or a tap too, and carries it to the link the close then focuses
+    this.closeButton.focus({ focusVisible: byKeyboard });
   }
 
-  private close(byScroll = false): void {
+  private close(byScroll = false, byKeyboard = false): void {
     if (!this.state.isOpen || this.isClosing) return;
 
     this.isClosing = true;
@@ -580,6 +592,12 @@ class Zoom {
     // Get source image BEFORE any DOM changes
     const sourceElement = this.state.images[this.state.currentIndex].element;
     const sourceImg = sourceElement.querySelector('img')!;
+
+    // Focus goes to the link of the image on screen, where the close lands, not to the one that
+    // opened the zoom: a keyboard user goes on from the image they were looking at. Not
+    // document.activeElement at open: Safari does not focus a link on click, so it would be <body>
+    this.returnFocus = sourceElement;
+    this.returnFocusVisible = byKeyboard;
 
     // Closed while loading: the opening animation never ran, so close without animating
     if (openWasPending) {
@@ -610,13 +628,17 @@ class Zoom {
     this.overlay.classList.remove('is-open', 'is-opening');
     this.overlay.classList.add('is-closing');
 
-    // To the thumbnail of the image on screen, which may not be the one the opening started from
+    // To the thumbnail of the image on screen, which may not be the one the opening started from.
+    // The gallery may have moved to one off screen: the page, hidden under the overlay, scrolls to
+    // it first, so the image lands in view and so does the focus. Not on a scroll close, where the
+    // page is already moving with the gesture
+    if (!byScroll) sourceImg.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
     const targetRect = sourceImg.getBoundingClientRect();
     this.setAnimationVariables(flipTransform(targetRect, startRect, thumbnailFit(sourceImg)));
 
     // If closed by scroll, unlock scroll immediately and use special animation
     if (byScroll) {
-      document.body.style.overflow = '';
+      this.unlockScroll();
       this.animateScrollClose(startRect, sourceImg);
     } else {
       void animationsFinished(this.overlay, CLOSE_ANIMATIONS).then(() => this.finalizeClose(sourceImg));
@@ -708,15 +730,24 @@ class Zoom {
     // The CSS shows the spinner only if the wait lasts
     figure.classList.add('is-loading');
 
-    const decoded = img.decode().catch(() => {
-      // Load error: nothing to do
-    });
+    const decoded = img.decode().catch(() => this.showThumbnailInstead(index, img));
     slide.ready = sizeKnown(img, decoded)
       .then(() => (this.showPlaceholder(index, img) ? undefined : decoded))
       .then(() => figure.classList.remove('is-loading'));
     void decoded.then(() => img.style.removeProperty('background-image'));
 
     return slide.ready;
+  }
+
+  // A full-size image that fails to load (a wrong data-zoom-src, a 404) shows the file of its
+  // thumbnail, already loaded, instead of a broken image
+  private showThumbnailInstead(index: number, img: HTMLImageElement): Promise<void> {
+    const source = this.getThumbnail(index)?.currentSrc;
+    if (!source || img.src === source) return Promise.resolve();
+    img.src = source;
+    return img.decode().catch(() => {
+      // The thumbnail failed too: nothing to show
+    });
   }
 
   // Stretches the thumbnail, already loaded, behind the full-size image until it decodes. Only for
@@ -827,7 +858,7 @@ class Zoom {
 
   private handleCancel = (e: Event): void => {
     e.preventDefault(); // Prevent immediate closing
-    this.close(); // Trigger animated close
+    this.close(false, this.escapePressed); // Trigger animated close
   }
 
   private handleTouchStart = (e: TouchEvent): void => {
@@ -839,6 +870,9 @@ class Zoom {
   }
 
   private handleWheel = (e: WheelEvent): void => {
+    // A touchpad pinch (and Ctrl + wheel) comes as a wheel with ctrlKey: it zooms, it does not scroll
+    if (e.ctrlKey) return;
+
     // Horizontal gestures scroll the track natively; the vertical jitter of a touchpad
     // swipe must not close the overlay
     if (Math.abs(e.deltaX) * 2 >= Math.abs(e.deltaY)) {
@@ -889,6 +923,40 @@ class Zoom {
         this.host.style.removeProperty(name);
       }
     }
+  }
+
+  // Stops the page from scrolling behind the overlay. On <html>, which the viewport takes its overflow
+  // from before <body>: a site that sets overflow on <html> (html, body { overflow-x: hidden }) is
+  // locked too. A classic scrollbar (Windows, Linux) goes away with it: the page gets that width back
+  // as padding, so it does not shift under the overlay and the zoom grows from the thumbnail
+  private lockScroll(): void {
+    const root = document.documentElement;
+    const { style } = root;
+    const saved = (name: string): [string, string] => [style.getPropertyValue(name), style.getPropertyPriority(name)];
+    this.lockedStyles = {
+      'overflow-x': saved('overflow-x'),
+      'overflow-y': saved('overflow-y'),
+      'padding-right': saved('padding-right'),
+    };
+
+    const width = root.clientWidth;
+    style.setProperty('overflow-x', 'hidden');
+    style.setProperty('overflow-y', 'hidden');
+    const scrollbar = root.clientWidth - width;
+    if (scrollbar > 0) {
+      const padding = Number.parseFloat(getComputedStyle(root).paddingRight) || 0;
+      style.setProperty('padding-right', `${padding + scrollbar}px`);
+    }
+  }
+
+  private unlockScroll(): void {
+    if (!this.lockedStyles) return;
+    const { style } = document.documentElement;
+    for (const [name, [value, priority]] of Object.entries(this.lockedStyles)) {
+      if (value) style.setProperty(name, value, priority);
+      else style.removeProperty(name);
+    }
+    this.lockedStyles = null;
   }
 
   // The image shrinks back to the thumbnail with the closing animation (its variables are set),
@@ -959,7 +1027,7 @@ class Zoom {
     this.overlay.close();
     this.overlay.classList.remove('is-closing');
     this.backdrop.style.removeProperty('--backdrop-now');
-    document.body.style.overflow = '';
+    this.unlockScroll();
 
     // The slides belong to the instance that opened the overlay: discard them
     this.removeSlides();
@@ -969,10 +1037,12 @@ class Zoom {
     this.captionElement.textContent = '';
     this.slides = [];
 
-    // Restore focus
-    if (this.previousFocus) {
-      this.previousFocus.focus({ preventScroll: true });
-      this.previousFocus = null;
+    // Restore focus. close() may have given it back already to the link a click focused, with the
+    // browser's own ring: focus() on the focused element does nothing, so it leaves first
+    if (this.returnFocus) {
+      if (document.activeElement === this.returnFocus) this.returnFocus.blur();
+      this.returnFocus.focus({ preventScroll: true, focusVisible: this.returnFocusVisible });
+      this.returnFocus = null;
     }
 
     this.isClosing = false;
