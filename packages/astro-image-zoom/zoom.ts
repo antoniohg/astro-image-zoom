@@ -323,7 +323,11 @@ class Zoom {
   private lockedStyles: Record<'overflow-x' | 'overflow-y' | 'padding-right', [string, string]> | null = null;
   // True from open() until the image is ready and the opening animation starts
   private openPending = false;
-  private previousFocus: HTMLElement | null = null;
+  private returnFocus: HTMLElement | null = null;
+  // Whether the link that gets the focus back draws its ring: only after a close from the keyboard
+  private returnFocusVisible = false;
+  // The dialog's cancel event comes from Escape, but also from the back gesture on Android
+  private escapePressed = false;
   private touchStartX = 0;
   private touchStartY = 0;
   // timeStamp of the last horizontal wheel event; none yet, so the first vertical one always counts
@@ -417,7 +421,8 @@ class Zoom {
         if (index === -1) return;
 
         e.preventDefault();
-        this.open(index);
+        // A click from the keyboard (Enter on the link) has no pointer, so no click count
+        this.open(index, e.detail === 0);
       },
       { signal: this.controller.signal }
     );
@@ -426,9 +431,11 @@ class Zoom {
   // The overlay is shared, so only the instance that has it open may listen to it
   private bindOverlayListeners(signal: AbortSignal): void {
     // Handle native dialog cancel (Escape key), also while the image is loading
+    this.escapePressed = false;
+    this.overlay.addEventListener('keydown', (e) => (this.escapePressed = e.key === 'Escape'), { signal });
     this.overlay.addEventListener('cancel', this.handleCancel, { signal });
 
-    this.closeButton.addEventListener('click', () => this.close(), { signal });
+    this.closeButton.addEventListener('click', (e) => this.close(false, e.detail === 0), { signal });
 
     if (this.options.showNavigation) {
       this.prevButton.addEventListener('click', () => this.prev(), { signal });
@@ -454,15 +461,11 @@ class Zoom {
     return this.slides[this.state.currentIndex].img;
   }
 
-  private async open(index: number): Promise<void> {
+  private async open(index: number, byKeyboard = false): Promise<void> {
     if (this.state.isOpen) return;
 
     // Identifies this opening; close() increments it to cancel a pending open
     const currentOpenId = ++this.openId;
-
-    // Focus goes back to the link that opened the zoom. Not document.activeElement: Safari does not
-    // focus a link on click, so it would be <body>
-    this.previousFocus = this.state.images[index].element;
 
     // Update state
     this.state.isOpen = true;
@@ -560,11 +563,12 @@ class Zoom {
       this.overlay.addEventListener('wheel', this.handleWheel, { passive: true, signal });
     }
 
-    // The modal dialog traps the focus natively
-    this.closeButton.focus();
+    // The modal dialog traps the focus natively. Its ring only after a keyboard opening: Safari
+    // draws it after a click or a tap too, and carries it to the link the close then focuses
+    this.closeButton.focus({ focusVisible: byKeyboard });
   }
 
-  private close(byScroll = false): void {
+  private close(byScroll = false, byKeyboard = false): void {
     if (!this.state.isOpen || this.isClosing) return;
 
     this.isClosing = true;
@@ -583,6 +587,12 @@ class Zoom {
     // Get source image BEFORE any DOM changes
     const sourceElement = this.state.images[this.state.currentIndex].element;
     const sourceImg = sourceElement.querySelector('img')!;
+
+    // Focus goes to the link of the image on screen, where the close lands, not to the one that
+    // opened the zoom: a keyboard user goes on from the image they were looking at. Not
+    // document.activeElement at open: Safari does not focus a link on click, so it would be <body>
+    this.returnFocus = sourceElement;
+    this.returnFocusVisible = byKeyboard;
 
     // Closed while loading: the opening animation never ran, so close without animating
     if (openWasPending) {
@@ -613,7 +623,11 @@ class Zoom {
     this.overlay.classList.remove('is-open', 'is-opening');
     this.overlay.classList.add('is-closing');
 
-    // To the thumbnail of the image on screen, which may not be the one the opening started from
+    // To the thumbnail of the image on screen, which may not be the one the opening started from.
+    // The gallery may have moved to one off screen: the page, hidden under the overlay, scrolls to
+    // it first, so the image lands in view and so does the focus. Not on a scroll close, where the
+    // page is already moving with the gesture
+    if (!byScroll) sourceImg.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
     const targetRect = sourceImg.getBoundingClientRect();
     this.setAnimationVariables(flipTransform(targetRect, startRect, thumbnailFit(sourceImg)));
 
@@ -839,7 +853,7 @@ class Zoom {
 
   private handleCancel = (e: Event): void => {
     e.preventDefault(); // Prevent immediate closing
-    this.close(); // Trigger animated close
+    this.close(false, this.escapePressed); // Trigger animated close
   }
 
   private handleTouchStart = (e: TouchEvent): void => {
@@ -1019,9 +1033,9 @@ class Zoom {
     this.slides = [];
 
     // Restore focus
-    if (this.previousFocus) {
-      this.previousFocus.focus({ preventScroll: true });
-      this.previousFocus = null;
+    if (this.returnFocus) {
+      this.returnFocus.focus({ preventScroll: true, focusVisible: this.returnFocusVisible });
+      this.returnFocus = null;
     }
 
     this.isClosing = false;

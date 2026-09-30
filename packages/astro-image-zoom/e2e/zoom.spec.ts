@@ -303,6 +303,61 @@ test.describe('focus', () => {
     await expect(links(page, 'gallery').first()).toBeFocused();
   });
 
+  test('shows the focus ring of the close button only when the zoom opens from the keyboard', async ({ page }) => {
+    const closeRing = () =>
+      page.evaluate(
+        () =>
+          document
+            .querySelector('astro-image-zoom-overlay')!
+            .shadowRoot!.querySelector('.astro-image-zoom-close')!
+            .matches(':focus-visible')
+      );
+
+    // Safari drew it after a click or a tap, and then on the thumbnail the close focuses
+    await openZoom(page, 'single');
+    expect(await focusedLabel(page)).toBe('Close zoom overlay');
+    expect(await closeRing()).toBe(false);
+    await page.getByRole('button', { name: 'Close zoom overlay' }).click();
+    await expectClosed(page);
+
+    // Nor on the thumbnail the close focuses, after a click; after Escape, where it goes on
+    const linkRing = () => links(page, 'single').first().evaluate((link) => link.matches(':focus-visible'));
+    await expect(links(page, 'single').first()).toBeFocused();
+    expect(await linkRing()).toBe(false);
+
+    await links(page, 'single').first().focus();
+    await page.keyboard.press('Enter');
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    expect(await closeRing()).toBe(true);
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+    expect(await linkRing()).toBe(true);
+  });
+
+  test('returns to the link of the image on screen, not to the one that opened the zoom', async ({ page }) => {
+    await openZoom(page, 'gallery');
+    await page.keyboard.press('ArrowRight');
+    await expect(counter(page)).toHaveText('2 / 3');
+
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+    await expect(links(page, 'gallery').nth(1)).toBeFocused();
+  });
+
+  test('scrolls the page to the thumbnail when it is off screen, so the close and the focus land in view', async ({
+    page,
+  }) => {
+    await openZoom(page, 'gallery');
+    // The page under the overlay moves away from the gallery, as a long gallery would
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect(links(page, 'gallery').first()).not.toBeInViewport();
+
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+    await expect(links(page, 'gallery').first().locator('img')).toBeInViewport({ ratio: 1 });
+    await expect(links(page, 'gallery').first()).toBeFocused();
+  });
+
   test('keeps Tab inside the zoom with a single image: only the close button, then the browser', async ({
     page,
   }) => {
