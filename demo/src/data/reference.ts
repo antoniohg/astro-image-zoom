@@ -217,3 +217,23 @@ export const attributes: ReferenceRow[] = [
       "On an image or any element around it: left out of the zoom and the gallery, like the `ignore` prop for a single image",
   },
 ];
+
+// Events dispatched by each <astro-image-zoom>; they bubble
+export const events: ReferenceRow[] = [
+  { name: "astro-image-zoom:open", description: "A zoom opens (a click, Enter on a link)" },
+  {
+    name: "astro-image-zoom:change",
+    description: "The gallery moves to another image (arrows, keys, a swipe). Not dispatched on open",
+  },
+  { name: "astro-image-zoom:close", description: "The zoom closes, however it closes" },
+];
+
+// The detail of every event: the image on screen
+export const eventDetail: ReferenceRow[] = [
+  { name: "index", description: "Position of the image in its gallery, from 0", type: "number" },
+  { name: "total", description: "Number of images in the gallery", type: "number" },
+  { name: "src", description: "URL of the full-size image the zoom shows", type: "string" },
+  { name: "alt", description: "Alt text of the image", type: "string" },
+  { name: "caption", description: "Caption, or an empty string", type: "string" },
+  { name: "link", description: "The link on the page that opens this image", type: "HTMLElement" },
+];
