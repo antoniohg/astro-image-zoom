@@ -1037,8 +1037,10 @@ class Zoom {
     this.captionElement.textContent = '';
     this.slides = [];
 
-    // Restore focus
+    // Restore focus. close() may have given it back already to the link a click focused, with the
+    // browser's own ring: focus() on the focused element does nothing, so it leaves first
     if (this.returnFocus) {
+      if (document.activeElement === this.returnFocus) this.returnFocus.blur();
       this.returnFocus.focus({ preventScroll: true, focusVisible: this.returnFocusVisible });
       this.returnFocus = null;
     }
