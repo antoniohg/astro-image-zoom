@@ -147,6 +147,11 @@ function matches(name: string, attributes: Attributes, selector: Selector): bool
   );
 }
 
+// Elements whose clicks already do something: a link, a button, the label of a form control, the
+// summary that opens a <details>. A zoom link inside them would take their clicks (and <a> is not
+// valid inside <a> or <button>), so their images are left alone
+const INTERACTIVE_ELEMENTS = new Set(['a', 'button', 'label', 'summary']);
+
 export function wrapImages(html: string, ignore: Selector[] = []): string {
   const selectors = [ALWAYS_IGNORED, ...ignore];
   const isIgnored = (name: string, attributes: Attributes): boolean =>
@@ -154,7 +159,7 @@ export function wrapImages(html: string, ignore: Selector[] = []): string {
 
   let output = '';
   let cursor = 0;
-  let anchorDepth = 0;
+  let interactiveDepth = 0;
   // Inside an ignored element: its name, and how deep elements of that name nest in it
   let ignored: { name: string; depth: number } | null = null;
   // A <picture> is wrapped as a whole: <a> is not valid inside it
@@ -184,13 +189,11 @@ export function wrapImages(html: string, ignore: Selector[] = []): string {
       continue;
     }
 
-    if (name === 'a') {
-      anchorDepth = Math.max(0, anchorDepth + (closing ? -1 : 1));
+    if (INTERACTIVE_ELEMENTS.has(name)) {
+      interactiveDepth = Math.max(0, interactiveDepth + (closing ? -1 : 1));
       continue;
     }
-
-    // Images that already live inside a link are left alone
-    if (anchorDepth > 0) continue;
+    if (interactiveDepth > 0) continue;
 
     if (name === 'picture') {
       if (!closing) {
@@ -205,7 +208,8 @@ export function wrapImages(html: string, ignore: Selector[] = []): string {
       }
     } else if (name === 'img' && !closing) {
       const image = parseAttributes(rawAttributes);
-      if (isIgnored('img', image)) {
+      // An image map is a set of links already
+      if (isIgnored('img', image) || image.has('usemap')) {
         // An ignored image leaves its <picture> unwrapped too
         if (picture) picture = null;
       } else if (picture) {

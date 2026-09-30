@@ -75,7 +75,9 @@ const fullSize = await getImage({ src: photo, width: 1920 });
   its own `data-zoom-src` and `data-zoom-caption` are ignored. See
   [Gallery with Links](#gallery-with-links).
 - **An image inside any other link** is left alone: the link keeps working as a link (a card, a
-  logo) and the image is not part of the gallery.
+  logo) and the image is not part of the gallery. So are the images of other elements whose clicks
+  already do something (a `<button>`, the `<label>` of a form control, the `<summary>` of a
+  `<details>`) and image maps (`<img usemap>`).
 
 > **Resized images barely grow when zoomed.** The zoom shows each image at most at its real size,
 > never enlarged. If the image on the page is a smaller version (a thumbnail, or Astro's

@@ -45,6 +45,26 @@ describe('wrapImages', () => {
     );
   });
 
+  it('leaves alone the images of buttons, form labels and summaries, whose clicks do something', () => {
+    const html =
+      '<button type="button"><img src="/menu.svg" alt="Menu"></button>' +
+      '<label><input type="radio" name="color"><picture><img src="/red.jpg" alt="Red"></picture></label>' +
+      '<details><summary><img src="/cover.jpg" alt="Cover"></summary><img src="/inside.jpg" alt=""></details>';
+    expect(wrapImages(html)).toBe(
+      html.replace(
+        '<img src="/inside.jpg" alt="">',
+        '<a href="/inside.jpg" data-zoom-generated aria-label="Enlarge image"><img src="/inside.jpg" alt=""></a>'
+      )
+    );
+  });
+
+  it('leaves alone an image map, whose areas are links already', () => {
+    const html =
+      '<img src="/plan.png" alt="Floor plan" usemap="#rooms">' +
+      '<map name="rooms"><area href="/kitchen" alt="Kitchen" coords="0,0,10,10"></map>';
+    expect(wrapImages(html)).toBe(html);
+  });
+
   it('wraps a <picture> as a whole, with the attributes of its <img>', () => {
     const picture =
       '<picture><source srcset="/a.avif" type="image/avif"><img src="/a.jpg" data-zoom-src="/a-large.jpg" alt="Moon"></picture>';
