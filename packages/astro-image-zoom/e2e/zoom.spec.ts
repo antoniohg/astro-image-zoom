@@ -384,6 +384,20 @@ test.describe('gallery', () => {
     await expect(counter(page)).toHaveText('2 / 3');
   });
 
+  test('keeps no layer per slide, which made iOS Safari drop the images off screen', async ({ page }) => {
+    // will-change on every slide took so much memory that iOS Safari dropped the decoded pixels of
+    // the images off screen: a slide swiped back to flashed blank while it decoded again
+    await openZoom(page, 'gallery');
+    await page.keyboard.press('ArrowRight');
+    await expect(counter(page)).toHaveText('2 / 3');
+    await settle(page);
+
+    const willChange = await page
+      .locator('.astro-image-zoom-image')
+      .evaluateAll((images) => images.map((image) => getComputedStyle(image).willChange));
+    expect(willChange).toEqual(['auto', 'auto', 'auto']);
+  });
+
   test('hides only the thumbnail of the image on screen, and closes to it', async ({ page }) => {
     await openZoom(page, 'gallery');
     await page.keyboard.press('ArrowRight');

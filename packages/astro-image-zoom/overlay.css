@@ -215,7 +215,9 @@
   -webkit-user-drag: none;
   cursor: zoom-out;
   transition: opacity 0.15s ease;
-  will-change: transform, opacity;
+  /* No will-change: a layer per slide, kept while the overlay is open, takes so much memory that iOS
+     Safari drops the decoded images off screen, and a slide swiped back flashes blank. The animations
+     promote the image while they run */
   /* The thumbnail, stretched to the image, shows until the full-size file has decoded (zoom.ts) */
   background-size: 100% 100%;
   background-repeat: no-repeat;
