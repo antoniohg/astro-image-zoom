@@ -3,7 +3,7 @@
  * Medium-style zoom with accessibility and performance optimizations
  */
 
-import overlayStyles from './overlay.css?inline';
+import overlayStyles from "./overlay.css?inline";
 
 interface ZoomImage {
   src: string;
@@ -37,9 +37,9 @@ export interface ZoomEventDetail {
 }
 
 type ZoomEvents = {
-  'astro-image-zoom:open': CustomEvent<ZoomEventDetail>;
-  'astro-image-zoom:change': CustomEvent<ZoomEventDetail>;
-  'astro-image-zoom:close': CustomEvent<ZoomEventDetail>;
+  "astro-image-zoom:open": CustomEvent<ZoomEventDetail>;
+  "astro-image-zoom:change": CustomEvent<ZoomEventDetail>;
+  "astro-image-zoom:close": CustomEvent<ZoomEventDetail>;
 };
 
 // Typed addEventListener for the events, on any element (HTMLElementEventMap extends this one), and
@@ -60,7 +60,10 @@ interface ZoomSlide {
 
 // Resolves once the browser knows the size of the image, from its first bytes, long before a large
 // file has loaded; or when the load ends, also in error. There is no event for it, so the frames poll
-function sizeKnown(img: HTMLImageElement, decoded: Promise<void>): Promise<void> {
+function sizeKnown(
+  img: HTMLImageElement,
+  decoded: Promise<void>,
+): Promise<void> {
   return new Promise((resolve) => {
     let settled = false;
     void decoded.then(() => {
@@ -79,34 +82,37 @@ function sizeKnown(img: HTMLImageElement, decoded: Promise<void>): Promise<void>
 // The custom properties of the overlay. When it opens, it takes the values set around the
 // <astro-image-zoom> that opened it, so each gallery can have its own
 const ZOOM_VARIABLES = [
-  '--zoom-bg',
-  '--zoom-close-color',
-  '--zoom-close-bg',
-  '--zoom-nav-color',
-  '--zoom-nav-bg',
-  '--zoom-caption-color',
-  '--zoom-caption-bg',
-  '--zoom-controls-offset',
-  '--zoom-caption-max-width',
-  '--zoom-caption-font',
-  '--zoom-caption-font-size',
-  '--zoom-caption-radius',
-  '--zoom-padding',
-  '--zoom-image-radius',
-  '--zoom-button-size',
-  '--zoom-button-radius',
-  '--zoom-animation-duration',
-  '--zoom-slide-duration',
-  '--zoom-slide-easing',
-  '--zoom-color-scheme'
+  "--zoom-bg",
+  "--zoom-close-color",
+  "--zoom-close-bg",
+  "--zoom-nav-color",
+  "--zoom-nav-bg",
+  "--zoom-caption-color",
+  "--zoom-caption-bg",
+  "--zoom-controls-offset",
+  "--zoom-caption-max-width",
+  "--zoom-caption-font",
+  "--zoom-caption-font-size",
+  "--zoom-caption-radius",
+  "--zoom-padding",
+  "--zoom-image-radius",
+  "--zoom-button-size",
+  "--zoom-button-radius",
+  "--zoom-animation-duration",
+  "--zoom-slide-duration",
+  "--zoom-slide-easing",
+  "--zoom-color-scheme",
 ];
 
-const CAPTION_POSITIONS = ['bottom', 'top'];
-const NAVIGATION_LAYOUTS = ['bar', 'sides'];
+const CAPTION_POSITIONS = ["bottom", "top"];
+const NAVIGATION_LAYOUTS = ["bar", "sides"];
 
 // The CSS animations of the overlay that open() and close() wait for
-const OPEN_ANIMATIONS = ['astro-image-zoom-in', 'astro-image-zoom-backdrop-in'];
-const CLOSE_ANIMATIONS = ['astro-image-zoom-out', 'astro-image-zoom-backdrop-out'];
+const OPEN_ANIMATIONS = ["astro-image-zoom-in", "astro-image-zoom-backdrop-in"];
+const CLOSE_ANIMATIONS = [
+  "astro-image-zoom-out",
+  "astro-image-zoom-backdrop-out",
+];
 // How long (ms) a requested slide counts as the target while the smooth scroll runs
 const SCROLL_TARGET_TTL = 500;
 // Vertical wheel deltas below this many pixels do not close the overlay
@@ -114,7 +120,7 @@ const WHEEL_CLOSE_DELTA = 4;
 // After a horizontal wheel event (ms), vertical jitter of the same touchpad swipe is ignored
 const WHEEL_HORIZONTAL_GRACE = 250;
 
-const OVERLAY_ID = 'astro-image-zoom-global-overlay';
+const OVERLAY_ID = "astro-image-zoom-global-overlay";
 
 // The caption and the navigation bar live inside the track, after the slides: fixed, so they do not
 // scroll with it, and a scrollable region with focusable controls needs no Tab stop of its own
@@ -154,15 +160,22 @@ const OVERLAY_HTML = `
 // Whether a click came from the keyboard (Enter or Space): it has no pointer. Not by its click count
 // alone: Firefox gives Enter on a link a count of 1, like a mouse click
 function fromKeyboard(e: MouseEvent): boolean {
-  return e.detail === 0 || (e as PointerEvent).pointerType === '';
+  return e.detail === 0 || (e as PointerEvent).pointerType === "";
 }
 
 // Resolves when the named CSS animations of the element or its descendants end or are cancelled,
 // and at once when none runs. The durations live in CSS only: with reduced motion they are 0s.
-function animationsFinished(element: Element, names: string[]): Promise<unknown> {
+function animationsFinished(
+  element: Element,
+  names: string[],
+): Promise<unknown> {
   const animations = element
     .getAnimations({ subtree: true })
-    .filter((animation) => animation instanceof CSSAnimation && names.includes(animation.animationName));
+    .filter(
+      (animation) =>
+        animation instanceof CSSAnimation &&
+        names.includes(animation.animationName),
+    );
   return Promise.allSettled(animations.map(({ finished }) => finished));
 }
 
@@ -172,24 +185,26 @@ function animationsFinished(element: Element, names: string[]): Promise<unknown>
  * <ImageZoom> components it has; without JavaScript the links simply open the image.
  */
 function getOverlay(): HTMLDialogElement {
-  const existing = document.getElementById(OVERLAY_ID)?.shadowRoot?.querySelector('dialog');
+  const existing = document
+    .getElementById(OVERLAY_ID)
+    ?.shadowRoot?.querySelector("dialog");
   if (existing) return existing;
 
   // The dialog lives in the shadow root of a host element: the CSS of the page cannot reach it
-  const host = document.createElement('astro-image-zoom-overlay');
+  const host = document.createElement("astro-image-zoom-overlay");
   host.id = OVERLAY_ID;
-  const root = host.attachShadow({ mode: 'open' });
-  const style = document.createElement('style');
+  const root = host.attachShadow({ mode: "open" });
+  const style = document.createElement("style");
   style.textContent = overlayStyles;
-  const template = document.createElement('template');
+  const template = document.createElement("template");
   template.innerHTML = OVERLAY_HTML.trim();
   root.append(style, template.content);
   document.body.append(host);
-  return root.querySelector('dialog')!;
+  return root.querySelector("dialog")!;
 }
 
 // A box on the screen, such as the one getBoundingClientRect() returns
-type Box = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
+type Box = Pick<DOMRect, "left" | "top" | "width" | "height">;
 
 // How a thumbnail draws its file inside its box: the computed object-fit and object-position of the
 // <img>, and the size of the file
@@ -209,7 +224,12 @@ interface FlipTransform {
 
 function thumbnailFit(img: HTMLImageElement): ThumbnailFit {
   const { objectFit, objectPosition } = getComputedStyle(img);
-  return { objectFit, objectPosition, naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight };
+  return {
+    objectFit,
+    objectPosition,
+    naturalWidth: img.naturalWidth,
+    naturalHeight: img.naturalHeight,
+  };
 }
 
 // Where object-position puts the drawn file along one axis, given the free space of the box
@@ -217,13 +237,13 @@ function thumbnailFit(img: HTMLImageElement): ThumbnailFit {
 // length in px, or calc() of both: "right 10px" is calc(100% - 10px). Anything else, or nothing,
 // centers the file, the default
 function positionOffset(value: string | undefined, free: number): number {
-  const percent = /(-?[\d.]+)%/.exec(value ?? '');
-  const pixels = /([+-]?)\s*(-?[\d.]+)px/.exec(value ?? '');
+  const percent = /(-?[\d.]+)%/.exec(value ?? "");
+  const pixels = /([+-]?)\s*(-?[\d.]+)px/.exec(value ?? "");
   if (!percent && !pixels) return free / 2;
 
   const offset =
     (percent ? (free * Number(percent[1])) / 100 : 0) +
-    (pixels ? Number(pixels[2]) * (pixels[1] === '-' ? -1 : 1) : 0);
+    (pixels ? Number(pixels[2]) * (pixels[1] === "-" ? -1 : 1) : 0);
   return Number.isFinite(offset) ? offset : free / 2;
 }
 
@@ -240,7 +260,7 @@ function drawnBox(source: Box, fit?: ThumbnailFit): Box {
     contain: Math.min(widthRatio, heightRatio),
     cover: Math.max(widthRatio, heightRatio),
     none: 1,
-    'scale-down': Math.min(1, widthRatio, heightRatio),
+    "scale-down": Math.min(1, widthRatio, heightRatio),
   };
   const scale = scales[fit.objectFit];
   if (scale === undefined) return source;
@@ -248,7 +268,8 @@ function drawnBox(source: Box, fit?: ThumbnailFit): Box {
   const width = fit.naturalWidth * scale;
   const height = fit.naturalHeight * scale;
   // One value per axis; a calc() has spaces of its own
-  const [positionX, positionY] = fit.objectPosition.match(/calc\([^)]*\)|\S+/g) ?? [];
+  const [positionX, positionY] =
+    fit.objectPosition.match(/calc\([^)]*\)|\S+/g) ?? [];
   return {
     left: source.left + positionOffset(positionX, source.width - width),
     top: source.top + positionOffset(positionY, source.height - height),
@@ -267,13 +288,18 @@ function drawnBox(source: Box, fit?: ThumbnailFit): Box {
  * shape: it is taken as a centered crop, so the scale matches what the thumbnail really shows.
  * Without `fit`, the image covers the source box, as object-fit: cover does.
  */
-export function flipTransform(source: Box, final: Box, fit?: ThumbnailFit): FlipTransform {
+export function flipTransform(
+  source: Box,
+  final: Box,
+  fit?: ThumbnailFit,
+): FlipTransform {
   const drawn = drawnBox(source, fit);
 
   // The whole image around the drawn file, at the same scale, taking the file as a centered crop
   const imageRatio = final.width / final.height;
   const drawnRatio = drawn.width / drawn.height;
-  const width = imageRatio > drawnRatio ? drawn.height * imageRatio : drawn.width;
+  const width =
+    imageRatio > drawnRatio ? drawn.height * imageRatio : drawn.width;
   const height = width / imageRatio;
   const left = drawn.left + (drawn.width - width) / 2;
   const top = drawn.top + (drawn.height - height) / 2;
@@ -285,8 +311,14 @@ export function flipTransform(source: Box, final: Box, fit?: ThumbnailFit): Flip
   // Only what the thumbnail shows stays visible: the drawn file, cut to the box of the thumbnail
   const visibleLeft = Math.max(drawn.left, source.left);
   const visibleTop = Math.max(drawn.top, source.top);
-  const visibleRight = Math.min(drawn.left + drawn.width, source.left + source.width);
-  const visibleBottom = Math.min(drawn.top + drawn.height, source.top + source.height);
+  const visibleRight = Math.min(
+    drawn.left + drawn.width,
+    source.left + source.width,
+  );
+  const visibleBottom = Math.min(
+    drawn.top + drawn.height,
+    source.top + source.height,
+  );
   const insetTop = (visibleTop - top) / scale;
   const insetRight = (left + width - visibleRight) / scale;
   const insetBottom = (top + height - visibleBottom) / scale;
@@ -314,19 +346,22 @@ class Zoom {
   private state: ZoomState = {
     isOpen: false,
     currentIndex: 0,
-    images: []
+    images: [],
   };
 
   private options = {
     closeOnBackdrop: true,
     closeOnImage: true,
     closeOnScroll: true,
-    showNavigation: true
+    showNavigation: true,
   };
 
   private isClosing = false;
   // The inline styles of <html> that lockScroll() changed, to restore them; null while unlocked
-  private lockedStyles: Record<'overflow-x' | 'overflow-y' | 'padding-right', [string, string]> | null = null;
+  private lockedStyles: Record<
+    "overflow-x" | "overflow-y" | "padding-right",
+    [string, string]
+  > | null = null;
   // True from open() until the image is ready and the opening animation starts
   private openPending = false;
   private returnFocus: HTMLElement | null = null;
@@ -351,22 +386,26 @@ class Zoom {
     this.wrapper = wrapper;
 
     // Get configuration from data attributes
-    this.options.closeOnBackdrop = wrapper.dataset.imageZoomCloseBackdrop !== 'false';
-    this.options.closeOnImage = wrapper.dataset.imageZoomCloseImage !== 'false';
-    this.options.closeOnScroll = wrapper.dataset.imageZoomCloseScroll !== 'false';
-    this.options.showNavigation = wrapper.dataset.imageZoomShowNav !== 'false';
+    this.options.closeOnBackdrop =
+      wrapper.dataset.imageZoomCloseBackdrop !== "false";
+    this.options.closeOnImage = wrapper.dataset.imageZoomCloseImage !== "false";
+    this.options.closeOnScroll =
+      wrapper.dataset.imageZoomCloseScroll !== "false";
+    this.options.showNavigation = wrapper.dataset.imageZoomShowNav !== "false";
 
     // One overlay is shared by every zoom instance on the page
     this.overlay = getOverlay();
     this.host = (this.overlay.getRootNode() as ShadowRoot).host as HTMLElement;
-    this.backdrop = this.overlay.querySelector('.astro-image-zoom-backdrop')!;
-    this.track = this.overlay.querySelector('.astro-image-zoom-track')!;
-    this.captionElement = this.overlay.querySelector('.astro-image-zoom-caption')!;
-    this.closeButton = this.overlay.querySelector('.astro-image-zoom-close')!;
-    this.toolbar = this.overlay.querySelector('.astro-image-zoom-toolbar')!;
-    this.counter = this.overlay.querySelector('.astro-image-zoom-counter')!;
-    this.prevButton = this.overlay.querySelector('.astro-image-zoom-prev')!;
-    this.nextButton = this.overlay.querySelector('.astro-image-zoom-next')!;
+    this.backdrop = this.overlay.querySelector(".astro-image-zoom-backdrop")!;
+    this.track = this.overlay.querySelector(".astro-image-zoom-track")!;
+    this.captionElement = this.overlay.querySelector(
+      ".astro-image-zoom-caption",
+    )!;
+    this.closeButton = this.overlay.querySelector(".astro-image-zoom-close")!;
+    this.toolbar = this.overlay.querySelector(".astro-image-zoom-toolbar")!;
+    this.counter = this.overlay.querySelector(".astro-image-zoom-counter")!;
+    this.prevButton = this.overlay.querySelector(".astro-image-zoom-prev")!;
+    this.nextButton = this.overlay.querySelector(".astro-image-zoom-next")!;
 
     this.setupEventListeners();
   }
@@ -375,17 +414,21 @@ class Zoom {
   // with an image (a card, a logo) keeps navigating. So does a data-image-zoom link without an image: the
   // zoom grows from the image of the link
   private collectImages(): void {
-    const links = this.wrapper.querySelectorAll<HTMLAnchorElement>('a[data-image-zoom-generated], a[data-image-zoom]');
+    const links = this.wrapper.querySelectorAll<HTMLAnchorElement>(
+      "a[data-image-zoom-generated], a[data-image-zoom]",
+    );
 
     this.state.images = Array.from(links)
-      .filter((anchor) => anchor.querySelector('img') && !this.isIgnored(anchor))
+      .filter(
+        (anchor) => anchor.querySelector("img") && !this.isIgnored(anchor),
+      )
       .map((anchor) => {
-        const img = anchor.querySelector('img');
+        const img = anchor.querySelector("img");
         return {
           src: anchor.href,
-          alt: img?.alt || '',
-          caption: anchor.dataset.imageZoomCaption || anchor.title || '',
-          element: anchor
+          alt: img?.alt || "",
+          caption: anchor.dataset.imageZoomCaption || anchor.title || "",
+          element: anchor,
         };
       })
       .filter(({ src }) => src);
@@ -396,11 +439,11 @@ class Zoom {
   // links are the images the server kept: matching them here, with the new <a> in between, could
   // leave out images the server wrapped. Only the site's own links with data-image-zoom are checked
   private isIgnored(anchor: HTMLAnchorElement): boolean {
-    if (anchor.hasAttribute('data-image-zoom-generated')) return false;
-    const start = anchor.querySelector('img') ?? anchor;
+    if (anchor.hasAttribute("data-image-zoom-generated")) return false;
+    const start = anchor.querySelector("img") ?? anchor;
     const inside = (match: Element | null): boolean =>
       match !== null && match !== this.wrapper && this.wrapper.contains(match);
-    if (inside(start.closest('[data-image-zoom-ignore]'))) return true;
+    if (inside(start.closest("[data-image-zoom-ignore]"))) return true;
 
     const ignore = this.wrapper.dataset.imageZoomIgnoreSelector;
     if (!ignore) return false;
@@ -416,20 +459,30 @@ class Zoom {
     // One delegated listener: links added later are picked up when clicked.
     // Links already handle keyboard navigation natively (Enter key)
     this.wrapper.addEventListener(
-      'click',
+      "click",
       (e) => {
         // Let the browser handle "open in new tab" and similar clicks
-        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        if (
+          e.defaultPrevented ||
+          e.button !== 0 ||
+          e.metaKey ||
+          e.ctrlKey ||
+          e.shiftKey ||
+          e.altKey
+        )
+          return;
 
         this.collectImages();
-        const link = (e.target as Element).closest('a');
-        const index = this.state.images.findIndex(({ element }) => element === link);
+        const link = (e.target as Element).closest("a");
+        const index = this.state.images.findIndex(
+          ({ element }) => element === link,
+        );
         if (index === -1) return;
 
         e.preventDefault();
         this.open(index, fromKeyboard(e));
       },
-      { signal: this.controller.signal }
+      { signal: this.controller.signal },
     );
   }
 
@@ -437,27 +490,37 @@ class Zoom {
   private bindOverlayListeners(signal: AbortSignal): void {
     // Handle native dialog cancel (Escape key), also while the image is loading
     this.escapePressed = false;
-    this.overlay.addEventListener('keydown', (e) => (this.escapePressed = e.key === 'Escape'), { signal });
-    this.overlay.addEventListener('cancel', this.handleCancel, { signal });
+    this.overlay.addEventListener(
+      "keydown",
+      (e) => (this.escapePressed = e.key === "Escape"),
+      { signal },
+    );
+    this.overlay.addEventListener("cancel", this.handleCancel, { signal });
 
-    this.closeButton.addEventListener('click', (e) => this.close(false, fromKeyboard(e)), { signal });
+    this.closeButton.addEventListener(
+      "click",
+      (e) => this.close(false, fromKeyboard(e)),
+      { signal },
+    );
 
     if (this.options.showNavigation) {
-      this.prevButton.addEventListener('click', () => this.prev(), { signal });
-      this.nextButton.addEventListener('click', () => this.next(), { signal });
+      this.prevButton.addEventListener("click", () => this.prev(), { signal });
+      this.nextButton.addEventListener("click", () => this.next(), { signal });
     }
 
     // The slides cover the backdrop, so they receive its clicks. Click on the image closes
     // (like Medium), click beside it counts as a backdrop click. The caption and the controls
     // live in the track too: their clicks are theirs
     this.track.addEventListener(
-      'click',
+      "click",
       (e) => {
-        if ((e.target as Element).closest('.astro-image-zoom-bottom')) return;
-        const onImage = (e.target as Element).closest('.astro-image-zoom-image') !== null;
-        if (onImage ? this.options.closeOnImage : this.options.closeOnBackdrop) this.close();
+        if ((e.target as Element).closest(".astro-image-zoom-bottom")) return;
+        const onImage =
+          (e.target as Element).closest(".astro-image-zoom-image") !== null;
+        if (onImage ? this.options.closeOnImage : this.options.closeOnBackdrop)
+          this.close();
       },
-      { signal }
+      { signal },
     );
   }
 
@@ -482,17 +545,17 @@ class Zoom {
     this.inheritVariables();
 
     // Get source image and position
-    const sourceImg = this.state.images[index].element.querySelector('img')!;
+    const sourceImg = this.state.images[index].element.querySelector("img")!;
     const sourceRect = sourceImg.getBoundingClientRect();
     const sourceFit = thumbnailFit(sourceImg);
 
     this.buildSlides();
     this.renderActive(index);
     this.placeSpinner(this.slides[index].figure, sourceRect);
-    this.emit('open');
+    this.emit("open");
     // Hidden until the image is ready, so the FLIP animation starts from a clean frame. Before any
     // layout, so its opacity transition does not run: it would show the image for a frame
-    this.imageElement.style.opacity = '0';
+    this.imageElement.style.opacity = "0";
 
     // Listen to the overlay from now until close(), also while the image is loading
     this.openController = new AbortController();
@@ -501,25 +564,38 @@ class Zoom {
 
     // Show overlay and prevent body scroll
     this.overlay.showModal();
-    this.overlay.setAttribute('data-close-backdrop', String(this.options.closeOnBackdrop));
-    this.overlay.setAttribute('data-close-image', String(this.options.closeOnImage));
-    // Read on each opening, so a page can change them after load
-    const captionPosition = this.wrapper.dataset.imageZoomCaptionPosition ?? '';
     this.overlay.setAttribute(
-      'data-caption-position',
-      CAPTION_POSITIONS.includes(captionPosition) ? captionPosition : 'bottom'
+      "data-close-backdrop",
+      String(this.options.closeOnBackdrop),
     );
-    this.overlay.setAttribute('data-show-caption', String(this.wrapper.dataset.imageZoomShowCaption !== 'false'));
-    this.overlay.setAttribute('data-show-counter', String(this.wrapper.dataset.imageZoomShowCounter !== 'false'));
-    const navigationLayout = this.wrapper.dataset.imageZoomNavigationLayout ?? '';
     this.overlay.setAttribute(
-      'data-navigation-layout',
-      NAVIGATION_LAYOUTS.includes(navigationLayout) ? navigationLayout : 'bar'
+      "data-close-image",
+      String(this.options.closeOnImage),
+    );
+    // Read on each opening, so a page can change them after load
+    const captionPosition = this.wrapper.dataset.imageZoomCaptionPosition ?? "";
+    this.overlay.setAttribute(
+      "data-caption-position",
+      CAPTION_POSITIONS.includes(captionPosition) ? captionPosition : "bottom",
+    );
+    this.overlay.setAttribute(
+      "data-show-caption",
+      String(this.wrapper.dataset.imageZoomShowCaption !== "false"),
+    );
+    this.overlay.setAttribute(
+      "data-show-counter",
+      String(this.wrapper.dataset.imageZoomShowCounter !== "false"),
+    );
+    const navigationLayout =
+      this.wrapper.dataset.imageZoomNavigationLayout ?? "";
+    this.overlay.setAttribute(
+      "data-navigation-layout",
+      NAVIGATION_LAYOUTS.includes(navigationLayout) ? navigationLayout : "bar",
     );
     this.lockScroll();
 
     // Show the slide of the image, without letting a swipe move it away while it loads
-    this.track.style.overflowX = 'hidden';
+    this.track.style.overflowX = "hidden";
     this.jumpToSlide(index);
 
     this.openPending = true;
@@ -528,13 +604,13 @@ class Zoom {
     // Closed while loading: close() already restored everything
     if (currentOpenId !== this.openId) return;
     this.openPending = false;
-    this.track.style.overflowX = '';
+    this.track.style.overflowX = "";
     // Shown at once, in the frame the thumbnail hides: its opacity transition would fade it in over
     // an empty spot, a blink. The transition comes back for later changes
-    this.imageElement.style.transition = 'none';
-    this.imageElement.style.opacity = '1';
+    this.imageElement.style.transition = "none";
+    this.imageElement.style.opacity = "1";
     void this.imageElement.offsetWidth;
-    this.imageElement.style.transition = '';
+    this.imageElement.style.transition = "";
     this.preloadNeighbors(index);
 
     // FLIP Animation
@@ -546,26 +622,38 @@ class Zoom {
 
     // Hide thumbnail instantly and trigger CSS animation simultaneously
     this.hideThumbnail(sourceImg);
-    this.overlay.classList.add('is-opening');
+    this.overlay.classList.add("is-opening");
 
     // After the animation, switch to the is-open state
     void animationsFinished(this.overlay, OPEN_ANIMATIONS).then(() => {
       if (currentOpenId !== this.openId) return;
-      this.overlay.classList.remove('is-opening');
-      this.overlay.classList.add('is-open');
+      this.overlay.classList.remove("is-opening");
+      this.overlay.classList.add("is-open");
     });
 
     // Arrow keys move through the gallery
-    document.addEventListener('keydown', this.handleKeydown, { signal });
+    document.addEventListener("keydown", this.handleKeydown, { signal });
 
     // Horizontal swipes scroll the track natively; the slide on screen follows the scroll
-    this.track.addEventListener('scroll', this.handleScroll, { passive: true, signal });
+    this.track.addEventListener("scroll", this.handleScroll, {
+      passive: true,
+      signal,
+    });
 
     // Smooth close on vertical scroll/wheel (like Medium - non-blocking)
     if (this.options.closeOnScroll) {
-      this.overlay.addEventListener('touchstart', this.handleTouchStart, { passive: true, signal });
-      this.overlay.addEventListener('touchmove', this.handleTouchMove, { passive: true, signal });
-      this.overlay.addEventListener('wheel', this.handleWheel, { passive: true, signal });
+      this.overlay.addEventListener("touchstart", this.handleTouchStart, {
+        passive: true,
+        signal,
+      });
+      this.overlay.addEventListener("touchmove", this.handleTouchMove, {
+        passive: true,
+        signal,
+      });
+      this.overlay.addEventListener("wheel", this.handleWheel, {
+        passive: true,
+        signal,
+      });
     }
 
     // The modal dialog traps the focus natively. Its ring only after a keyboard opening: Safari
@@ -578,7 +666,7 @@ class Zoom {
 
     this.isClosing = true;
     this.state.isOpen = false;
-    this.emit('close');
+    this.emit("close");
 
     // Cancel a pending open() that is still waiting for the image to load
     this.openId++;
@@ -591,7 +679,7 @@ class Zoom {
 
     // Get source image BEFORE any DOM changes
     const sourceElement = this.state.images[this.state.currentIndex].element;
-    const sourceImg = sourceElement.querySelector('img')!;
+    const sourceImg = sourceElement.querySelector("img")!;
 
     // Focus goes to the link of the image on screen, where the close lands, not to the one that
     // opened the zoom: a keyboard user goes on from the image they were looking at. Not
@@ -612,36 +700,56 @@ class Zoom {
 
     // Closed during the opening: the close starts from where the image and the backdrop are, read
     // before the opening stops, not from the end of it
-    if (this.overlay.classList.contains('is-opening')) {
+    if (this.overlay.classList.contains("is-opening")) {
       const image = getComputedStyle(this.imageElement);
-      this.imageElement.style.setProperty('--transform-now', image.transform);
-      this.imageElement.style.setProperty('--clip-now', image.clipPath);
-      this.backdrop.style.setProperty('--backdrop-now', getComputedStyle(this.backdrop).opacity);
+      this.imageElement.style.setProperty("--transform-now", image.transform);
+      this.imageElement.style.setProperty("--clip-now", image.clipPath);
+      this.backdrop.style.setProperty(
+        "--backdrop-now",
+        getComputedStyle(this.backdrop).opacity,
+      );
     }
 
     // The box the animation moves, without its transform: during the opening, the rect on screen
     // is the one of a moving image. The slide is the offset parent of the image
-    const slideRect = (this.imageElement.offsetParent as HTMLElement).getBoundingClientRect();
-    const { offsetLeft, offsetTop, offsetWidth, offsetHeight } = this.imageElement;
-    const startRect = new DOMRect(slideRect.left + offsetLeft, slideRect.top + offsetTop, offsetWidth, offsetHeight);
+    const slideRect = (
+      this.imageElement.offsetParent as HTMLElement
+    ).getBoundingClientRect();
+    const { offsetLeft, offsetTop, offsetWidth, offsetHeight } =
+      this.imageElement;
+    const startRect = new DOMRect(
+      slideRect.left + offsetLeft,
+      slideRect.top + offsetTop,
+      offsetWidth,
+      offsetHeight,
+    );
 
-    this.overlay.classList.remove('is-open', 'is-opening');
-    this.overlay.classList.add('is-closing');
+    this.overlay.classList.remove("is-open", "is-opening");
+    this.overlay.classList.add("is-closing");
 
     // To the thumbnail of the image on screen, which may not be the one the opening started from.
     // The gallery may have moved to one off screen: the page, hidden under the overlay, scrolls to
     // it first, so the image lands in view and so does the focus. Not on a scroll close, where the
     // page is already moving with the gesture
-    if (!byScroll) sourceImg.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+    if (!byScroll)
+      sourceImg.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+        behavior: "instant",
+      });
     const targetRect = sourceImg.getBoundingClientRect();
-    this.setAnimationVariables(flipTransform(targetRect, startRect, thumbnailFit(sourceImg)));
+    this.setAnimationVariables(
+      flipTransform(targetRect, startRect, thumbnailFit(sourceImg)),
+    );
 
     // If closed by scroll, unlock scroll immediately and use special animation
     if (byScroll) {
       this.unlockScroll();
       this.animateScrollClose(startRect, sourceImg);
     } else {
-      void animationsFinished(this.overlay, CLOSE_ANIMATIONS).then(() => this.finalizeClose(sourceImg));
+      void animationsFinished(this.overlay, CLOSE_ANIMATIONS).then(() =>
+        this.finalizeClose(sourceImg),
+      );
     }
   }
 
@@ -656,7 +764,9 @@ class Zoom {
   // Where the slide on screen is heading: quick presses keep adding up while the smooth
   // scroll of the previous one still runs
   private get slideIndex(): number {
-    return performance.now() < this.scrollTargetUntil ? this.scrollTarget : this.state.currentIndex;
+    return performance.now() < this.scrollTargetUntil
+      ? this.scrollTarget
+      : this.state.currentIndex;
   }
 
   private scrollToSlide(index: number): void {
@@ -676,35 +786,46 @@ class Zoom {
   // How far the images are from their place, in px, while they glide
   private currentSlideOffset(): number {
     const image = this.slides[0]?.img;
-    return image ? Number.parseFloat(getComputedStyle(image).translate) || 0 : 0;
+    return image
+      ? Number.parseFloat(getComputedStyle(image).translate) || 0
+      : 0;
   }
 
   // Moves the images of the slides by `offset` px, gliding there when `animate`, at once otherwise
   private setSlideOffset(offset: number, animate: boolean): void {
     if (!animate) {
-      this.track.classList.remove('is-sliding');
-      this.track.style.setProperty('--astro-image-zoom-slide-offset', `${offset}px`);
+      this.track.classList.remove("is-sliding");
+      this.track.style.setProperty(
+        "--astro-image-zoom-slide-offset",
+        `${offset}px`,
+      );
       // Commit the offset before the transition starts from it
       void this.track.offsetWidth;
       return;
     }
-    this.track.classList.add('is-sliding');
-    this.track.style.setProperty('--astro-image-zoom-slide-offset', `${offset}px`);
+    this.track.classList.add("is-sliding");
+    this.track.style.setProperty(
+      "--astro-image-zoom-slide-offset",
+      `${offset}px`,
+    );
   }
 
   // Shows a slide without the smooth scroll
   private jumpToSlide(index: number): void {
-    this.track.scrollTo({ left: index * this.track.clientWidth, behavior: 'instant' });
+    this.track.scrollTo({
+      left: index * this.track.clientWidth,
+      behavior: "instant",
+    });
   }
 
   private buildSlides(): void {
     this.slides = this.state.images.map(({ alt }) => {
-      const figure = document.createElement('figure');
-      figure.className = 'astro-image-zoom-slide';
-      figure.part.add('slide');
-      const img = document.createElement('img');
-      img.className = 'astro-image-zoom-image';
-      img.part.add('image');
+      const figure = document.createElement("figure");
+      figure.className = "astro-image-zoom-slide";
+      figure.part.add("slide");
+      const img = document.createElement("img");
+      img.className = "astro-image-zoom-image";
+      img.part.add("image");
       img.alt = alt;
       figure.append(img);
       return { figure, img };
@@ -716,7 +837,8 @@ class Zoom {
   }
 
   private removeSlides(): void {
-    for (const slide of this.track.querySelectorAll('.astro-image-zoom-slide')) slide.remove();
+    for (const slide of this.track.querySelectorAll(".astro-image-zoom-slide"))
+      slide.remove();
   }
 
   // Starts loading the full-size image of a slide. It is ready as soon as its size is known when the
@@ -728,20 +850,25 @@ class Zoom {
     const { img, figure } = slide;
     img.src = this.state.images[index].src;
     // The CSS shows the spinner only if the wait lasts
-    figure.classList.add('is-loading');
+    figure.classList.add("is-loading");
 
-    const decoded = img.decode().catch(() => this.showThumbnailInstead(index, img));
+    const decoded = img
+      .decode()
+      .catch(() => this.showThumbnailInstead(index, img));
     slide.ready = sizeKnown(img, decoded)
       .then(() => (this.showPlaceholder(index, img) ? undefined : decoded))
-      .then(() => figure.classList.remove('is-loading'));
-    void decoded.then(() => img.style.removeProperty('background-image'));
+      .then(() => figure.classList.remove("is-loading"));
+    void decoded.then(() => img.style.removeProperty("background-image"));
 
     return slide.ready;
   }
 
   // A full-size image that fails to load (a wrong data-image-zoom-src, a 404) shows the file of its
   // thumbnail, already loaded, instead of a broken image
-  private showThumbnailInstead(index: number, img: HTMLImageElement): Promise<void> {
+  private showThumbnailInstead(
+    index: number,
+    img: HTMLImageElement,
+  ): Promise<void> {
     const source = this.getThumbnail(index)?.currentSrc;
     if (!source || img.src === source) return Promise.resolve();
     img.src = source;
@@ -754,9 +881,16 @@ class Zoom {
   // the same picture: a thumbnail cropped by the site would show distorted
   private showPlaceholder(index: number, img: HTMLImageElement): boolean {
     const thumbnail = this.getThumbnail(index);
-    if (img.complete || !img.naturalWidth || !thumbnail?.complete || !thumbnail.naturalWidth) return false;
+    if (
+      img.complete ||
+      !img.naturalWidth ||
+      !thumbnail?.complete ||
+      !thumbnail.naturalWidth
+    )
+      return false;
 
-    const ratio = ({ naturalWidth, naturalHeight }: HTMLImageElement) => naturalWidth / naturalHeight;
+    const ratio = ({ naturalWidth, naturalHeight }: HTMLImageElement) =>
+      naturalWidth / naturalHeight;
     if (Math.abs(ratio(thumbnail) / ratio(img) - 1) > 0.02) return false;
 
     img.style.backgroundImage = `url(${JSON.stringify(thumbnail.currentSrc)})`;
@@ -765,11 +899,23 @@ class Zoom {
 
   // While the opening waits for the image, the backdrop is not there yet: the spinner goes on the
   // thumbnail that was clicked, where the eyes are, and no bigger than a part of it
-  private placeSpinner(figure: HTMLElement, { left, top, width, height }: DOMRect): void {
-    figure.classList.add('is-from-thumbnail');
-    figure.style.setProperty('--astro-image-zoom-spinner-x', `${left + width / 2}px`);
-    figure.style.setProperty('--astro-image-zoom-spinner-y', `${top + height / 2}px`);
-    figure.style.setProperty('--astro-image-zoom-spinner-size', `${Math.min(32, Math.min(width, height) * 0.4)}px`);
+  private placeSpinner(
+    figure: HTMLElement,
+    { left, top, width, height }: DOMRect,
+  ): void {
+    figure.classList.add("is-from-thumbnail");
+    figure.style.setProperty(
+      "--astro-image-zoom-spinner-x",
+      `${left + width / 2}px`,
+    );
+    figure.style.setProperty(
+      "--astro-image-zoom-spinner-y",
+      `${top + height / 2}px`,
+    );
+    figure.style.setProperty(
+      "--astro-image-zoom-spinner-size",
+      `${Math.min(32, Math.min(width, height) * 0.4)}px`,
+    );
   }
 
   private preloadNeighbors(index: number): void {
@@ -791,13 +937,13 @@ class Zoom {
     this.hideThumbnail(this.getThumbnail(index));
 
     this.renderActive(index);
-    this.emit('change');
+    this.emit("change");
     void this.loadSlide(index);
     this.preloadNeighbors(index);
-  }
+  };
 
   // Tells the page what the zoom shows now; see ZoomEventDetail
-  private emit(type: 'open' | 'change' | 'close'): void {
+  private emit(type: "open" | "change" | "close"): void {
     const { images, currentIndex } = this.state;
     const image = images[currentIndex];
     if (!image) return;
@@ -809,10 +955,10 @@ class Zoom {
           total: images.length,
           src: image.src,
           alt: image.alt,
-          caption: image.caption ?? '',
+          caption: image.caption ?? "",
           link: image.element,
         },
-      })
+      }),
     );
   }
 
@@ -821,11 +967,11 @@ class Zoom {
     this.state.currentIndex = index;
 
     this.slides.forEach(({ figure }, i) => {
-      figure.classList.toggle('is-active', i === index);
-      figure.setAttribute('aria-hidden', String(i !== index));
+      figure.classList.toggle("is-active", i === index);
+      figure.setAttribute("aria-hidden", String(i !== index));
     });
 
-    this.captionElement.textContent = this.state.images[index].caption || '';
+    this.captionElement.textContent = this.state.images[index].caption || "";
     this.updateNavigationButtons();
   }
 
@@ -837,29 +983,29 @@ class Zoom {
 
     const index = this.state.currentIndex;
     this.counter.textContent = `${index + 1} / ${total}`;
-    this.prevButton.setAttribute('aria-disabled', String(index === 0));
-    this.nextButton.setAttribute('aria-disabled', String(index === total - 1));
+    this.prevButton.setAttribute("aria-disabled", String(index === 0));
+    this.nextButton.setAttribute("aria-disabled", String(index === total - 1));
   }
 
   private handleKeydown = (e: KeyboardEvent): void => {
     if (!this.state.isOpen) return;
 
     switch (e.key) {
-      case 'ArrowLeft':
+      case "ArrowLeft":
         e.preventDefault();
         this.prev();
         break;
-      case 'ArrowRight':
+      case "ArrowRight":
         e.preventDefault();
         this.next();
         break;
     }
-  }
+  };
 
   private handleCancel = (e: Event): void => {
     e.preventDefault(); // Prevent immediate closing
     this.close(false, this.escapePressed); // Trigger animated close
-  }
+  };
 
   private handleTouchStart = (e: TouchEvent): void => {
     // Ignore multi-touch (pinch to zoom)
@@ -867,7 +1013,7 @@ class Zoom {
 
     this.touchStartX = e.touches[0].clientX;
     this.touchStartY = e.touches[0].clientY;
-  }
+  };
 
   private handleWheel = (e: WheelEvent): void => {
     // A touchpad pinch (and Ctrl + wheel) comes as a wheel with ctrlKey: it zooms, it does not scroll
@@ -883,7 +1029,7 @@ class Zoom {
     if (Math.abs(e.deltaY) < WHEEL_CLOSE_DELTA) return;
     if (e.timeStamp - this.lastHorizontalWheel < WHEEL_HORIZONTAL_GRACE) return;
     this.close(true);
-  }
+  };
 
   private handleTouchMove = (e: TouchEvent): void => {
     // Ignore multi-touch (pinch to zoom)
@@ -897,7 +1043,7 @@ class Zoom {
     if (deltaY > deltaX && deltaY > 10) {
       this.close(true);
     }
-  }
+  };
 
   public destroy(): void {
     // Remove the listeners on the page's links
@@ -932,20 +1078,24 @@ class Zoom {
   private lockScroll(): void {
     const root = document.documentElement;
     const { style } = root;
-    const saved = (name: string): [string, string] => [style.getPropertyValue(name), style.getPropertyPriority(name)];
+    const saved = (name: string): [string, string] => [
+      style.getPropertyValue(name),
+      style.getPropertyPriority(name),
+    ];
     this.lockedStyles = {
-      'overflow-x': saved('overflow-x'),
-      'overflow-y': saved('overflow-y'),
-      'padding-right': saved('padding-right'),
+      "overflow-x": saved("overflow-x"),
+      "overflow-y": saved("overflow-y"),
+      "padding-right": saved("padding-right"),
     };
 
     const width = root.clientWidth;
-    style.setProperty('overflow-x', 'hidden');
-    style.setProperty('overflow-y', 'hidden');
+    style.setProperty("overflow-x", "hidden");
+    style.setProperty("overflow-y", "hidden");
     const scrollbar = root.clientWidth - width;
     if (scrollbar > 0) {
-      const padding = Number.parseFloat(getComputedStyle(root).paddingRight) || 0;
-      style.setProperty('padding-right', `${padding + scrollbar}px`);
+      const padding =
+        Number.parseFloat(getComputedStyle(root).paddingRight) || 0;
+      style.setProperty("padding-right", `${padding + scrollbar}px`);
     }
   }
 
@@ -961,14 +1111,17 @@ class Zoom {
 
   // The image shrinks back to the thumbnail with the closing animation (its variables are set),
   // but out of the dialog and positioned on the page, so it scrolls away with it
-  private animateScrollClose(startRect: DOMRect, sourceImg: HTMLImageElement): void {
+  private animateScrollClose(
+    startRect: DOMRect,
+    sourceImg: HTMLImageElement,
+  ): void {
     const image = this.imageElement;
     image.style.top = `${startRect.top + window.scrollY}px`;
     image.style.left = `${startRect.left + window.scrollX}px`;
     image.style.width = `${startRect.width}px`;
     image.style.height = `${startRect.height}px`;
-    image.classList.add('is-detached');
-    this.backdrop.classList.add('is-detached');
+    image.classList.add("is-detached");
+    this.backdrop.classList.add("is-detached");
 
     // The dialog stays open, transparent, until the end: the gesture that closes it goes on over
     // it. The image and the backdrop stay in the shadow root: they keep the overlay styles and
@@ -984,40 +1137,43 @@ class Zoom {
     ]).then(() => {
       // finalizeClose() discards the slides, so the image does not go back to its slide
       image.remove();
-      this.backdrop.classList.remove('is-detached');
+      this.backdrop.classList.remove("is-detached");
       this.overlay.prepend(this.backdrop);
       this.finalizeClose(sourceImg);
     });
   }
 
   private setAnimationVariables(transform: FlipTransform): void {
-    this.imageElement.style.setProperty('--tx-from', `${transform.x}px`);
-    this.imageElement.style.setProperty('--ty-from', `${transform.y}px`);
-    this.imageElement.style.setProperty('--scale-from', transform.scale.toString());
-    this.imageElement.style.setProperty('--clip-from', transform.clipPath);
-    this.imageElement.style.setProperty('--clip-to', 'inset(0px)');
+    this.imageElement.style.setProperty("--tx-from", `${transform.x}px`);
+    this.imageElement.style.setProperty("--ty-from", `${transform.y}px`);
+    this.imageElement.style.setProperty(
+      "--scale-from",
+      transform.scale.toString(),
+    );
+    this.imageElement.style.setProperty("--clip-from", transform.clipPath);
+    this.imageElement.style.setProperty("--clip-to", "inset(0px)");
   }
 
   private getThumbnail(index: number): HTMLImageElement | null {
-    return this.state.images[index]?.element.querySelector('img') ?? null;
+    return this.state.images[index]?.element.querySelector("img") ?? null;
   }
 
   // The thumbnail is hidden while its image is shown in the overlay
   private hideThumbnail(img: HTMLImageElement | null): void {
     if (!img) return;
-    img.style.transition = 'none';
-    img.style.opacity = '0';
-    img.style.pointerEvents = 'none';
+    img.style.transition = "none";
+    img.style.opacity = "0";
+    img.style.pointerEvents = "none";
   }
 
   private showThumbnail(img: HTMLImageElement | null): void {
     if (!img) return;
-    img.style.opacity = '';
-    img.style.pointerEvents = '';
+    img.style.opacity = "";
+    img.style.pointerEvents = "";
 
     // Force reflow then restore transition, so the thumbnail reappears without fading
     void img.offsetHeight;
-    img.style.transition = '';
+    img.style.transition = "";
   }
 
   private finalizeClose(sourceImg: HTMLImageElement): void {
@@ -1025,23 +1181,26 @@ class Zoom {
     this.showThumbnail(sourceImg);
 
     this.overlay.close();
-    this.overlay.classList.remove('is-closing');
-    this.backdrop.style.removeProperty('--backdrop-now');
+    this.overlay.classList.remove("is-closing");
+    this.backdrop.style.removeProperty("--backdrop-now");
     this.unlockScroll();
 
     // The slides belong to the instance that opened the overlay: discard them
     this.removeSlides();
-    this.track.style.overflowX = '';
-    this.track.classList.remove('is-sliding');
-    this.track.style.removeProperty('--astro-image-zoom-slide-offset');
-    this.captionElement.textContent = '';
+    this.track.style.overflowX = "";
+    this.track.classList.remove("is-sliding");
+    this.track.style.removeProperty("--astro-image-zoom-slide-offset");
+    this.captionElement.textContent = "";
     this.slides = [];
 
     // Restore focus. close() may have given it back already to the link a click focused, with the
     // browser's own ring: focus() on the focused element does nothing, so it leaves first
     if (this.returnFocus) {
       if (document.activeElement === this.returnFocus) this.returnFocus.blur();
-      this.returnFocus.focus({ preventScroll: true, focusVisible: this.returnFocusVisible });
+      this.returnFocus.focus({
+        preventScroll: true,
+        focusVisible: this.returnFocusVisible,
+      });
       this.returnFocus = null;
     }
 

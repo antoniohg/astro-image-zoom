@@ -26,22 +26,23 @@ const managers = [
   <fieldset class="install">
     <legend class="visually-hidden">Package manager</legend>
     <div class="tabs">
-      {
-        managers.map(({ name }, index) => (
-          <label>
-            <input type="radio" name={`install-${id}`} value={name} checked={index === 0} />
-            {name}
-          </label>
-        ))
-      }
+      {managers.map(({ name }, index) => (
+        <label>
+          <input
+            type="radio"
+            name={`install-${id}`}
+            value={name}
+            checked={index === 0}
+          />
+          {name}
+        </label>
+      ))}
     </div>
-    {
-      managers.map(({ name, command }) => (
-        <div class="command" data-manager={name}>
-          <Code code={command} lang="sh" theme="github-dark-default" />
-        </div>
-      ))
-    }
+    {managers.map(({ name, command }) => (
+      <div class="command" data-manager={name}>
+        <Code code={command} lang="sh" theme="github-dark-default" />
+      </div>
+    ))}
   </fieldset>
 </install-command>
 
@@ -86,7 +87,10 @@ const managers = [
 
     private handleChange = (event: Event) => {
       const { value } = event.target as HTMLInputElement;
-      for (const element of document.querySelectorAll<InstallCommand>("install-command")) element.select(value);
+      for (const element of document.querySelectorAll<InstallCommand>(
+        "install-command",
+      ))
+        element.select(value);
       write(value);
     };
   }

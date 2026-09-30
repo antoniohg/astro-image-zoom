@@ -34,9 +34,13 @@ const { entries } = Astro.props;
 <script>
   // Marks the entry of the index for the section being read: the last heading that has passed
   // the top third of the screen
-  const links = [...document.querySelectorAll<HTMLAnchorElement>("[data-toc] a")];
+  const links = [
+    ...document.querySelectorAll<HTMLAnchorElement>("[data-toc] a"),
+  ];
   const entries = links.flatMap((link) => {
-    const heading = document.getElementById(decodeURIComponent(link.hash.slice(1)));
+    const heading = document.getElementById(
+      decodeURIComponent(link.hash.slice(1)),
+    );
     return heading ? [{ link, heading }] : [];
   });
   let frame = 0;
@@ -45,8 +49,9 @@ const { entries } = Astro.props;
     frame = 0;
     const line = window.innerHeight / 3;
     const current =
-      entries.findLast(({ heading }) => heading.getBoundingClientRect().top <= line) ??
-      entries[0];
+      entries.findLast(
+        ({ heading }) => heading.getBoundingClientRect().top <= line,
+      ) ?? entries[0];
     for (const { link } of entries) {
       if (link === current?.link) link.setAttribute("aria-current", "location");
       else link.removeAttribute("aria-current");

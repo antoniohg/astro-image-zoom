@@ -34,7 +34,8 @@ export const colorVariables: ReferenceRow[] = [
   },
   {
     name: "--zoom-nav-bg",
-    description: "Navigation bar (or each arrow in the sides layout), translucent over a blur",
+    description:
+      "Navigation bar (or each arrow in the sides layout), translucent over a blur",
     default: "light-dark(rgba(255, 255, 255, 0.75), rgba(28, 28, 30, 0.7))",
   },
   {
@@ -56,7 +57,11 @@ export const layoutVariables: ReferenceRow[] = [
     description: "Space between the zoomed image and the screen edges",
     default: "0",
   },
-  { name: "--zoom-image-radius", description: "Corners of the zoomed image", default: "0" },
+  {
+    name: "--zoom-image-radius",
+    description: "Corners of the zoomed image",
+    default: "0",
+  },
   {
     name: "--zoom-button-size",
     description: "Size of the arrows and the close button",
@@ -69,7 +74,8 @@ export const layoutVariables: ReferenceRow[] = [
   },
   {
     name: "--zoom-controls-offset",
-    description: "Distance from the controls and the caption to the screen edges",
+    description:
+      "Distance from the controls and the caption to the screen edges",
     default: "16px (12px on phones)",
   },
   {
@@ -77,20 +83,29 @@ export const layoutVariables: ReferenceRow[] = [
     description: "Widest the caption can get",
     default: "70% (100% on phones)",
   },
-  { name: "--zoom-caption-font", description: "Font family of the caption", default: "inherit" },
+  {
+    name: "--zoom-caption-font",
+    description: "Font family of the caption",
+    default: "inherit",
+  },
   {
     name: "--zoom-caption-font-size",
     description: "Font size of the caption",
     default: "13px (12px on phones)",
   },
-  { name: "--zoom-caption-radius", description: "Corners of the caption box", default: "10px" },
+  {
+    name: "--zoom-caption-radius",
+    description: "Corners of the caption box",
+    default: "10px",
+  },
 ];
 
 // Color scheme and motion
 export const otherVariables: ReferenceRow[] = [
   {
     name: "--zoom-color-scheme",
-    description: "Set dark or light to follow your own theme toggle instead of the system",
+    description:
+      "Set dark or light to follow your own theme toggle instead of the system",
     default: "light dark",
   },
   {
@@ -146,9 +161,10 @@ export const props: ReferenceRow[] = [
   },
   {
     name: "navigationLayout",
-    description: "Arrows and counter in a bar at the bottom, or arrows at the sides of the screen",
-    type: "\"bar\" | \"sides\"",
-    default: "\"bar\"",
+    description:
+      "Arrows and counter in a bar at the bottom, or arrows at the sides of the screen",
+    type: '"bar" | "sides"',
+    default: '"bar"',
   },
   {
     name: "showCounter",
@@ -165,15 +181,15 @@ export const props: ReferenceRow[] = [
   {
     name: "captionPosition",
     description: "Where the caption sits on the screen",
-    type: "\"bottom\" | \"top\"",
-    default: "\"bottom\"",
+    type: '"bottom" | "top"',
+    default: '"bottom"',
   },
   {
     name: "ignore",
     description:
       "Images left out of the zoom and the gallery: simple selectors (tag, `.class`, `#id`, `[attribute]`) matched on each image and the elements around it",
     type: "string",
-    default: "\"\"",
+    default: '""',
   },
   {
     name: "closeOnBackdrop",
@@ -193,18 +209,24 @@ export const props: ReferenceRow[] = [
     type: "boolean",
     default: "true",
   },
-  { name: "class", description: "Class for the `<astro-image-zoom>` element", type: "string" },
+  {
+    name: "class",
+    description: "Class for the `<astro-image-zoom>` element",
+    type: "string",
+  },
 ];
 
 // Attributes of each image
 export const attributes: ReferenceRow[] = [
   {
     name: "data-image-zoom-src",
-    description: "Full-size image for the zoom. Needed when the image on the page is resized",
+    description:
+      "Full-size image for the zoom. Needed when the image on the page is resized",
   },
   {
     name: "data-image-zoom-caption",
-    description: "Caption shown with the zoomed image; on the `<a>` itself for a link with `data-image-zoom`",
+    description:
+      "Caption shown with the zoomed image; on the `<a>` itself for a link with `data-image-zoom`",
   },
   {
     name: "data-image-zoom",
@@ -220,20 +242,47 @@ export const attributes: ReferenceRow[] = [
 
 // Events dispatched by each <astro-image-zoom>; they bubble
 export const events: ReferenceRow[] = [
-  { name: "astro-image-zoom:open", description: "A zoom opens (a click, Enter on a link)" },
+  {
+    name: "astro-image-zoom:open",
+    description: "A zoom opens (a click, Enter on a link)",
+  },
   {
     name: "astro-image-zoom:change",
-    description: "The gallery moves to another image (arrows, keys, a swipe). Not dispatched on open",
+    description:
+      "The gallery moves to another image (arrows, keys, a swipe). Not dispatched on open",
   },
-  { name: "astro-image-zoom:close", description: "The zoom closes, however it closes" },
+  {
+    name: "astro-image-zoom:close",
+    description: "The zoom closes, however it closes",
+  },
 ];
 
 // The detail of every event: the image on screen
 export const eventDetail: ReferenceRow[] = [
-  { name: "index", description: "Position of the image in its gallery, from 0", type: "number" },
-  { name: "total", description: "Number of images in the gallery", type: "number" },
-  { name: "src", description: "URL of the full-size image the zoom shows", type: "string" },
+  {
+    name: "index",
+    description: "Position of the image in its gallery, from 0",
+    type: "number",
+  },
+  {
+    name: "total",
+    description: "Number of images in the gallery",
+    type: "number",
+  },
+  {
+    name: "src",
+    description: "URL of the full-size image the zoom shows",
+    type: "string",
+  },
   { name: "alt", description: "Alt text of the image", type: "string" },
-  { name: "caption", description: "Caption, or an empty string", type: "string" },
-  { name: "link", description: "The link on the page that opens this image", type: "HTMLElement" },
+  {
+    name: "caption",
+    description: "Caption, or an empty string",
+    type: "string",
+  },
+  {
+    name: "link",
+    description: "The link on the page that opens this image",
+    type: "HTMLElement",
+  },
 ];
