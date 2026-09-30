@@ -201,7 +201,7 @@ test.describe('open and close', () => {
     await expect(zoomedImage(page)).toHaveAttribute('src', /portrait\.svg$/);
   });
 
-  test('opens data-zoom-src and the href of a link', async ({ page }) => {
+  test('opens data-image-zoom-src and the href of a link', async ({ page }) => {
     await openZoom(page, 'sources', 0);
     await expect(zoomedImage(page)).toHaveAttribute('src', /landscape\.svg$/);
     await page.keyboard.press('ArrowRight');
@@ -222,7 +222,7 @@ test.describe('open and close', () => {
     await expect(page).toHaveURL(/\/hostile\/$/);
   });
 
-  test('leaves a data-zoom link without an image alone: it navigates and is not part of the gallery', async ({
+  test('leaves a data-image-zoom link without an image alone: it navigates and is not part of the gallery', async ({
     page,
   }) => {
     // The zoom animates from the image of the link: without one, there is nothing to open
@@ -284,12 +284,12 @@ test.describe('open and close', () => {
 });
 
 test.describe('ZoomClass', () => {
-  test('zooms the data-zoom links of markup without ImageZoom, with its data-* options', async ({ page }) => {
+  test('zooms the data-image-zoom links of markup without ImageZoom, with its data-* options', async ({ page }) => {
     const standalone = page.locator('#zoom-class .standalone a');
     await standalone.first().click();
     await expect(dialog(page)).toHaveClass(/\bis-open\b/);
     await expect(zoomedImage(page)).toHaveAttribute('src', /landscape\.svg$/);
-    // data-show-counter="false" on the wrapper, as ImageZoom would render it
+    // data-image-zoom-show-counter="false" on the wrapper, as ImageZoom would render it
     await expect(counter(page)).toBeHidden();
 
     await page.keyboard.press('ArrowRight');
@@ -592,8 +592,8 @@ test.describe('gallery', () => {
     await expect(caption(page)).toBeHidden();
   });
 
-  test('leaves out the images of the ignore prop and those with data-zoom-ignore', async ({ page }) => {
-    // The server wraps only the two kept images; the link with data-zoom is the site's own
+  test('leaves out the images of the ignore prop and those with data-image-zoom-ignore', async ({ page }) => {
+    // The server wraps only the two kept images; the link with data-image-zoom is the site's own
     await expect(links(page, 'ignore')).toHaveCount(3);
     await openZoom(page, 'ignore');
     await expect(counter(page)).toHaveText('1 / 2');
@@ -603,9 +603,9 @@ test.describe('gallery', () => {
     await expectClosed(page);
 
     // The client leaves the link inside the ignored element out too, also when ZoomClass users set an
-    // invalid data-ignore by hand: it stays a plain link and navigates
-    await page.locator('#ignore astro-image-zoom').evaluate((wrapper) => wrapper.setAttribute('data-ignore', ':::'));
-    await page.locator('#ignore a[data-zoom]').click();
+    // invalid data-image-zoom-ignore-selector by hand: it stays a plain link and navigates
+    await page.locator('#ignore astro-image-zoom').evaluate((wrapper) => wrapper.setAttribute('data-image-zoom-ignore-selector', ':::'));
+    await page.locator('#ignore a[data-image-zoom]').click();
     await expect(page).toHaveURL(/portrait\.svg$/);
   });
 

@@ -351,10 +351,10 @@ class Zoom {
     this.wrapper = wrapper;
 
     // Get configuration from data attributes
-    this.options.closeOnBackdrop = wrapper.dataset.closeBackdrop !== 'false';
-    this.options.closeOnImage = wrapper.dataset.closeImage !== 'false';
-    this.options.closeOnScroll = wrapper.dataset.closeScroll !== 'false';
-    this.options.showNavigation = wrapper.dataset.showNav !== 'false';
+    this.options.closeOnBackdrop = wrapper.dataset.imageZoomCloseBackdrop !== 'false';
+    this.options.closeOnImage = wrapper.dataset.imageZoomCloseImage !== 'false';
+    this.options.closeOnScroll = wrapper.dataset.imageZoomCloseScroll !== 'false';
+    this.options.showNavigation = wrapper.dataset.imageZoomShowNav !== 'false';
 
     // One overlay is shared by every zoom instance on the page
     this.overlay = getOverlay();
@@ -371,11 +371,11 @@ class Zoom {
     this.setupEventListeners();
   }
 
-  // Only the links the component generated and those the site marks with data-zoom: any other link
-  // with an image (a card, a logo) keeps navigating. So does a data-zoom link without an image: the
+  // Only the links the component generated and those the site marks with data-image-zoom: any other link
+  // with an image (a card, a logo) keeps navigating. So does a data-image-zoom link without an image: the
   // zoom grows from the image of the link
   private collectImages(): void {
-    const links = this.wrapper.querySelectorAll<HTMLAnchorElement>('a[data-zoom-generated], a[data-zoom]');
+    const links = this.wrapper.querySelectorAll<HTMLAnchorElement>('a[data-image-zoom-generated], a[data-image-zoom]');
 
     this.state.images = Array.from(links)
       .filter((anchor) => anchor.querySelector('img') && !this.isIgnored(anchor))
@@ -384,25 +384,25 @@ class Zoom {
         return {
           src: anchor.href,
           alt: img?.alt || '',
-          caption: anchor.dataset.zoomCaption || anchor.title || '',
+          caption: anchor.dataset.imageZoomCaption || anchor.title || '',
           element: anchor
         };
       })
       .filter(({ src }) => src);
   }
 
-  // data-zoom-ignore, or a selector of the ignore prop, on the image of a link or on an element
+  // data-image-zoom-ignore, or a selector of the ignore prop, on the image of a link or on an element
   // around it, up to the wrapper, leaves the link out of the zoom and the gallery. The generated
   // links are the images the server kept: matching them here, with the new <a> in between, could
-  // leave out images the server wrapped. Only the site's own links with data-zoom are checked
+  // leave out images the server wrapped. Only the site's own links with data-image-zoom are checked
   private isIgnored(anchor: HTMLAnchorElement): boolean {
-    if (anchor.hasAttribute('data-zoom-generated')) return false;
+    if (anchor.hasAttribute('data-image-zoom-generated')) return false;
     const start = anchor.querySelector('img') ?? anchor;
     const inside = (match: Element | null): boolean =>
       match !== null && match !== this.wrapper && this.wrapper.contains(match);
-    if (inside(start.closest('[data-zoom-ignore]'))) return true;
+    if (inside(start.closest('[data-image-zoom-ignore]'))) return true;
 
-    const ignore = this.wrapper.dataset.ignore;
+    const ignore = this.wrapper.dataset.imageZoomIgnoreSelector;
     if (!ignore) return false;
     try {
       return inside(start.closest(ignore));
@@ -504,14 +504,14 @@ class Zoom {
     this.overlay.setAttribute('data-close-backdrop', String(this.options.closeOnBackdrop));
     this.overlay.setAttribute('data-close-image', String(this.options.closeOnImage));
     // Read on each opening, so a page can change them after load
-    const captionPosition = this.wrapper.dataset.captionPosition ?? '';
+    const captionPosition = this.wrapper.dataset.imageZoomCaptionPosition ?? '';
     this.overlay.setAttribute(
       'data-caption-position',
       CAPTION_POSITIONS.includes(captionPosition) ? captionPosition : 'bottom'
     );
-    this.overlay.setAttribute('data-show-caption', String(this.wrapper.dataset.showCaption !== 'false'));
-    this.overlay.setAttribute('data-show-counter', String(this.wrapper.dataset.showCounter !== 'false'));
-    const navigationLayout = this.wrapper.dataset.navigationLayout ?? '';
+    this.overlay.setAttribute('data-show-caption', String(this.wrapper.dataset.imageZoomShowCaption !== 'false'));
+    this.overlay.setAttribute('data-show-counter', String(this.wrapper.dataset.imageZoomShowCounter !== 'false'));
+    const navigationLayout = this.wrapper.dataset.imageZoomNavigationLayout ?? '';
     this.overlay.setAttribute(
       'data-navigation-layout',
       NAVIGATION_LAYOUTS.includes(navigationLayout) ? navigationLayout : 'bar'
@@ -739,7 +739,7 @@ class Zoom {
     return slide.ready;
   }
 
-  // A full-size image that fails to load (a wrong data-zoom-src, a 404) shows the file of its
+  // A full-size image that fails to load (a wrong data-image-zoom-src, a 404) shows the file of its
   // thumbnail, already loaded, instead of a broken image
   private showThumbnailInstead(index: number, img: HTMLImageElement): Promise<void> {
     const source = this.getThumbnail(index)?.currentSrc;

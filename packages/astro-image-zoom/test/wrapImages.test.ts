@@ -4,7 +4,7 @@ import { parseIgnore, wrapImages } from '../wrapImages';
 describe('wrapImages', () => {
   it('wraps an image in a link to its source, named after the image', () => {
     expect(wrapImages('<img src="/photo.jpg" alt="A red car">')).toBe(
-      '<a href="/photo.jpg" data-zoom-generated aria-label="Enlarge image: A red car"><img src="/photo.jpg" alt="A red car"></a>'
+      '<a href="/photo.jpg" data-image-zoom-generated aria-label="Enlarge image: A red car"><img src="/photo.jpg" alt="A red car"></a>'
     );
   });
 
@@ -12,15 +12,15 @@ describe('wrapImages', () => {
     expect(wrapImages('<img src="/photo.jpg">')).toContain('aria-label="Enlarge image"');
   });
 
-  it('links to data-zoom-src over src', () => {
-    expect(wrapImages('<img src="/small.jpg" data-zoom-src="/large.jpg" alt="">')).toContain(
+  it('links to data-image-zoom-src over src', () => {
+    expect(wrapImages('<img src="/small.jpg" data-image-zoom-src="/large.jpg" alt="">')).toContain(
       'href="/large.jpg"'
     );
   });
 
   it('copies the caption to the link, escaping its quotes', () => {
-    const html = wrapImages(`<img src="/a.jpg" alt="" data-zoom-caption='The "Blue Marble"'>`);
-    expect(html).toContain('data-zoom-caption="The &quot;Blue Marble&quot;"');
+    const html = wrapImages(`<img src="/a.jpg" alt="" data-image-zoom-caption='The "Blue Marble"'>`);
+    expect(html).toContain('data-image-zoom-caption="The &quot;Blue Marble&quot;"');
   });
 
   it('keeps the entities of the original values', () => {
@@ -32,16 +32,16 @@ describe('wrapImages', () => {
   it('wraps every image and keeps the markup around them', () => {
     const html = wrapImages('<p>One</p><img src="/1.jpg" alt="1"><div><img src="/2.jpg" alt="2" /></div>');
     expect(html).toBe(
-      '<p>One</p><a href="/1.jpg" data-zoom-generated aria-label="Enlarge image: 1"><img src="/1.jpg" alt="1"></a>' +
-        '<div><a href="/2.jpg" data-zoom-generated aria-label="Enlarge image: 2"><img src="/2.jpg" alt="2" /></a></div>'
+      '<p>One</p><a href="/1.jpg" data-image-zoom-generated aria-label="Enlarge image: 1"><img src="/1.jpg" alt="1"></a>' +
+        '<div><a href="/2.jpg" data-image-zoom-generated aria-label="Enlarge image: 2"><img src="/2.jpg" alt="2" /></a></div>'
     );
   });
 
   it('leaves alone images that already live inside a link', () => {
-    const html = '<a href="/large.jpg" data-zoom><span><img src="/small.jpg" alt=""></span></a><img src="/next.jpg" alt="">';
+    const html = '<a href="/large.jpg" data-image-zoom><span><img src="/small.jpg" alt=""></span></a><img src="/next.jpg" alt="">';
     expect(wrapImages(html)).toBe(
-      '<a href="/large.jpg" data-zoom><span><img src="/small.jpg" alt=""></span></a>' +
-        '<a href="/next.jpg" data-zoom-generated aria-label="Enlarge image"><img src="/next.jpg" alt=""></a>'
+      '<a href="/large.jpg" data-image-zoom><span><img src="/small.jpg" alt=""></span></a>' +
+        '<a href="/next.jpg" data-image-zoom-generated aria-label="Enlarge image"><img src="/next.jpg" alt=""></a>'
     );
   });
 
@@ -53,7 +53,7 @@ describe('wrapImages', () => {
     expect(wrapImages(html)).toBe(
       html.replace(
         '<img src="/inside.jpg" alt="">',
-        '<a href="/inside.jpg" data-zoom-generated aria-label="Enlarge image"><img src="/inside.jpg" alt=""></a>'
+        '<a href="/inside.jpg" data-image-zoom-generated aria-label="Enlarge image"><img src="/inside.jpg" alt=""></a>'
       )
     );
   });
@@ -67,9 +67,9 @@ describe('wrapImages', () => {
 
   it('wraps a <picture> as a whole, with the attributes of its <img>', () => {
     const picture =
-      '<picture><source srcset="/a.avif" type="image/avif"><img src="/a.jpg" data-zoom-src="/a-large.jpg" alt="Moon"></picture>';
+      '<picture><source srcset="/a.avif" type="image/avif"><img src="/a.jpg" data-image-zoom-src="/a-large.jpg" alt="Moon"></picture>';
     expect(wrapImages(picture)).toBe(
-      `<a href="/a-large.jpg" data-zoom-generated aria-label="Enlarge image: Moon">${picture}</a>`
+      `<a href="/a-large.jpg" data-image-zoom-generated aria-label="Enlarge image: Moon">${picture}</a>`
     );
   });
 
@@ -79,27 +79,27 @@ describe('wrapImages', () => {
       '<style>/* <img src="/b.jpg"> */</style>' +
       '<textarea><img src="/c.jpg"></textarea>';
     expect(wrapImages(`${text}<img src="/d.jpg" alt="">`)).toBe(
-      `${text}<a href="/d.jpg" data-zoom-generated aria-label="Enlarge image"><img src="/d.jpg" alt=""></a>`
+      `${text}<a href="/d.jpg" data-image-zoom-generated aria-label="Enlarge image"><img src="/d.jpg" alt=""></a>`
     );
   });
 
-  describe('data-zoom-ignore', () => {
+  describe('data-image-zoom-ignore', () => {
     it('leaves out an image with it, and every image inside an element with it', () => {
       const html =
-        '<img src="/logo.svg" alt="" data-zoom-ignore>' +
-        '<div data-zoom-ignore="true"><div><img src="/1.jpg" alt=""></div><img src="/2.jpg" alt=""></div>';
+        '<img src="/logo.svg" alt="" data-image-zoom-ignore>' +
+        '<div data-image-zoom-ignore="true"><div><img src="/1.jpg" alt=""></div><img src="/2.jpg" alt=""></div>';
       expect(wrapImages(html)).toBe(html);
     });
 
     it('leaves a <picture> alone when its image has it', () => {
-      const picture = '<picture><source srcset="/a.avif"><img src="/a.jpg" alt="" data-zoom-ignore></picture>';
+      const picture = '<picture><source srcset="/a.avif"><img src="/a.jpg" alt="" data-image-zoom-ignore></picture>';
       expect(wrapImages(picture)).toBe(picture);
     });
   });
 
   describe('the ignore selectors', () => {
     const wrapped = (src: string) =>
-      `<a href="${src}" data-zoom-generated aria-label="Enlarge image"><img src="${src}" alt=""></a>`;
+      `<a href="${src}" data-image-zoom-generated aria-label="Enlarge image"><img src="${src}" alt=""></a>`;
 
     it('leaves out the images a selector matches, all of its parts: tag, class, id and attribute', () => {
       // The alt is matched as the DOM reads it, with its character references decoded
@@ -109,7 +109,7 @@ describe('wrapImages', () => {
         '<img data-icon src="/3.jpg" alt=""><img src="/4.jpg" alt="Salt &amp; pepper">' +
         '<img class="&#108;ogo" src="/6.jpg" alt=""><img id="&#x68;ero" src="/7.jpg" alt="">';
       expect(wrapImages(`${html}<img class="big" src="/5.jpg" alt="">`, ignore)).toBe(
-        html + '<a href="/5.jpg" data-zoom-generated aria-label="Enlarge image"><img class="big" src="/5.jpg" alt=""></a>'
+        html + '<a href="/5.jpg" data-image-zoom-generated aria-label="Enlarge image"><img class="big" src="/5.jpg" alt=""></a>'
       );
     });
 
@@ -187,8 +187,8 @@ describe('wrapImages', () => {
       expect(wrapImages(html)).toBe(html);
     });
 
-    it('falls back to no link when data-zoom-src is unsafe', () => {
-      const html = '<img src="/a.jpg" data-zoom-src="javascript:alert(1)" alt="">';
+    it('falls back to no link when data-image-zoom-src is unsafe', () => {
+      const html = '<img src="/a.jpg" data-image-zoom-src="javascript:alert(1)" alt="">';
       expect(wrapImages(html)).toBe(html);
     });
   });

@@ -29,18 +29,18 @@ describe('<ImageZoom>', () => {
     const { attributes } = await render();
     expect(Object.fromEntries(attributes)).toMatchObject({
       class: 'astro-image-zoom-wrapper',
-      'data-close-backdrop': 'true',
-      'data-close-image': 'true',
-      'data-close-scroll': 'true',
-      'data-show-nav': 'true',
-      'data-navigation-layout': 'bar',
-      'data-show-counter': 'true',
-      'data-show-caption': 'true',
-      'data-caption-position': 'bottom',
+      'data-image-zoom-close-backdrop': 'true',
+      'data-image-zoom-close-image': 'true',
+      'data-image-zoom-close-scroll': 'true',
+      'data-image-zoom-show-nav': 'true',
+      'data-image-zoom-navigation-layout': 'bar',
+      'data-image-zoom-show-counter': 'true',
+      'data-image-zoom-show-caption': 'true',
+      'data-image-zoom-caption-position': 'bottom',
     });
     // No theme and no duration: the variables of the site apply
     expect(attributes.has('style')).toBe(false);
-    expect(attributes.has('data-ignore')).toBe(false);
+    expect(attributes.has('data-image-zoom-ignore-selector')).toBe(false);
   });
 
   it('renders every option as its data attribute', async () => {
@@ -57,14 +57,14 @@ describe('<ImageZoom>', () => {
     });
     expect(Object.fromEntries(attributes)).toMatchObject({
       class: 'astro-image-zoom-wrapper portfolio',
-      'data-close-backdrop': 'false',
-      'data-close-image': 'false',
-      'data-close-scroll': 'false',
-      'data-show-nav': 'false',
-      'data-navigation-layout': 'sides',
-      'data-show-counter': 'false',
-      'data-show-caption': 'false',
-      'data-caption-position': 'top',
+      'data-image-zoom-close-backdrop': 'false',
+      'data-image-zoom-close-image': 'false',
+      'data-image-zoom-close-scroll': 'false',
+      'data-image-zoom-show-nav': 'false',
+      'data-image-zoom-navigation-layout': 'sides',
+      'data-image-zoom-show-counter': 'false',
+      'data-image-zoom-show-caption': 'false',
+      'data-image-zoom-caption-position': 'top',
     });
   });
 
@@ -102,9 +102,9 @@ describe('<ImageZoom>', () => {
       { ignore: ".logo, [alt='']" },
       '<img class="logo" src="/logo.svg" alt="Logo"><img src="/deco.jpg" alt=""><img src="/photo.jpg" alt="A photo">'
     );
-    expect(attributes.get('data-ignore')).toBe(".logo, [alt='']");
+    expect(attributes.get('data-image-zoom-ignore-selector')).toBe(".logo, [alt='']");
     expect(html).toContain('<img class="logo" src="/logo.svg" alt="Logo"><img src="/deco.jpg" alt="">');
-    expect(html.match(/data-zoom-generated/g)).toHaveLength(1);
+    expect(html.match(/data-image-zoom-generated/g)).toHaveLength(1);
   });
 
   it('fails the build on a selector the server cannot match', async () => {
@@ -122,13 +122,13 @@ describe('<ImageZoom>', () => {
   it('wraps the images of the slot in zoom links', async () => {
     const { html } = await render(
       {},
-      '<p>Text</p><img src="/one.jpg" alt="One" data-zoom-caption="First"><a href="/big.jpg" data-zoom><img src="/small.jpg" alt="Two"></a>'
+      '<p>Text</p><img src="/one.jpg" alt="One" data-image-zoom-caption="First"><a href="/big.jpg" data-image-zoom><img src="/small.jpg" alt="Two"></a>'
     );
     expect(html).toContain(
-      '<a href="/one.jpg" data-zoom-generated data-zoom-caption="First" aria-label="Enlarge image: One"><img src="/one.jpg" alt="One" data-zoom-caption="First"></a>'
+      '<a href="/one.jpg" data-image-zoom-generated data-image-zoom-caption="First" aria-label="Enlarge image: One"><img src="/one.jpg" alt="One" data-image-zoom-caption="First"></a>'
     );
     // Already in a link: left alone
-    expect(html).toContain('<a href="/big.jpg" data-zoom><img src="/small.jpg" alt="Two"></a>');
+    expect(html).toContain('<a href="/big.jpg" data-image-zoom><img src="/small.jpg" alt="Two"></a>');
     expect(html).toContain('<p>Text</p>');
   });
 });

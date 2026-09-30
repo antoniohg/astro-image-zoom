@@ -263,7 +263,7 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
         <li>
           <Case title="Wrap your images" number={2}>
             <p slot="description">
-              Point <code>data-zoom-src</code> at a full-size version when the
+              Point <code>data-image-zoom-src</code> at a full-size version when the
               image on the page is resized.
             </p>
             <CodeSample
@@ -280,7 +280,7 @@ const fullSize = await getImage({ src: photo, width: photo.width });
     src={photo}
     alt="Earth rising above the Moon"
     width={800}
-    data-zoom-src={fullSize.src}
+    data-image-zoom-src={fullSize.src}
   />
 </ImageZoom>`}
             />
