@@ -840,6 +840,9 @@ class Zoom {
   }
 
   private handleWheel = (e: WheelEvent): void => {
+    // A touchpad pinch (and Ctrl + wheel) comes as a wheel with ctrlKey: it zooms, it does not scroll
+    if (e.ctrlKey) return;
+
     // Horizontal gestures scroll the track natively; the vertical jitter of a touchpad
     // swipe must not close the overlay
     if (Math.abs(e.deltaX) * 2 >= Math.abs(e.deltaY)) {

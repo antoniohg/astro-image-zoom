@@ -116,6 +116,16 @@ test.describe('open and close', () => {
     await expect(page.locator('dialog .astro-image-zoom-backdrop')).toHaveCSS('opacity', '1');
   });
 
+  test('stays open on a touchpad pinch (a wheel with Ctrl)', async ({ page }) => {
+    await openZoom(page, 'single');
+    await page.mouse.move(640, 360);
+    await page.keyboard.down('Control');
+    await page.mouse.wheel(0, 400);
+    await page.keyboard.up('Control');
+    await page.waitForTimeout(300);
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+  });
+
   test('stays open when every close option is off, except Escape', async ({ page }) => {
     await openZoom(page, 'no-close');
     await zoomedImage(page).click();
