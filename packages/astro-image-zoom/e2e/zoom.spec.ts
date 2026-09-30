@@ -163,6 +163,15 @@ test.describe('open and close', () => {
     expect(await bodyWidth()).toBe(before);
   });
 
+  test('shows the thumbnail when the full-size image fails to load', async ({ page }) => {
+    const link = links(page, 'single').first();
+    await link.evaluate((anchor: HTMLAnchorElement) => (anchor.href = '/missing.jpg'));
+    await openZoom(page, 'single');
+    const thumbnail = await link.locator('img').evaluate((img: HTMLImageElement) => img.currentSrc);
+    await expect(zoomedImage(page)).toHaveAttribute('src', thumbnail);
+    expect(await zoomedImage(page).evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  });
+
   test('stays open when every close option is off, except Escape', async ({ page }) => {
     await openZoom(page, 'no-close');
     await zoomedImage(page).click();

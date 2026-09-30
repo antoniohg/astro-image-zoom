@@ -711,15 +711,24 @@ class Zoom {
     // The CSS shows the spinner only if the wait lasts
     figure.classList.add('is-loading');
 
-    const decoded = img.decode().catch(() => {
-      // Load error: nothing to do
-    });
+    const decoded = img.decode().catch(() => this.showThumbnailInstead(index, img));
     slide.ready = sizeKnown(img, decoded)
       .then(() => (this.showPlaceholder(index, img) ? undefined : decoded))
       .then(() => figure.classList.remove('is-loading'));
     void decoded.then(() => img.style.removeProperty('background-image'));
 
     return slide.ready;
+  }
+
+  // A full-size image that fails to load (a wrong data-zoom-src, a 404) shows the file of its
+  // thumbnail, already loaded, instead of a broken image
+  private showThumbnailInstead(index: number, img: HTMLImageElement): Promise<void> {
+    const source = this.getThumbnail(index)?.currentSrc;
+    if (!source || img.src === source) return Promise.resolve();
+    img.src = source;
+    return img.decode().catch(() => {
+      // The thumbnail failed too: nothing to show
+    });
   }
 
   // Stretches the thumbnail, already loaded, behind the full-size image until it decodes. Only for
