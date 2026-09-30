@@ -166,6 +166,20 @@ test.describe('open and close', () => {
     await expect(page).toHaveURL(/\/hostile\/$/);
   });
 
+  test('leaves a data-zoom link without an image alone: it navigates and is not part of the gallery', async ({
+    page,
+  }) => {
+    // The zoom animates from the image of the link: without one, there is nothing to open
+    await links(page, 'text-link').first().click();
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    await expect(page.locator('.astro-image-zoom-toolbar')).toBeHidden();
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+
+    await page.getByRole('link', { name: 'Open the panorama' }).click();
+    await expect(page).toHaveURL(/wide\.svg$/);
+  });
+
   test('closes at once while the image is still loading, and never opens later', async ({ page }) => {
     // A new URL for the zoom, so neither the cache nor a thumbnail serves it
     await links(page, 'single').first().evaluate((link: HTMLAnchorElement) => {

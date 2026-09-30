@@ -114,6 +114,8 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 </ImageZoom>
 ```
 
+The zoom grows from the image inside the link, so a `data-zoom` link without one stays a plain link.
+
 ### Leaving Images Out
 
 Logos, icons, avatars and decorative images inside a wrapped article should not zoom. List them in

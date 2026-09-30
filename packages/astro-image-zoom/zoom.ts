@@ -360,12 +360,13 @@ class Zoom {
   }
 
   // Only the links the component generated and those the site marks with data-zoom: any other link
-  // with an image (a card, a logo) keeps navigating
+  // with an image (a card, a logo) keeps navigating. So does a data-zoom link without an image: the
+  // zoom grows from the image of the link
   private collectImages(): void {
     const links = this.wrapper.querySelectorAll<HTMLAnchorElement>('a[data-zoom-generated], a[data-zoom]');
 
     this.state.images = Array.from(links)
-      .filter((anchor) => !this.isIgnored(anchor))
+      .filter((anchor) => anchor.querySelector('img') && !this.isIgnored(anchor))
       .map((anchor) => {
         const img = anchor.querySelector('img');
         return {

@@ -68,6 +68,14 @@ const image = (name: string) => `${base}images/${name}.svg`;
         </ImageZoom>
       </section>
 
+      <section id="text-link">
+        <h2>A data-zoom link without an image</h2>
+        <ImageZoom>
+          <img src={image("portrait")} alt="Zoomable portrait" />
+          <a href={image("wide")} data-zoom>Open the panorama</a>
+        </ImageZoom>
+      </section>
+
       <section id="sources">
         <h2>Zoom sources</h2>
         <ImageZoom>
