@@ -319,6 +319,8 @@ class Zoom {
   };
 
   private isClosing = false;
+  // The inline styles of <html> that lockScroll() changed, to restore them; null while unlocked
+  private lockedStyles: Record<'overflow-x' | 'overflow-y' | 'padding-right', [string, string]> | null = null;
   // True from open() until the image is ready and the opening animation starts
   private openPending = false;
   private previousFocus: HTMLElement | null = null;
@@ -506,7 +508,7 @@ class Zoom {
       'data-navigation-layout',
       NAVIGATION_LAYOUTS.includes(navigationLayout) ? navigationLayout : 'bar'
     );
-    document.body.style.overflow = 'hidden';
+    this.lockScroll();
 
     // Show the slide of the image, without letting a swipe move it away while it loads
     this.track.style.overflowX = 'hidden';
@@ -617,7 +619,7 @@ class Zoom {
 
     // If closed by scroll, unlock scroll immediately and use special animation
     if (byScroll) {
-      document.body.style.overflow = '';
+      this.unlockScroll();
       this.animateScrollClose(startRect, sourceImg);
     } else {
       void animationsFinished(this.overlay, CLOSE_ANIMATIONS).then(() => this.finalizeClose(sourceImg));
@@ -895,6 +897,40 @@ class Zoom {
     }
   }
 
+  // Stops the page from scrolling behind the overlay. On <html>, which the viewport takes its overflow
+  // from before <body>: a site that sets overflow on <html> (html, body { overflow-x: hidden }) is
+  // locked too. A classic scrollbar (Windows, Linux) goes away with it: the page gets that width back
+  // as padding, so it does not shift under the overlay and the zoom grows from the thumbnail
+  private lockScroll(): void {
+    const root = document.documentElement;
+    const { style } = root;
+    const saved = (name: string): [string, string] => [style.getPropertyValue(name), style.getPropertyPriority(name)];
+    this.lockedStyles = {
+      'overflow-x': saved('overflow-x'),
+      'overflow-y': saved('overflow-y'),
+      'padding-right': saved('padding-right'),
+    };
+
+    const width = root.clientWidth;
+    style.setProperty('overflow-x', 'hidden');
+    style.setProperty('overflow-y', 'hidden');
+    const scrollbar = root.clientWidth - width;
+    if (scrollbar > 0) {
+      const padding = Number.parseFloat(getComputedStyle(root).paddingRight) || 0;
+      style.setProperty('padding-right', `${padding + scrollbar}px`);
+    }
+  }
+
+  private unlockScroll(): void {
+    if (!this.lockedStyles) return;
+    const { style } = document.documentElement;
+    for (const [name, [value, priority]] of Object.entries(this.lockedStyles)) {
+      if (value) style.setProperty(name, value, priority);
+      else style.removeProperty(name);
+    }
+    this.lockedStyles = null;
+  }
+
   // The image shrinks back to the thumbnail with the closing animation (its variables are set),
   // but out of the dialog and positioned on the page, so it scrolls away with it
   private animateScrollClose(startRect: DOMRect, sourceImg: HTMLImageElement): void {
@@ -963,7 +999,7 @@ class Zoom {
     this.overlay.close();
     this.overlay.classList.remove('is-closing');
     this.backdrop.style.removeProperty('--backdrop-now');
-    document.body.style.overflow = '';
+    this.unlockScroll();
 
     // The slides belong to the instance that opened the overlay: discard them
     this.removeSlides();

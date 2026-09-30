@@ -126,6 +126,43 @@ test.describe('open and close', () => {
     await expect(dialog(page)).toHaveClass(/\bis-open\b/);
   });
 
+  test('locks the page scroll, also when the site sets overflow on <html>', async ({ page }) => {
+    await page.addStyleTag({ content: 'html, body { overflow-x: hidden; } body { min-height: 300vh; }' });
+    await openZoom(page, 'no-close');
+    const scrollY = await page.evaluate(() => window.scrollY);
+    await page.mouse.move(640, 360);
+    await page.mouse.wheel(0, 400);
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
+
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+  });
+
+  test('keeps the page in place when the scrollbar goes away', async ({ page }) => {
+    // Classic scrollbars, as on Windows; headless browsers overlay theirs
+    await page.addStyleTag({
+      content: '::-webkit-scrollbar { width: 17px; } ::-webkit-scrollbar-thumb { background: gray; } body { min-height: 300vh; }',
+    });
+    // WebKit applies the scrollbar style once the page's scroller is built again
+    const scrollbar = await page.evaluate(() => {
+      const root = document.documentElement;
+      root.style.overflow = 'hidden';
+      void root.offsetWidth;
+      root.removeAttribute('style');
+      return window.innerWidth - root.clientWidth;
+    });
+    test.skip(scrollbar === 0, 'no classic scrollbar in this browser');
+    const bodyWidth = () => page.evaluate(() => document.body.getBoundingClientRect().width);
+    const before = await bodyWidth();
+
+    await openZoom(page, 'single');
+    expect(await bodyWidth()).toBe(before);
+    await page.keyboard.press('Escape');
+    await expectClosed(page);
+    expect(await bodyWidth()).toBe(before);
+  });
+
   test('stays open when every close option is off, except Escape', async ({ page }) => {
     await openZoom(page, 'no-close');
     await zoomedImage(page).click();
