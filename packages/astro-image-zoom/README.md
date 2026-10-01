@@ -32,9 +32,13 @@ pnpm add astro-image-zoom@beta
 # or: npm install astro-image-zoom@beta
 ```
 
-## Quick Start
+## Browser Support
 
-### Basic Usage
+Current browsers: the overlay uses `<dialog>`, shadow DOM, `:has()` and `light-dark()` (Chrome and
+Edge 123, Firefox 120, Safari 17.5 and later). The end-to-end tests run in Chromium, Firefox and
+WebKit on every change; reports from real devices, especially phones and tablets, are welcome.
+
+## Usage
 
 Wrap your images in `<ImageZoom>`. You can mix Astro's `<Image>` and `<Picture>` with plain `<img>`
 tags, local or remote.
@@ -83,10 +87,52 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 > never enlarged. If the image on the page is a smaller version (a thumbnail, or Astro's
 > `<Image width={400}>`, which generates a 400 px file), the zoom opens that small file and it
 > stays small. Add `data-image-zoom-src` with the full-size version, as shown in
-> [High-Resolution Images](#high-resolution-images) and
-> [Using with Astro Assets](#using-with-astro-assets-optimized-images).
+> [Full-Size Images](#full-size-images).
 
-### With Custom Captions
+### Full-Size Images
+
+`data-image-zoom-src` gives the zoom a bigger file than the one on the page:
+
+```astro
+<ImageZoom>
+  <img
+    src="/thumbnail.jpg"
+    data-image-zoom-src="/full-resolution.jpg"
+    alt="High quality image"
+  />
+</ImageZoom>
+```
+
+With Astro's `<Image>` or `<Picture>`, build the full-size version with `getImage()`:
+
+```astro
+---
+import { Image, getImage } from 'astro:assets';
+import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
+
+import myImage from '../assets/my-image.jpg';
+
+// Optimize the full-resolution image for the zoom overlay
+const optimizedImage = await getImage({
+  src: myImage,
+  format: 'webp',
+  width: 1920 // Optional: limit width for better performance
+});
+---
+
+<ImageZoom>
+  <Image
+    src={myImage}
+    alt="A beautiful optimized image"
+    width={600}
+    data-image-zoom-src={optimizedImage.src}
+  />
+</ImageZoom>
+```
+
+> **Note:** Do not pass the `Image` component directly to `data-image-zoom-src` or call it as a function. The zoom script expects a string URL for the `data-image-zoom-src` attribute.
+
+### Captions
 
 ```astro
 <ImageZoom>
@@ -117,6 +163,11 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 ```
 
 The zoom grows from the image inside the link, so a `data-image-zoom` link without one stays a plain link.
+
+### Several Galleries
+
+Each `<ImageZoom>` is its own gallery: the arrows and swipes move through its images only. Use as
+many as you need on a page; they share one overlay.
 
 ### Leaving Images Out
 
@@ -153,70 +204,71 @@ the prop:
 
 A link with `data-image-zoom` inside an ignored element stays a plain link.
 
-### High-Resolution Images
+### Your page
 
-Use `data-image-zoom-src` to load higher resolution images in the zoom:
+How your images look on the page is up to your site: the component doesn't style them, not even
+their focus ring. It only wraps each image in a link, so it opens with the keyboard and, without
+JavaScript, links to the full-size image:
 
-```astro
-<ImageZoom>
-  <img
-    src="/thumbnail.jpg"
-    data-image-zoom-src="/full-resolution.jpg"
-    alt="High quality image"
-  />
-</ImageZoom>
+```html
+<a href="/full-size.jpg" data-image-zoom-generated aria-label="Enlarge image: A red car">
+  <img src="/photo.jpg" alt="A red car" />
+</a>
 ```
 
-### Using with Astro Assets (Optimized Images)
+The link is inline and unstyled, so it never changes your layout, and it gets your site's link
+styles, focus ring included. If your images are `display: block`, the outline of an inline link
+doesn't wrap them: depending on the browser it is invisible or spans the whole line. Draw your
+focus ring on the image instead, in your own style:
 
-To use optimized Astro images, you can use the `<Image />` component. For the zoom overlay image (which requires a URL string), use the `getImage()` helper.
+```css
+a[data-image-zoom-generated]:focus-visible {
+  outline: none;
+}
 
-```astro
----
-import { Image, getImage } from 'astro:assets';
-import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
-
-import myImage from '../assets/my-image.jpg';
-
-// Optimize the full-resolution image for the zoom overlay
-const optimizedImage = await getImage({
-  src: myImage,
-  format: 'webp',
-  width: 1920 // Optional: limit width for better performance
-});
----
-
-<ImageZoom>
-  <Image
-    src={myImage}
-    alt="A beautiful optimized image"
-    width={600}
-    data-image-zoom-src={optimizedImage.src}
-  />
-</ImageZoom>
+a[data-image-zoom-generated]:focus-visible img {
+  outline: 2px solid green; /* your focus ring */
+  outline-offset: 3px; /* negative if a parent with overflow: hidden clips it */
+}
 ```
 
-> **Note:** Do not pass the `Image` component directly to `data-image-zoom-src` or call it as a function. The zoom script expects a string URL for the `data-image-zoom-src` attribute.
+A zoom cursor, if you want one, is also yours to add:
+
+```css
+a[data-image-zoom-generated] img {
+  cursor: zoom-in;
+}
+```
+
+The component adds no stylesheet to your page. `<astro-image-zoom>` groups the images without
+adding a box of its own (`display: contents`), from its own
+[declarative shadow root](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html),
+so it works without JavaScript and any rule of your site wins over it, cascade layers included.
+
+To style one gallery, pass a class. It can style the images, or lay out the gallery on the element
+itself:
+
+```astro
+<ImageZoom class="custom-zoom">
+  <!-- Your images -->
+</ImageZoom>
+
+<style>
+  /* Global: the wrapper is rendered by the component, outside the scope of your page */
+  :global(.custom-zoom) {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  :global(.custom-zoom img) {
+    border-radius: 8px;
+  }
+</style>
+```
 
 ## Configuration
 
-### Component Props
-
-```astro
-<ImageZoom
-  theme={{
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
-    closeButtonColor: '#ffffff',
-    navigationColor: '#ffffff'
-  }}
-  animationDuration={300}
-  closeOnBackdrop={true}
-  showNavigation={true}
-  class="my-custom-class"
-/>
-```
-
-#### Props Reference
+### Props
 
 | Prop                          | Type                       | Default                           | Description                                                                                                                                |
 | ----------------------------- | -------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -283,9 +335,11 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
 
 The caption is your own text, so it is not translated by the component.
 
-### Custom Styling
+## Styling
 
-You can override the default styles using CSS variables:
+### CSS Variables
+
+Override the default styles with CSS variables:
 
 ```css
 :root {
@@ -344,7 +398,7 @@ each time a gallery opens.
 }
 ```
 
-#### Parts
+### Parts
 
 The zoom overlay lives in a [shadow root](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM),
 so the CSS of your site can't break it: rules such as `button { all: unset }` or `svg { width: 1em }`
@@ -369,82 +423,6 @@ astro-image-zoom-overlay::part(caption) {
 | `nav`, `prev`, `next` | The arrows (`nav` matches both)          |
 | `counter`             | The position in the gallery              |
 
-#### Your page
-
-How your images look on the page is up to your site: the component doesn't style them, not even
-their focus ring. It only wraps each image in a link, so it opens with the keyboard and, without
-JavaScript, links to the full-size image:
-
-```html
-<a href="/full-size.jpg" data-image-zoom-generated aria-label="Enlarge image: A red car">
-  <img src="/photo.jpg" alt="A red car" />
-</a>
-```
-
-The link is inline and unstyled, so it never changes your layout, and it gets your site's link
-styles, focus ring included. If your images are `display: block`, the outline of an inline link
-doesn't wrap them: depending on the browser it is invisible or spans the whole line. Draw your
-focus ring on the image instead, in your own style:
-
-```css
-a[data-image-zoom-generated]:focus-visible {
-  outline: none;
-}
-
-a[data-image-zoom-generated]:focus-visible img {
-  outline: 2px solid green; /* your focus ring */
-  outline-offset: 3px; /* negative if a parent with overflow: hidden clips it */
-}
-```
-
-A zoom cursor, if you want one, is also yours to add:
-
-```css
-a[data-image-zoom-generated] img {
-  cursor: zoom-in;
-}
-```
-
-The component adds no stylesheet to your page. `<astro-image-zoom>` groups the images without
-adding a box of its own (`display: contents`), from its own
-[declarative shadow root](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html),
-so it works without JavaScript and any rule of your site wins over it, cascade layers included.
-
-To style one gallery, pass a class. It can style the images, or lay out the gallery on the element
-itself:
-
-```astro
-<ImageZoom class="custom-zoom">
-  <!-- Your images -->
-</ImageZoom>
-
-<style>
-  /* Global: the wrapper is rendered by the component, outside the scope of your page */
-  :global(.custom-zoom) {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  :global(.custom-zoom img) {
-    border-radius: 8px;
-  }
-</style>
-```
-
-## Keyboard Shortcuts
-
-- **Escape** - Close zoom
-- **Arrow Left** - Previous image
-- **Arrow Right** - Next image
-- **Tab / Shift+Tab** - Navigate between controls
-
-## Touch Gestures
-
-- **Swipe left** - Next image (also a two-finger swipe on a touchpad)
-- **Swipe right** - Previous image
-- **Swipe up or down** - Close the zoom and keep scrolling the page
-- **Tap the backdrop** - Close the zoom
-
 ## Accessibility
 
 - A native modal `<dialog>`: focus moves to the close button, stays inside while it is open and
@@ -454,6 +432,20 @@ itself:
 - Labelled buttons; the caption is announced when the image changes.
 - Reduced motion turns the animations off; forced colors (Windows high contrast) keep the controls
   visible.
+
+### Keyboard
+
+- **Escape** - Close zoom
+- **Arrow Left** - Previous image
+- **Arrow Right** - Next image
+- **Tab / Shift+Tab** - Navigate between controls
+
+### Touch Gestures
+
+- **Swipe left** - Next image (also a two-finger swipe on a touchpad)
+- **Swipe right** - Previous image
+- **Swipe up or down** - Close the zoom and keep scrolling the page
+- **Tap the backdrop** - Close the zoom
 
 ## Performance
 
@@ -468,36 +460,7 @@ itself:
   waits for them to end.
 - One overlay shared by every gallery on the page, and one delegated click listener per gallery.
 
-## Advanced Usage
-
-### Multiple Zoom Instances
-
-```astro
-<ImageZoom>
-  <img src="/gallery1-image1.jpg" alt="Gallery 1" />
-  <img src="/gallery1-image2.jpg" alt="Gallery 1" />
-</ImageZoom>
-
-<ImageZoom>
-  <img src="/gallery2-image1.jpg" alt="Gallery 2" />
-  <img src="/gallery2-image2.jpg" alt="Gallery 2" />
-</ImageZoom>
-```
-
-### Custom Theme
-
-```astro
-<ImageZoom
-  theme={{
-    backgroundColor: 'rgba(26, 32, 44, 0.95)',
-    closeButtonColor: '#f7fafc',
-    navigationColor: '#63b3ed'
-  }}
-  animationDuration={400}
->
-  <img src="/image.jpg" alt="Custom themed image" />
-</ImageZoom>
-```
+## JavaScript API
 
 ### Events
 
@@ -560,7 +523,7 @@ import type {} from 'astro-image-zoom';
 
 The detail has its own type too: `import type { ZoomEventDetail } from 'astro-image-zoom'`.
 
-### Programmatic Control (Advanced)
+### Programmatic Control
 
 `<ImageZoom>` sets up its own zoom. For markup it does not render, such as HTML from a CMS, create
 one with `ZoomClass` on the element around the links:
@@ -585,82 +548,6 @@ one with `ZoomClass` on the element around the links:
 element (`data-image-zoom-show-counter="false"`, `data-image-zoom-close-scroll="false"`…); the theme and the duration come
 from the `--zoom-*` variables. Images are not wrapped then, so only links with `data-image-zoom` count, and
 `data-image-zoom-ignore-selector` on the wrapper takes any CSS selector, since the browser matches it.
-
-## Examples
-
-### Blog Post Images
-
-```astro
----
-import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
----
-
-<article>
-  <h1>My Blog Post</h1>
-  <p>Check out these amazing photos from my trip:</p>
-
-  <ImageZoom>
-    <figure>
-      <img
-        src="/trip-photo-1.jpg"
-        alt="Mountain landscape"
-        data-image-zoom-caption="The view from the summit"
-      />
-      <figcaption>Summit view</figcaption>
-    </figure>
-
-    <figure>
-      <img
-        src="/trip-photo-2.jpg"
-        alt="Lake reflection"
-        data-image-zoom-caption="Perfect morning reflection"
-      />
-      <figcaption>Lake reflection</figcaption>
-    </figure>
-  </ImageZoom>
-</article>
-```
-
-### Portfolio Grid
-
-```astro
----
-import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
-
-const projects = [
-  { thumb: '/thumb1.jpg', full: '/full1.jpg', title: 'Project 1' },
-  { thumb: '/thumb2.jpg', full: '/full2.jpg', title: 'Project 2' },
-  { thumb: '/thumb3.jpg', full: '/full3.jpg', title: 'Project 3' },
-];
----
-
-<ImageZoom>
-  <div class="portfolio-grid">
-    {projects.map(project => (
-      <img
-        src={project.thumb}
-        data-image-zoom-src={project.full}
-        alt={project.title}
-        data-image-zoom-caption={project.title}
-      />
-    ))}
-  </div>
-</ImageZoom>
-
-<style>
-  .portfolio-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-  }
-</style>
-```
-
-## Browser Support
-
-Current browsers: the overlay uses `<dialog>`, shadow DOM, `:has()` and `light-dark()` (Chrome and
-Edge 123, Firefox 120, Safari 17.5 and later). During the beta it has been tested in Chromium; reports
-from Firefox and Safari, desktop or mobile, are welcome.
 
 ## License
 

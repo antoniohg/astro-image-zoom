@@ -76,6 +76,8 @@ image optimized by Astro. The tests build the site and serve it with `astro prev
   layout: the component must be accessible with no help from the site.
 - `isolation.spec.ts`: the CSS of the page cannot change the overlay, and its focus style reaches
   the generated links untouched.
+- `i18n.spec.ts`: the `labels` prop translates a gallery (`/es/` in the fixture), in its links and
+  in the overlay.
 - `no-js.spec.ts`: without JavaScript, each image links to its full-size version.
 
 A new option or behavior gets a case in the fixture site and a test.
