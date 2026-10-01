@@ -1,7 +1,9 @@
 ---
+// First import, and the layout first in every page: Astro orders the stylesheets by the position
+// of their imports, so global.css, with the order of the cascade layers, comes before any other
+import "../styles/global.css";
 import { Font, getImage } from "astro:assets";
 import { photos } from "@data/photos";
-import "../styles/global.css";
 
 interface Props {
   title: string;
