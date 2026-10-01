@@ -282,6 +282,25 @@ the variables.
 }
 ```
 
+On screens up to 640px wide the overlay makes its buttons, its distance to the edges and the caption
+text smaller, and lets the caption take the whole width. A variable you set wins on every screen:
+`--zoom-button-size: 56px` keeps 56px buttons on a phone too. Keep the large values for wide screens
+with a media query, or let them grow with the screen with `clamp()`. The overlay reads the values
+each time a gallery opens.
+
+```css
+.portfolio {
+  --zoom-padding: clamp(12px, 5vw, 64px);
+}
+
+@media (width > 640px) {
+  .portfolio {
+    --zoom-button-size: 56px;
+    --zoom-controls-offset: 32px;
+  }
+}
+```
+
 #### Parts
 
 The zoom overlay lives in a [shadow root](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM),
