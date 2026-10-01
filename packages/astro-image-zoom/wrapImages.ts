@@ -3,6 +3,8 @@
  * Runs on the server, so without JavaScript the links still open the full-size image.
  */
 
+import { DEFAULT_LABELS, type ImageZoomLabels } from "./labels";
+
 // Comments (skipped) or tags; quoted attribute values may contain ">"
 const TOKEN =
   /<!--[\s\S]*?-->|<(\/?)([a-zA-Z][\w:-]*)((?:"[^"]*"|'[^']*'|[^'">])*)>/g;
@@ -10,6 +12,7 @@ const ATTRIBUTE =
   /([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
 
 type Attributes = Map<string, string>;
+type LinkLabels = Pick<ImageZoomLabels, "enlarge" | "enlargeNamed">;
 
 function parseAttributes(source: string): Attributes {
   const attributes: Attributes = new Map();
@@ -47,7 +50,7 @@ const getSource = (image: Attributes): string | undefined => {
 };
 
 // The link is named after the image so screen readers announce what opens
-function wrap(html: string, image: Attributes): string {
+function wrap(html: string, image: Attributes, labels: LinkLabels): string {
   const src = getSource(image);
   if (!src) return html;
 
@@ -57,7 +60,12 @@ function wrap(html: string, image: Attributes): string {
   const captionAttribute = caption
     ? ` data-image-zoom-caption="${escapeQuotes(caption)}"`
     : "";
-  const label = alt ? `Enlarge image: ${alt}` : "Enlarge image";
+  // The labels are plain text and the alt text keeps its entities, like every attribute value here;
+  // escapeQuotes below takes care of the quotes
+  const text = (label: string) => label.replaceAll("&", "&amp;");
+  const label = alt
+    ? text(labels.enlargeNamed).split("{alt}").join(alt)
+    : text(labels.enlarge);
 
   return `<a href="${escapeQuotes(src)}" data-image-zoom-generated${captionAttribute} aria-label="${escapeQuotes(label)}">${html}</a>`;
 }
@@ -209,7 +217,11 @@ function matches(
 // valid inside <a> or <button>), so their images are left alone
 const INTERACTIVE_ELEMENTS = new Set(["a", "button", "label", "summary"]);
 
-export function wrapImages(html: string, ignore: Selector[] = []): string {
+export function wrapImages(
+  html: string,
+  ignore: Selector[] = [],
+  labels: LinkLabels = DEFAULT_LABELS,
+): string {
   const selectors = [ALWAYS_IGNORED, ...ignore];
   const isIgnored = (name: string, attributes: Attributes): boolean =>
     selectors.some((selector) => matches(name, attributes, selector));
@@ -272,7 +284,7 @@ export function wrapImages(html: string, ignore: Selector[] = []): string {
         if (image && getSource(image)) {
           output +=
             html.slice(cursor, pictureStart) +
-            wrap(html.slice(pictureStart, end), image);
+            wrap(html.slice(pictureStart, end), image, labels);
           cursor = end;
         }
       }
@@ -285,7 +297,7 @@ export function wrapImages(html: string, ignore: Selector[] = []): string {
       } else if (picture) {
         picture.image ??= image;
       } else if (getSource(image)) {
-        output += html.slice(cursor, start) + wrap(tag, image);
+        output += html.slice(cursor, start) + wrap(tag, image, labels);
         cursor = end;
       }
     }

@@ -218,27 +218,70 @@ const optimizedImage = await getImage({
 
 #### Props Reference
 
-| Prop                          | Type                | Default                           | Description                                                                                                                                |
-| ----------------------------- | ------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `theme`                       | `object`            | `{}`                              | Theme configuration object                                                                                                                 |
-| `theme.backgroundColor`       | `string`            | light or dark, following the page | Overlay background color (`--zoom-bg`)                                                                                                     |
-| `theme.closeButtonColor`      | `string`            | light or dark, following the page | Close icon color (`--zoom-close-color`)                                                                                                    |
-| `theme.closeButtonBackground` | `string`            | translucent, following the page   | Close button background (`--zoom-close-bg`)                                                                                                |
-| `theme.navigationColor`       | `string`            | light or dark, following the page | Arrows and counter color (`--zoom-nav-color`)                                                                                              |
-| `theme.navigationBackground`  | `string`            | translucent, following the page   | Navigation bar background, or each arrow in the sides layout (`--zoom-nav-bg`)                                                             |
-| `theme.captionColor`          | `string`            | light or dark, following the page | Caption text color (`--zoom-caption-color`)                                                                                                |
-| `theme.captionBackground`     | `string`            | translucent, following the page   | Caption box background (`--zoom-caption-bg`)                                                                                               |
-| `animationDuration`           | `number`            | —                                 | Animation duration in milliseconds; overrides `--zoom-animation-duration` (300ms by default)                                               |
-| `closeOnBackdrop`             | `boolean`           | `true`                            | Close when clicking backdrop                                                                                                               |
-| `closeOnImage`                | `boolean`           | `true`                            | Close when clicking the zoomed image                                                                                                       |
-| `closeOnScroll`               | `boolean`           | `true`                            | Close when scrolling/wheeling                                                                                                              |
-| `showNavigation`              | `boolean`           | `true`                            | Show navigation arrows                                                                                                                     |
-| `navigationLayout`            | `'bar' \| 'sides'`  | `'bar'`                           | Arrows and counter in a bar at the bottom, or arrows at the sides                                                                          |
-| `showCounter`                 | `boolean`           | `true`                            | Show the position in the gallery, such as "3 / 8"                                                                                          |
-| `showCaption`                 | `boolean`           | `true`                            | Show the caption of the zoomed image                                                                                                       |
-| `captionPosition`             | `'bottom' \| 'top'` | `'bottom'`                        | Where the caption sits on the screen                                                                                                       |
-| `ignore`                      | `string`            | `''`                              | Images left out of the zoom: simple selectors separated by commas, such as `".logo, [alt='']"` ([Leaving Images Out](#leaving-images-out)) |
-| `class`                       | `string`            | `''`                              | Custom CSS class                                                                                                                           |
+| Prop                          | Type                       | Default                           | Description                                                                                                                                |
+| ----------------------------- | -------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `theme`                       | `object`                   | `{}`                              | Theme configuration object                                                                                                                 |
+| `theme.backgroundColor`       | `string`                   | light or dark, following the page | Overlay background color (`--zoom-bg`)                                                                                                     |
+| `theme.closeButtonColor`      | `string`                   | light or dark, following the page | Close icon color (`--zoom-close-color`)                                                                                                    |
+| `theme.closeButtonBackground` | `string`                   | translucent, following the page   | Close button background (`--zoom-close-bg`)                                                                                                |
+| `theme.navigationColor`       | `string`                   | light or dark, following the page | Arrows and counter color (`--zoom-nav-color`)                                                                                              |
+| `theme.navigationBackground`  | `string`                   | translucent, following the page   | Navigation bar background, or each arrow in the sides layout (`--zoom-nav-bg`)                                                             |
+| `theme.captionColor`          | `string`                   | light or dark, following the page | Caption text color (`--zoom-caption-color`)                                                                                                |
+| `theme.captionBackground`     | `string`                   | translucent, following the page   | Caption box background (`--zoom-caption-bg`)                                                                                               |
+| `animationDuration`           | `number`                   | —                                 | Animation duration in milliseconds; overrides `--zoom-animation-duration` (300ms by default)                                               |
+| `closeOnBackdrop`             | `boolean`                  | `true`                            | Close when clicking backdrop                                                                                                               |
+| `closeOnImage`                | `boolean`                  | `true`                            | Close when clicking the zoomed image                                                                                                       |
+| `closeOnScroll`               | `boolean`                  | `true`                            | Close when scrolling/wheeling                                                                                                              |
+| `showNavigation`              | `boolean`                  | `true`                            | Show navigation arrows                                                                                                                     |
+| `navigationLayout`            | `'bar' \| 'sides'`         | `'bar'`                           | Arrows and counter in a bar at the bottom, or arrows at the sides                                                                          |
+| `showCounter`                 | `boolean`                  | `true`                            | Show the position in the gallery, such as "3 / 8"                                                                                          |
+| `showCaption`                 | `boolean`                  | `true`                            | Show the caption of the zoomed image                                                                                                       |
+| `captionPosition`             | `'bottom' \| 'top'`        | `'bottom'`                        | Where the caption sits on the screen                                                                                                       |
+| `labels`                      | `Partial<ImageZoomLabels>` | English                           | Texts read by screen readers ([Translating the Labels](#translating-the-labels))                                                           |
+| `ignore`                      | `string`                   | `''`                              | Images left out of the zoom: simple selectors separated by commas, such as `".logo, [alt='']"` ([Leaving Images Out](#leaving-images-out)) |
+| `class`                       | `string`                   | `''`                              | Custom CSS class                                                                                                                           |
+
+### Translating the Labels
+
+The only texts the component adds are `aria-label`s, read by screen readers. They are in English;
+the `labels` prop translates the ones you set, and the rest stay in English:
+
+```astro
+<ImageZoom labels={{ close: "Cerrar zoom", enlargeNamed: "Ampliar imagen: {alt}" }}>
+  <img src="/photo.jpg" alt="Un coche rojo" />
+</ImageZoom>
+```
+
+| Key            | Default                | Names                                                           |
+| -------------- | ---------------------- | --------------------------------------------------------------- |
+| `overlay`      | `Image zoom overlay`   | The dialog                                                      |
+| `close`        | `Close zoom overlay`   | The close button                                                |
+| `images`       | `Images`               | The group of images                                             |
+| `previous`     | `Previous image`       | The previous image button                                       |
+| `next`         | `Next image`           | The next image button                                           |
+| `enlarge`      | `Enlarge image`        | The link around an image with no alt text                       |
+| `enlargeNamed` | `Enlarge image: {alt}` | The link around an image; `{alt}` is replaced with its alt text |
+
+To translate every gallery of a multilingual site, wrap the component in one of your own that
+picks the labels of the page's locale:
+
+```astro
+---
+// src/components/Zoom.astro
+import ImageZoom from "astro-image-zoom/ImageZoom.astro";
+import type { ImageZoomLabels } from "astro-image-zoom";
+
+const translations: Record<string, Partial<ImageZoomLabels>> = {
+  es: { close: "Cerrar zoom", enlargeNamed: "Ampliar imagen: {alt}" },
+};
+---
+
+<ImageZoom {...Astro.props} labels={translations[Astro.currentLocale ?? ""]}>
+  <slot />
+</ImageZoom>
+```
+
+The caption is your own text, so it is not translated by the component.
 
 ### Custom Styling
 

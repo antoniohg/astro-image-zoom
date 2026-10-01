@@ -1,0 +1,53 @@
+---
+/**
+ * A Spanish page: the first gallery is translated with the labels prop, the second one is not and
+ * stays in English. The overlay is shared, so the labels of one must not leak into the other.
+ */
+import ImageZoom from "astro-image-zoom/ImageZoom.astro";
+
+const labels = {
+  overlay: "Zoom de imagen",
+  close: "Cerrar zoom",
+  images: "Imágenes",
+  previous: "Imagen anterior",
+  next: "Imagen siguiente",
+  enlarge: "Ampliar imagen",
+  enlargeNamed: "Ampliar imagen: {alt}",
+};
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+const image = (name: string) => `${base}images/${name}.svg`;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fixtures en español · astro-image-zoom</title>
+    <style>
+      img {
+        width: 240px;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Fixtures en español</h1>
+
+      <section id="translated">
+        <ImageZoom labels={labels}>
+          <img src={image("landscape")} alt="Paisaje" />
+          <img src={image("square")} alt="Cuadrado" />
+        </ImageZoom>
+      </section>
+
+      <section id="english">
+        <ImageZoom>
+          <img src={image("portrait")} alt="Portrait" />
+        </ImageZoom>
+      </section>
+    </main>
+  </body>
+</html>

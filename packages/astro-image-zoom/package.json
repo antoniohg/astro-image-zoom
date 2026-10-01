@@ -42,6 +42,7 @@
     "overlay.css",
     "env.d.ts",
     "wrapImages.ts",
+    "labels.ts",
     "README.md"
   ],
   "peerDependencies": {

@@ -8,6 +8,26 @@ describe("wrapImages", () => {
     );
   });
 
+  it("names the link with the given labels, replacing {alt} with the alt text", () => {
+    const labels = {
+      enlarge: "Ampliar imagen",
+      enlargeNamed: "Ampliar imagen: {alt}",
+    };
+    expect(
+      wrapImages('<img src="/photo.jpg" alt="Un coche rojo">', [], labels),
+    ).toContain('aria-label="Ampliar imagen: Un coche rojo"');
+    expect(wrapImages('<img src="/photo.jpg">', [], labels)).toContain(
+      'aria-label="Ampliar imagen"',
+    );
+  });
+
+  it("inserts the alt text as it is, and escapes the label", () => {
+    const labels = { enlarge: "Enlarge", enlargeNamed: '"{alt}" $& ' };
+    expect(
+      wrapImages('<img src="/photo.jpg" alt="a$&amp;b">', [], labels),
+    ).toContain('aria-label="&quot;a$&amp;b&quot; $&amp; "');
+  });
+
   it("names the link without the alt text when the image has none", () => {
     expect(wrapImages('<img src="/photo.jpg">')).toContain(
       'aria-label="Enlarge image"',

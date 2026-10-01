@@ -144,4 +144,35 @@ describe("<ImageZoom>", () => {
     );
     expect(html).toContain("<p>Text</p>");
   });
+
+  it("renders no labels attribute by default: the overlay speaks English", async () => {
+    const { attributes } = await render();
+    expect(attributes.has("data-image-zoom-labels")).toBe(false);
+  });
+
+  it("hands the labels it is given to the overlay", async () => {
+    const labels = { close: "Cerrar", next: "Siguiente imagen" };
+    const { attributes } = await render({ labels });
+    const value = attributes.get("data-image-zoom-labels")!;
+    expect(JSON.parse(value.replaceAll("&quot;", '"'))).toEqual(labels);
+  });
+
+  it("names the zoom links with the labels", async () => {
+    const { html } = await render(
+      {
+        labels: {
+          enlargeNamed: "Ampliar imagen: {alt}",
+          enlarge: "Ampliar imagen",
+        },
+      },
+      '<img src="/one.jpg" alt="Uno"><img src="/two.jpg">',
+    );
+    expect(html).toContain('aria-label="Ampliar imagen: Uno"');
+    expect(html).toContain('aria-label="Ampliar imagen"');
+  });
+
+  it("keeps the English name of the links for the labels it is not given", async () => {
+    const { html } = await render({ labels: { close: "Cerrar" } });
+    expect(html).toContain('aria-label="Enlarge image: A photo"');
+  });
 });

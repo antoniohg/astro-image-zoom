@@ -5,6 +5,7 @@
  */
 
 import { parseIgnore, wrapImages } from "./wrapImages";
+import { DEFAULT_LABELS, type ImageZoomLabels } from "./labels";
 
 export interface Props {
   /**
@@ -74,6 +75,11 @@ export interface Props {
   captionPosition?: "bottom" | "top";
 
   /**
+   * Texts read by assistive technology, in English by default: set the ones to translate
+   */
+  labels?: Partial<ImageZoomLabels>;
+
+  /**
    * Images left out of the zoom and the gallery: simple selectors separated by commas, matched
    * against each image and the elements around it, such as ".logo, .avatar, [alt='']"
    */
@@ -96,6 +102,7 @@ const {
   showCounter = true,
   showCaption = true,
   captionPosition = "bottom",
+  labels = {},
   ignore = "",
   class: className = "",
 } = Astro.props;
@@ -124,6 +131,7 @@ const wrapperClasses = ["astro-image-zoom-wrapper", className]
 const slotContent = wrapImages(
   await Astro.slots.render("default"),
   parseIgnore(ignore),
+  { ...DEFAULT_LABELS, ...labels },
 );
 
 // The element only groups its content and must not add a box. Its own declarative shadow root says
@@ -145,6 +153,9 @@ const shadowRoot =
   data-image-zoom-caption-position={captionPosition}
   data-image-zoom-ignore-selector={ignore.trim() || undefined}
   style={variables || undefined}
+  data-image-zoom-labels={
+    Object.keys(labels).length ? JSON.stringify(labels) : undefined
+  }
 >
   <Fragment set:html={shadowRoot + slotContent} />
 </astro-image-zoom>
