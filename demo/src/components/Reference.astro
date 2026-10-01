@@ -7,12 +7,18 @@ interface Props {
 
 const { rows } = Astro.props;
 
+// The type and default get a column of their own only when every row's are short: a long default,
+// such as a light-dark() color, would wrap in it line by line
+const shortMeta = rows.every(
+  ({ type = "", default: value = "" }) => type.length + value.length <= 36,
+);
+
 // Text between backticks is code: `--zoom-bg` becomes <code>--zoom-bg</code>
 const parts = (text: string) =>
   text.split("`").map((part, index) => ({ part, code: index % 2 === 1 }));
 ---
 
-<dl class="reference">
+<dl class:list={["reference", { "short-meta": shortMeta }]}>
   {rows.map(({ name, description, type, default: value }) => (
     <div>
       <dt>
@@ -40,7 +46,10 @@ const parts = (text: string) =>
 
 <style>
   @layer components {
-    /* Name and description side by side when the list itself is wide enough, wherever it sits */
+    /*
+     * Name and description side by side when the list itself is wide enough, wherever it sits, and
+     * the type and default in a third column when it is wider still and they are short
+     */
     .reference {
       container-type: inline-size;
       font-size: 0.9375rem;
@@ -57,6 +66,20 @@ const parts = (text: string) =>
 
           dd {
             grid-column: 2;
+          }
+        }
+      }
+
+      /* Third column only in lists whose types and defaults are all short */
+      &.short-meta > div {
+        @container (width >= 52rem) {
+          grid-template-columns: minmax(0, 13rem) minmax(0, 1fr) minmax(
+              0,
+              14rem
+            );
+
+          .meta {
+            grid-area: 1 / 3;
           }
         }
       }

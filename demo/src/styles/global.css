@@ -318,7 +318,7 @@
   }
 
   main {
-    padding-block: clamp(3rem, 8vw, 6rem) 4rem;
+    padding-block: clamp(2rem, 5vw, 4rem) 4rem;
     /* Nothing wider than the screen makes the page scroll sideways */
     overflow-x: clip;
   }

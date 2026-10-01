@@ -100,32 +100,32 @@ const features: { icon: SvgComponent; title: string; text: string }[] = [
   {
     icon: KeyboardIcon,
     title: "Keyboard",
-    text: "Tab to a photo and press Enter. The arrow keys move through the gallery, Escape closes, and focus goes back where it was.",
+    text: "Tab to a photo and press Enter; the arrow keys move, and Escape closes with the focus on the photo you ended on.",
   },
   {
     icon: UserSoundIcon,
     title: "Screen readers",
-    text: "A native dialog with labelled controls. The caption is announced as you move, and every image keeps its alt text.",
+    text: "A native dialog with labelled controls; each image keeps its alt text, and the caption is announced as you move.",
   },
   {
     icon: HandSwipeRightIcon,
     title: "Touch and touchpad",
-    text: "Swipe between photos with the inertia of a real carousel. A vertical swipe or a scroll closes the zoom.",
+    text: "Swipe between photos with the inertia of a real carousel; a vertical swipe or a scroll closes the zoom.",
   },
   {
     icon: LinkIcon,
     title: "Works without JavaScript",
-    text: "Each photo is wrapped in a link to its full-size file, so it still opens before the script loads, or without it.",
+    text: "Each photo is wrapped in a link to the file the zoom opens, so it opens even before the script loads.",
   },
   {
     icon: ShieldCheckIcon,
     title: "Safe from your CSS",
-    text: "The overlay lives in a shadow root, so the styles of your site can't break it, and it doesn't style your page: your thumbnails keep your design. You change the zoom on purpose, with CSS variables.",
+    text: "A shadow root keeps your styles out of the zoom and the zoom out of your page; you change it on purpose, with CSS variables and parts.",
   },
   {
     icon: PackageIcon,
     title: "Zero dependencies",
-    text: "One Astro component and a small script. It follows light and dark mode, reduced motion and forced colors.",
+    text: "One Astro component and a small script that follow light and dark mode, reduced motion and forced colors.",
   },
 ];
 
@@ -133,6 +133,7 @@ const features: { icon: SvgComponent; title: string; text: string }[] = [
 // update it when the package grows. The Astro range is the peer dependency of the package
 const facts = ["8 KB gzipped", "No dependencies", "Astro 4 to 7"];
 
+const repository = "https://github.com/antoniohg/astro-image-zoom";
 const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
 ---
 
@@ -148,8 +149,8 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
       </h1>
       <div class="pitch">
         <p class="lead">
-          Click any photo on this page. It grows from its place to fill the
-          screen, and a group of photos becomes a gallery you can swipe.
+          Click or tap any photo on this page. It grows from its place to fill
+          the screen, and a group of photos becomes a gallery you can swipe.
         </p>
         <InstallCommand id="hero" />
         <ul class="facts" role="list">
@@ -157,6 +158,14 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
             <li>{fact}</li>
           ))}
         </ul>
+        <div class="actions">
+          <a class="button" href={docs}>
+            Read the docs
+          </a>
+          <a class="button secondary" href={repository}>
+            GitHub
+          </a>
+        </div>
       </div>
     </header>
 
@@ -232,24 +241,30 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
             Each <code>{`<ImageZoom>`}</code> is its own gallery: the arrows
             only move through the photos of the one you opened.
           </p>
-          {galleries.map(({ title, names }) => (
-            <div class="group">
-              <p class="group-title">{title}</p>
-              <ImageZoom>
-                <div class="group-photos">
-                  {names.map((name) => (
-                    <Photo
-                      name={name}
-                      width={260}
-                      height={195}
-                      sizes="(min-width: 56rem) min(20vw, 260px), 29vw"
-                      caption={false}
-                    />
-                  ))}
-                </div>
-              </ImageZoom>
-            </div>
-          ))}
+          <div class="groups">
+            {galleries.map(({ title, names }) => (
+              <div class="group">
+                <p class="group-title">{title}</p>
+                <ImageZoom>
+                  <div class="group-photos">
+                    {names.map((name, index) => (
+                      <Photo
+                        name={name}
+                        width={260}
+                        height={195}
+                        sizes={
+                          index === 0
+                            ? "(min-width: 72rem) min(19vw, 250px), (min-width: 56rem) min(20vw, 260px), 29vw"
+                            : "(min-width: 72rem) min(9vw, 125px), (min-width: 56rem) min(20vw, 260px), 29vw"
+                        }
+                        caption={false}
+                      />
+                    ))}
+                  </div>
+                </ImageZoom>
+              </div>
+            ))}
+          </div>
         </Case>
       </div>
     </Section>
@@ -278,8 +293,9 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
         <li>
           <Case title="Wrap your images" number={2}>
             <p slot="description">
-              Every image inside opens in the zoom. With Astro's{" "}
-              <code>{`<Image>`}</code>, give the zoom a larger file:{" "}
+              Every image inside opens in the zoom. When the page shows a
+              smaller file, such as a thumbnail or Astro's{" "}
+              <code>{`<Image>`}</code>, give the zoom the full-size one:{" "}
               <a href={`${docs}#usage`}>see how</a>.
             </p>
             <CodeSample
@@ -311,19 +327,26 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
 
 <style>
   @layer components {
-    /* The title on the left, the pitch and the install command at its foot on the right */
+    /*
+     * The title on the left, the pitch, the install command and the links on the right. The column
+     * on the right is the taller one: the title sits at its middle, with no gap above or under it
+     */
     .hero {
       display: grid;
+      /* minmax(0): the install command, which can't wrap, scrolls in its box instead of widening the page */
+      grid-template-columns: minmax(0, 1fr);
       gap: 1.5rem 4rem;
-      align-items: end;
+      align-items: center;
       margin-block-end: clamp(2rem, 5vw, 3.5rem);
 
-      @media (width >= 64rem) {
+      /* From 68rem "Image zoom" fits on one line of the left column; narrower, it would break in three */
+      @media (width >= 68rem) {
         grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
       }
 
       h1 {
-        font-size: clamp(2.75rem, 1rem + 6vw, 5.75rem);
+        /* At least 12vw on the narrowest phones, where 2.75rem would push "zoom" to a line of its own */
+        font-size: clamp(min(2.75rem, 12vw), 1rem + 6vw, 6.5rem);
         font-weight: 800;
         line-height: 0.95;
         letter-spacing: -0.04em;
@@ -341,23 +364,34 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
 
     .pitch {
       display: grid;
+      grid-template-columns: minmax(0, 1fr);
       gap: 1.25rem;
     }
 
-    /* Three short facts in a row, split by dots */
+    /*
+     * Three short facts in a row, split by dots. Every fact has its dot in the gap before it, and the
+     * list clips what lies outside it: the dot of the first fact of each line, so no line starts
+     * with one when the row wraps
+     */
     .facts {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.25rem 0;
+      gap: 0.25rem 1.25rem;
+      overflow: hidden;
       margin: 0;
       padding: 0;
       list-style: none;
       font-size: 0.9375rem;
       color: var(--color-text-muted);
 
-      li + li::before {
+      li {
+        position: relative;
+      }
+
+      li::before {
         content: "·" / "";
-        margin-inline: 0.625rem;
+        position: absolute;
+        inset-inline-start: -0.8rem;
       }
     }
 
@@ -442,7 +476,20 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
       }
     }
 
-    /* One block per gallery, stacked, so each one reads as a set of its own */
+    /*
+     * One block per gallery, so each one reads as a set of its own: stacked, and side by side from
+     * 72rem, where the first photo spans the block and the other two share the row under it
+     */
+    .groups {
+      display: grid;
+      gap: 0.75rem;
+
+      @media (width >= 72rem) {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        align-items: start;
+      }
+    }
+
     .group {
       display: grid;
       gap: 0.75rem;
@@ -460,6 +507,15 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 0.5rem;
+
+      @media (width >= 72rem) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+
+        /* Global: the item is the link the component generates, without the scope of this page */
+        > :global(:first-child) {
+          grid-column: span 2;
+        }
+      }
     }
 
     /* Short notes in up to three columns, split by rules instead of boxes */
@@ -523,6 +579,25 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
       &:hover {
         background: var(--color-accent);
       }
+    }
+
+    /* The second action of the hero: an outline, so the docs stay the first choice */
+    .button.secondary {
+      color: var(--color-text);
+      background: transparent;
+      box-shadow: inset 0 0 0 1px var(--color-rule);
+
+      &:hover {
+        color: var(--color-bg);
+        background: var(--color-accent);
+        box-shadow: none;
+      }
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
     }
   }
 </style>

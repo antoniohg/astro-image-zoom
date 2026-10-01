@@ -12,23 +12,27 @@ interface Props {
 const { entries } = Astro.props;
 ---
 
+<!-- Folded on narrow screens, where it would fill the first screen; always open from 64rem -->
 <nav class="toc" aria-label="On this page" data-toc>
-  <ol>
-    {entries.map(({ id, title, children = [] }) => (
-      <li>
-        <a href={`#${id}`}>{title}</a>
-        {children.length > 0 && (
-          <ol>
-            {children.map((child) => (
-              <li>
-                <a href={`#${child.id}`}>{child.title}</a>
-              </li>
-            ))}
-          </ol>
-        )}
-      </li>
-    ))}
-  </ol>
+  <details>
+    <summary>On this page</summary>
+    <ol>
+      {entries.map(({ id, title, children = [] }) => (
+        <li>
+          <a href={`#${id}`}>{title}</a>
+          {children.length > 0 && (
+            <ol>
+              {children.map((child) => (
+                <li>
+                  <a href={`#${child.id}`}>{child.title}</a>
+                </li>
+              ))}
+            </ol>
+          )}
+        </li>
+      ))}
+    </ol>
+  </details>
 </nav>
 
 <script>
@@ -62,6 +66,16 @@ const { entries } = Astro.props;
     frame ||= requestAnimationFrame(update);
   };
 
+  // On narrow screens, a link folds the index again, so the section shows under it
+  const details =
+    document.querySelector<HTMLDetailsElement>("[data-toc] details");
+  const wide = matchMedia("(width >= 64rem)");
+  for (const { link } of entries) {
+    link.addEventListener("click", () => {
+      if (details && !wide.matches) details.open = false;
+    });
+  }
+
   addEventListener("scroll", schedule, { passive: true });
   addEventListener("resize", schedule, { passive: true });
   update();
@@ -78,6 +92,34 @@ const { entries } = Astro.props;
         align-self: start;
       }
 
+      summary {
+        inline-size: fit-content;
+        padding-block: 0.375rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      details[open] > summary {
+        margin-block-end: 0.75rem;
+      }
+
+      /*
+       * Always open from 64rem: no summary, and the content shown even when closed. Browsers
+       * without ::details-content keep the summary, so the index can still be unfolded
+       */
+      @supports selector(::details-content) {
+        @media (width >= 64rem) {
+          summary {
+            display: none;
+          }
+
+          details::details-content {
+            content-visibility: visible;
+            block-size: auto;
+          }
+        }
+      }
+
       ol {
         display: grid;
         margin: 0;
@@ -85,7 +127,7 @@ const { entries } = Astro.props;
         list-style: none;
       }
 
-      > ol {
+      details > ol {
         gap: 0.75rem;
       }
 
@@ -116,11 +158,11 @@ const { entries } = Astro.props;
       }
 
       /* Chapters in bold; the chapter being read in the text color */
-      > ol > li > a {
+      details > ol > li > a {
         font-weight: 600;
       }
 
-      > ol > li:has([aria-current]) > a {
+      details > ol > li:has([aria-current]) > a {
         color: var(--color-text);
       }
     }
