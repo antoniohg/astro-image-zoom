@@ -29,6 +29,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Formatting
+        run: pnpm format:check
+
+      - name: Type check
+        run: pnpm check
+
       - name: Unit tests
         run: pnpm test
 

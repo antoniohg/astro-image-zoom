@@ -1,6 +1,6 @@
 {
   "name": "astro-image-zoom",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0-beta.7",
   "description": "Medium-style image zoom for Astro: accessible, animated from the page, with swipeable galleries",
   "type": "module",
   "author": "Antonio (https://antoniohg.com)",
@@ -10,7 +10,7 @@
     "url": "git+https://github.com/antoniohg/astro-image-zoom.git",
     "directory": "packages/astro-image-zoom"
   },
-  "homepage": "https://github.com/antoniohg/astro-image-zoom#readme",
+  "homepage": "https://antoniohg.com/astro-image-zoom/",
   "bugs": {
     "url": "https://github.com/antoniohg/astro-image-zoom/issues"
   },
@@ -19,22 +19,25 @@
     "withastro",
     "zoom",
     "image-zoom",
+    "image",
+    "lightbox",
+    "ui",
     "image-gallery",
     "a11y",
     "performance"
   ],
   "scripts": {
+    "check": "astro check",
     "test": "vitest run",
     "test:e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "exports": {
-    ".": "./index.js",
+    ".": "./index.ts",
     "./ImageZoom.astro": "./ImageZoom.astro",
-    "./integration": "./integration.js",
-    "./zoom.css": "./zoom.css"
+    "./integration": "./integration.js"
   },
   "files": [
-    "index.js",
+    "index.ts",
     "ImageZoom.astro",
     "zoom.ts",
     "overlay.css",
@@ -43,7 +46,6 @@
     "labels.ts",
     "config.js",
     "integration.js",
-    "zoom.css",
     "README.md"
   ],
   "peerDependencies": {

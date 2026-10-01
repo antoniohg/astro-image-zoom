@@ -1,0 +1,74 @@
+---
+import type { ReferenceRow } from "@data/reference";
+
+interface Props {
+  rows: ReferenceRow[];
+}
+
+const { rows } = Astro.props;
+
+// Text between backticks is code: `--zoom-bg` becomes <code>--zoom-bg</code>
+const parts = (text: string) =>
+  text.split("`").map((part, index) => ({ part, code: index % 2 === 1 }));
+---
+
+<dl class="reference">
+  {rows.map(({ name, description, type, default: value }) => (
+    <div>
+      <dt>
+        <code>{name}</code>
+      </dt>
+      <dd>
+        {parts(description).map(({ part, code }) =>
+          code ? <code>{part}</code> : part,
+        )}
+      </dd>
+      {(type || value) && (
+        <dd class="meta">
+          {type && <code>{type}</code>}
+          {type && value && " · "}
+          {value && (
+            <>
+              Default <code>{value}</code>
+            </>
+          )}
+        </dd>
+      )}
+    </div>
+  ))}
+</dl>
+
+<style>
+  @layer components {
+    /* Name and description side by side when the list itself is wide enough, wherever it sits */
+    .reference {
+      container-type: inline-size;
+      font-size: 0.9375rem;
+      border-block-start: 1px solid var(--color-rule);
+
+      > div {
+        display: grid;
+        gap: 0.25rem 1.5rem;
+        padding-block: 0.875rem;
+        border-block-end: 1px solid var(--color-rule);
+
+        @container (width >= 36rem) {
+          grid-template-columns: minmax(0, 16rem) 1fr;
+
+          dd {
+            grid-column: 2;
+          }
+        }
+      }
+
+      code {
+        overflow-wrap: anywhere;
+      }
+    }
+
+    .meta {
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+    }
+  }
+</style>

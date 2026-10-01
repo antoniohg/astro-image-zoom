@@ -1,0 +1,128 @@
+---
+/**
+ * A tiny drawing of the open overlay: the screen, the zoomed image and its controls. Examples use
+ * it to show what an option changes; the changed parts are drawn in the accent color.
+ * Decorative: the text of the example describes the same change.
+ */
+type Part = "image" | "close" | "nav" | "caption";
+
+interface Props {
+  nav?: "bar" | "sides" | "none";
+  counter?: boolean;
+  caption?: "bottom" | "top" | "none";
+  /** Room around the image, with rounded corners */
+  padded?: boolean;
+  /** Square buttons and caption, closer to the edges */
+  square?: boolean;
+  highlight?: Part[];
+}
+
+const {
+  nav = "bar",
+  counter = true,
+  caption = "bottom",
+  padded = false,
+  square = false,
+  highlight = [],
+} = Astro.props;
+
+const on = (part: Part) => (highlight.includes(part) ? "on" : undefined);
+const radius = square ? 1 : 5;
+const edge = square ? 4 : 6;
+const image = padded
+  ? { x: 36, y: 10, width: 48, height: 60, rx: 5 }
+  : { x: 28, y: 1, width: 64, height: 78, rx: 0 };
+const barY = 80 - edge - 12;
+const captionY = caption === "top" ? edge + 3 : barY - 11;
+---
+
+<svg
+  class="sketch"
+  viewBox="0 0 120 80"
+  width="120"
+  height="80"
+  aria-hidden="true"
+>
+  <rect class="screen" x="0.5" y="0.5" width="119" height="79" rx="4" />
+  <rect class:list={["image", on("image")]} {...image} />
+
+  <g class:list={["control", on("close")]}>
+    {square ? (
+      <rect x={120 - edge - 12} y={edge} width="12" height="12" rx={radius} />
+    ) : (
+      <circle cx={120 - edge - 6} cy={edge + 6} r="6" />
+    )}
+  </g>
+
+  {nav === "bar" && (
+    <g class:list={["control", on("nav")]}>
+      <rect x="42" y={barY} width="36" height="12" rx={square ? radius : 6} />
+    </g>
+  )}
+  {nav === "sides" && (
+    <g class:list={["control", on("nav")]}>
+      <circle cx={edge + 6} cy="40" r="6" />
+      <circle cx={120 - edge - 6} cy="40" r="6" />
+      {counter && (
+        <rect
+          x="52"
+          y={barY + 2}
+          width="16"
+          height="9"
+          rx={square ? radius : 4.5}
+        />
+      )}
+    </g>
+  )}
+  {nav === "bar" && counter && (
+    <rect class="counter" x="55" y={barY + 5} width="10" height="2" rx="1" />
+  )}
+
+  {caption !== "none" && (
+    <rect
+      class:list={["caption", on("caption")]}
+      x="36"
+      y={captionY}
+      width="48"
+      height="7"
+      rx={square ? 0 : 2}
+    />
+  )}
+</svg>
+
+<style>
+  @layer components {
+    .sketch {
+      display: block;
+      inline-size: 100%;
+      block-size: auto;
+    }
+
+    .screen {
+      fill: color-mix(in oklab, var(--color-text) 6%, var(--color-bg));
+      stroke: color-mix(in oklab, var(--color-text) 30%, transparent);
+    }
+
+    .image {
+      fill: color-mix(in oklab, var(--color-text) 20%, var(--color-bg));
+    }
+
+    .control,
+    .caption {
+      fill: color-mix(in oklab, var(--color-text) 70%, var(--color-bg));
+    }
+
+    .counter {
+      fill: var(--color-bg);
+    }
+
+    .on,
+    .on :global(*) {
+      fill: var(--color-accent);
+    }
+
+    .image.on {
+      fill: color-mix(in oklab, var(--color-accent) 35%, transparent);
+    }
+  }
+</style>

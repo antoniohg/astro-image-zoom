@@ -1,0 +1,200 @@
+---
+import ExamplePhotos from "@components/ExamplePhotos.astro";
+import type { PhotoName } from "@data/photos";
+
+interface Props {
+  names: Exclude<PhotoName, "blueMarble">[];
+}
+
+const { names } = Astro.props;
+---
+
+<!-- The events bubble: one listener on this element hears the gallery inside it -->
+<events-console class="events-console wide">
+  <ExamplePhotos names={names} />
+  <div class="panel">
+    <div class="head">
+      <p class="title" id="events-log-title">
+        Event log
+      </p>
+      <button type="button" disabled>
+        Clear
+      </button>
+    </div>
+    <div class="log" role="log" aria-labelledby="events-log-title" tabindex="0">
+      <ol></ol>
+    </div>
+    <p class="empty">
+      Open a photo and move through the gallery to see its events here.
+    </p>
+  </div>
+</events-console>
+
+<script>
+  import type { ZoomEventDetail } from "astro-image-zoom";
+
+  const EVENTS = [
+    "astro-image-zoom:open",
+    "astro-image-zoom:change",
+    "astro-image-zoom:close",
+  ] as const;
+  // Enough to follow a visit to the gallery; older entries drop off the end
+  const MAX_ENTRIES = 30;
+
+  class EventsConsole extends HTMLElement {
+    private get log() {
+      return this.querySelector("ol")!;
+    }
+
+    private get clear() {
+      return this.querySelector("button")!;
+    }
+
+    connectedCallback() {
+      for (const type of EVENTS) this.addEventListener(type, this.handleEvent);
+      this.clear.addEventListener("click", this.handleClear);
+    }
+
+    disconnectedCallback() {
+      for (const type of EVENTS)
+        this.removeEventListener(type, this.handleEvent);
+      this.clear.removeEventListener("click", this.handleClear);
+    }
+
+    // Newest first, so the latest event is always in view
+    private handleEvent = (event: CustomEvent<ZoomEventDetail>) => {
+      const { index, total, caption } = event.detail;
+      const entry = document.createElement("li");
+      const name = document.createElement("code");
+      name.className = "name";
+      name.dataset.type = event.type.split(":")[1];
+      name.textContent = event.type;
+      const detail = document.createElement("span");
+      detail.className = "detail";
+      detail.textContent = `index ${index} · total ${total}${caption ? ` · ${caption}` : ""}`;
+      entry.append(name, detail);
+      this.log.prepend(entry);
+      while (this.log.children.length > MAX_ENTRIES)
+        this.log.lastElementChild!.remove();
+      this.clear.disabled = false;
+    };
+
+    private handleClear = () => {
+      this.log.replaceChildren();
+      this.clear.disabled = true;
+    };
+  }
+
+  customElements.define("events-console", EventsConsole);
+</script>
+
+<style>
+  @layer components {
+    /* The gallery beside its log on wide screens, above it on phones */
+    .events-console {
+      display: grid;
+      gap: 1rem 1.5rem;
+
+      @media (width >= 40rem) {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+    }
+
+    .panel {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      min-block-size: 12rem;
+      font-size: 0.875rem;
+      background: var(--color-surface);
+      border-radius: var(--radius);
+
+      /* The log and the hint share the same place: the hint shows while the log is empty */
+      > .log,
+      > .empty {
+        grid-area: 2 / 1;
+      }
+    }
+
+    .head {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.625rem 0.75rem 0.625rem 1rem;
+      border-block-end: 1px solid var(--color-rule);
+    }
+
+    .title {
+      font-weight: 600;
+    }
+
+    button {
+      padding: 0.25rem 0.75rem;
+      color: var(--color-text);
+      background: var(--color-bg);
+      border: 1px solid var(--color-rule);
+      border-radius: var(--radius);
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        border-color: var(--color-text-muted);
+      }
+
+      &:disabled {
+        color: var(--color-text-muted);
+        cursor: default;
+      }
+    }
+
+    /*
+     * Scrolls past a fixed height on phones. Beside the photos it adds no height of its own, so the
+     * photos set the height of the row and the log fills what the panel has left
+     */
+    .log {
+      display: grid;
+      align-content: start;
+      max-block-size: 18rem;
+      overflow-y: auto;
+
+      @media (width >= 40rem) {
+        max-block-size: none;
+        contain: size;
+      }
+
+      ol {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      :global(li) {
+        display: grid;
+        gap: 0.125rem;
+        padding: 0.5rem 1rem;
+        border-block-end: 1px solid var(--color-rule);
+      }
+
+      :global(.name) {
+        justify-self: start;
+        font-weight: 600;
+      }
+
+      :global(.name[data-type="open"]) {
+        color: var(--color-accent-text);
+      }
+
+      :global(.detail) {
+        color: var(--color-text-muted);
+      }
+    }
+
+    .empty {
+      padding: 1rem;
+      color: var(--color-text-muted);
+    }
+
+    .log:has(li) + .empty {
+      visibility: hidden;
+    }
+  }
+</style>

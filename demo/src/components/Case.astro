@@ -1,0 +1,73 @@
+---
+interface Props {
+  title: string;
+  id?: string;
+  /** Position in a sequence, such as the steps of a guide, shown before the title */
+  number?: number;
+}
+
+const { title, id, number } = Astro.props;
+---
+
+<!-- A row: what the case is on the left, the live example on the right -->
+<div class="case" id={id}>
+  <div class="text">
+    <h3>
+      {number !== undefined && <span class="number">{number}.</span>} {title}
+    </h3>
+    <slot name="description" />
+  </div>
+  <div class="demo">
+    <slot />
+  </div>
+</div>
+
+<style>
+  @layer components {
+    .case {
+      display: grid;
+      gap: 1.25rem 4rem;
+
+      @media (width >= 56rem) {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+      }
+    }
+
+    /* The description stays in view beside a tall example */
+    .text {
+      display: grid;
+      gap: 0.625rem;
+      align-content: start;
+
+      @media (width >= 56rem) {
+        position: sticky;
+        top: var(--sticky-top);
+        align-self: start;
+      }
+
+      h3 {
+        font-size: 1.25rem;
+      }
+
+      :global(p) {
+        max-inline-size: 26rem;
+        color: var(--color-text-muted);
+      }
+    }
+
+    .number {
+      color: var(--color-accent-text);
+    }
+
+    .demo {
+      display: grid;
+      gap: 1.25rem;
+      align-content: start;
+      min-inline-size: 0;
+
+      :global(pre) {
+        margin: 0;
+      }
+    }
+  }
+</style>

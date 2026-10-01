@@ -20,21 +20,31 @@ export interface ImageZoomLabels {
 }
 
 export const DEFAULT_LABELS: ImageZoomLabels = {
-  overlay: 'Image zoom overlay',
-  close: 'Close zoom overlay',
-  images: 'Images',
-  previous: 'Previous image',
-  next: 'Next image',
-  enlarge: 'Enlarge image',
-  enlargeNamed: 'Enlarge image: {alt}',
+  overlay: "Image zoom overlay",
+  close: "Close zoom overlay",
+  images: "Images",
+  previous: "Previous image",
+  next: "Next image",
+  enlarge: "Enlarge image",
+  enlargeNamed: "Enlarge image: {alt}",
 };
 
-// The labels the overlay reads on the client, from `data-label-*` attributes of <astro-image-zoom>
-export const OVERLAY_LABELS = ['overlay', 'close', 'images', 'previous', 'next'] as const;
+// The labels the overlay reads on the client, from `data-image-zoom-label-*` attributes of <astro-image-zoom>
+export const OVERLAY_LABELS = [
+  "overlay",
+  "close",
+  "images",
+  "previous",
+  "next",
+] as const;
 
 // Values of the attribute delimiter and of markup: the labels are plain text, not HTML
 export const escapeHtml = (value: string): string =>
-  value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 
 /** The translations of a site: the labels it changes, by locale (`es`, `pt-BR`…) */
 export type ImageZoomTranslations = Record<string, Partial<ImageZoomLabels>>;
@@ -46,10 +56,17 @@ export type ImageZoomTranslations = Record<string, Partial<ImageZoomLabels>>;
 export function resolveLabels(
   translations: ImageZoomTranslations = {},
   locale?: string,
-  override: Partial<ImageZoomLabels> = {}
+  override: Partial<ImageZoomLabels> = {},
 ): ImageZoomLabels {
-  const byLocale = new Map(Object.entries(translations).map(([key, value]) => [key.toLowerCase(), value]));
+  const byLocale = new Map(
+    Object.entries(translations).map(([key, value]) => [
+      key.toLowerCase(),
+      value,
+    ]),
+  );
   const wanted = locale?.toLowerCase();
-  const translation = (wanted && (byLocale.get(wanted) ?? byLocale.get(wanted.split('-')[0]))) || {};
+  const translation =
+    (wanted && (byLocale.get(wanted) ?? byLocale.get(wanted.split("-")[0]))) ||
+    {};
   return { ...DEFAULT_LABELS, ...translation, ...override };
 }

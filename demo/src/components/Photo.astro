@@ -1,0 +1,171 @@
+---
+import { Image, getImage } from "astro:assets";
+import { photos, type PhotoName } from "@data/photos";
+
+interface Props {
+  name: Exclude<PhotoName, "blueMarble">;
+  /**
+   * Widest the image is shown, in CSS px. With `height`, Astro crops the file to that shape, so it
+   * carries no pixels the page hides; the zoom always gets the whole photo
+   */
+  width: number;
+  height?: number;
+  /** How wide the image is shown at each screen width, so the browser picks the smallest file */
+  sizes: string;
+  /** Files of the srcset; by default half, 1x, 1.5x and 2x of `width` */
+  widths?: number[];
+  /**
+   * Art direction: other crops for other screens, as the <source> elements of a <picture>. The
+   * first whose media matches wins; `width`, `height` and `sizes` above are for the other screens
+   */
+  sources?: { media: string; width: number; height?: number; sizes: string }[];
+  /** Show the title and mission under the image */
+  caption?: boolean;
+  /** Fill the box it sits in, cropping the image as object-fit: cover does */
+  fill?: boolean;
+  loading?: "eager" | "lazy";
+  fetchpriority?: "high" | "low" | "auto";
+  class?: string;
+}
+
+const {
+  name,
+  width,
+  height,
+  sizes,
+  caption = true,
+  fill = false,
+  loading = "lazy",
+  fetchpriority,
+  sources = [],
+  class: className,
+} = Astro.props;
+const photo = photos[name];
+
+// Half, 1x, 1.5x and 2x of the width it is shown at, never wider than the downloaded file: Astro
+// does not upscale
+const srcsetWidths = (shown: number) => [
+  ...new Set(
+    [0.5, 1, 1.5, 2].map((scale) =>
+      Math.min(Math.round(shown * scale), photo.src.width),
+    ),
+  ),
+];
+const widths = Astro.props.widths ?? srcsetWidths(width);
+
+// The other crops, cut by Astro as the <Image> is
+const artSources = await Promise.all(
+  sources.map(async ({ media, width, height, sizes }) => {
+    const image = await getImage({
+      src: photo.src,
+      width,
+      height,
+      widths: srcsetWidths(width),
+      sizes,
+      format: "avif",
+    });
+    return {
+      media,
+      sizes,
+      srcset: image.srcSet.attribute,
+      width,
+      height:
+        height ?? Math.round((width * photo.src.height) / photo.src.width),
+    };
+  }),
+);
+
+// Full-size version for the zoom: the whole downloaded file (up to 2560 px)
+const full = await getImage({
+  src: photo.src,
+  width: photo.src.width,
+  format: "avif",
+  quality: "high",
+});
+const meta = [photo.mission, photo.year].filter(Boolean).join(" · ");
+---
+
+<figure class:list={["photo", { fill }, className]}>
+  <picture>
+    {artSources.map(({ media, sizes, srcset, width, height }) => (
+      <source
+        media={media}
+        srcset={srcset}
+        sizes={sizes}
+        width={width}
+        height={height}
+        type="image/avif"
+      />
+    ))}
+    <Image
+      src={photo.src}
+      alt={photo.alt}
+      width={width}
+      height={height}
+      widths={widths}
+      sizes={sizes}
+      format="avif"
+      loading={loading}
+      fetchpriority={fetchpriority}
+      data-image-zoom-src={full.src}
+      data-image-zoom-caption={`${photo.caption} — ${meta}`}
+    />
+  </picture>
+  {caption && (
+    <figcaption>
+      <span class="title">{photo.caption}</span>
+      <span class="label">{meta}</span>
+    </figcaption>
+  )}
+</figure>
+
+<style>
+  @layer components {
+    /* The <picture> only picks the file: the image lays out as a child of the figure or the link */
+    picture {
+      display: contents;
+    }
+
+    /* A page can round the corners differently with --photo-radius */
+    .photo {
+      display: grid;
+      align-content: start;
+      gap: 0.5rem;
+
+      :global(img) {
+        inline-size: 100%;
+        border-radius: var(--photo-radius, var(--radius));
+      }
+    }
+
+    /* A block, not a grid: its height passes down to the zoom link and the image */
+    .fill {
+      display: block;
+      block-size: 100%;
+      min-block-size: 0;
+
+      :global(a) {
+        display: block;
+        block-size: 100%;
+      }
+
+      :global(img) {
+        block-size: 100%;
+        object-fit: cover;
+      }
+    }
+
+    figcaption {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.125rem 0.625rem;
+      font-size: 0.875rem;
+      line-height: 1.35;
+    }
+
+    .title {
+      font-weight: 600;
+    }
+  }
+</style>

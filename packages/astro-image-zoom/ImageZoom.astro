@@ -4,20 +4,34 @@
  * Medium-style zoom overlay with accessibility and performance features
  */
 
-// Global stylesheet: selectors are prefixed and live in @layer astro-image-zoom
-import "./zoom.css";
-import { wrapImages } from "./wrapImages";
-import { DEFAULT_LABELS, OVERLAY_LABELS, resolveLabels, type ImageZoomLabels } from "./labels";
+import { parseIgnore, wrapImages } from "./wrapImages";
+import {
+  DEFAULT_LABELS,
+  OVERLAY_LABELS,
+  resolveLabels,
+  type ImageZoomLabels,
+} from "./labels";
 import config from "./config.js";
 
 export interface Props {
   /**
-   * Theme configuration
+   * Colors of the overlay; each one sets a --zoom-* variable and wins over it
    */
   theme?: {
+    /** Overlay background (--zoom-bg) */
     backgroundColor?: string;
+    /** Close icon (--zoom-close-color) */
     closeButtonColor?: string;
+    /** Close button (--zoom-close-bg) */
+    closeButtonBackground?: string;
+    /** Arrows and counter (--zoom-nav-color) */
     navigationColor?: string;
+    /** Navigation bar, or each arrow in the sides layout (--zoom-nav-bg) */
+    navigationBackground?: string;
+    /** Caption text (--zoom-caption-color) */
+    captionColor?: string;
+    /** Caption box (--zoom-caption-bg) */
+    captionBackground?: string;
   };
 
   /**
@@ -25,11 +39,6 @@ export interface Props {
    * --zoom-animation-duration CSS variable (300ms by default)
    */
   animationDuration?: number;
-
-  /**
-   * Enable keyboard navigation
-   */
-  keyboardNavigation?: boolean;
 
   /**
    * Close on backdrop click
@@ -84,6 +93,12 @@ export interface Props {
   labels?: Partial<ImageZoomLabels>;
 
   /**
+   * Images left out of the zoom and the gallery: simple selectors separated by commas, matched
+   * against each image and the elements around it, such as ".logo, .avatar, [alt='']"
+   */
+  ignore?: string;
+
+  /**
    * Custom CSS class for the zoom container
    */
   class?: string;
@@ -92,7 +107,6 @@ export interface Props {
 const {
   theme = {},
   animationDuration,
-  keyboardNavigation = true,
   closeOnBackdrop = true,
   closeOnImage = true,
   closeOnScroll = true,
@@ -103,6 +117,7 @@ const {
   captionPosition = "bottom",
   locale = Astro.currentLocale,
   labels: labelOverrides = {},
+  ignore = "",
   class: className = "",
 } = Astro.props;
 
@@ -111,8 +126,13 @@ const {
 const variables = Object.entries({
   "--zoom-bg": theme.backgroundColor,
   "--zoom-close-color": theme.closeButtonColor,
+  "--zoom-close-bg": theme.closeButtonBackground,
   "--zoom-nav-color": theme.navigationColor,
-  "--zoom-animation-duration": animationDuration === undefined ? undefined : `${animationDuration}ms`,
+  "--zoom-nav-bg": theme.navigationBackground,
+  "--zoom-caption-color": theme.captionColor,
+  "--zoom-caption-bg": theme.captionBackground,
+  "--zoom-animation-duration":
+    animationDuration === undefined ? undefined : `${animationDuration}ms`,
 })
   .filter(([, value]) => value)
   .map(([name, value]) => `${name}: ${value}`)
@@ -125,31 +145,40 @@ const wrapperClasses = ["astro-image-zoom-wrapper", className]
 // defaults are already in the overlay
 const labels = resolveLabels(config.labels, locale, labelOverrides);
 const labelAttributes = Object.fromEntries(
-  OVERLAY_LABELS.filter((name) => labels[name] !== DEFAULT_LABELS[name]).map((name) => [
-    `data-label-${name}`,
-    labels[name],
-  ]),
+  OVERLAY_LABELS.filter((name) => labels[name] !== DEFAULT_LABELS[name]).map(
+    (name) => [`data-image-zoom-label-${name}`, labels[name]],
+  ),
 );
 
 // Wrap the slot's images in accessible links
-const slotContent = wrapImages(await Astro.slots.render("default"), labels);
+const slotContent = wrapImages(
+  await Astro.slots.render("default"),
+  parseIgnore(ignore),
+  labels,
+);
+
+// The element only groups its content and must not add a box. Its own declarative shadow root says
+// so, with no stylesheet on the page: any rule of the site, layered or not, wins over :host. A string,
+// since Astro would take <slot> for its own
+const shadowRoot =
+  '<template shadowrootmode="open"><style>:host { display: contents; }</style><slot></slot></template>';
 ---
 
 <astro-image-zoom
   class={wrapperClasses}
-  data-keyboard={keyboardNavigation ? "true" : "false"}
-  data-close-backdrop={closeOnBackdrop ? "true" : "false"}
-  data-close-image={closeOnImage ? "true" : "false"}
-  data-close-scroll={closeOnScroll ? "true" : "false"}
-  data-show-nav={showNavigation ? "true" : "false"}
-  data-navigation-layout={navigationLayout}
-  data-show-counter={showCounter ? "true" : "false"}
-  data-show-caption={showCaption ? "true" : "false"}
-  data-caption-position={captionPosition}
+  data-image-zoom-close-backdrop={closeOnBackdrop ? "true" : "false"}
+  data-image-zoom-close-image={closeOnImage ? "true" : "false"}
+  data-image-zoom-close-scroll={closeOnScroll ? "true" : "false"}
+  data-image-zoom-show-nav={showNavigation ? "true" : "false"}
+  data-image-zoom-navigation-layout={navigationLayout}
+  data-image-zoom-show-counter={showCounter ? "true" : "false"}
+  data-image-zoom-show-caption={showCaption ? "true" : "false"}
+  data-image-zoom-caption-position={captionPosition}
+  data-image-zoom-ignore-selector={ignore.trim() || undefined}
   style={variables || undefined}
   {...labelAttributes}
 >
-  <Fragment set:html={slotContent} />
+  <Fragment set:html={shadowRoot + slotContent} />
 </astro-image-zoom>
 
 <script>
@@ -161,6 +190,19 @@ const slotContent = wrapImages(await Astro.slots.render("default"), labels);
     private zoom: Zoom | null = null;
 
     connectedCallback() {
+      // The browser attaches the declarative shadow root while parsing, but not in pages parsed
+      // with DOMParser, as the client router of Astro does: attach it from the template then
+      if (!this.shadowRoot) {
+        const template = this.querySelector<HTMLTemplateElement>(
+          ":scope > template[shadowrootmode]",
+        );
+        if (template) {
+          this.attachShadow({ mode: "open" }).append(
+            template.content.cloneNode(true),
+          );
+          template.remove();
+        }
+      }
       this.zoom = new Zoom(this);
     }
 

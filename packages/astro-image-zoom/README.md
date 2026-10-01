@@ -1,7 +1,11 @@
 # astro-image-zoom
 
+[![npm version](https://img.shields.io/npm/v/astro-image-zoom/beta)](https://www.npmjs.com/package/astro-image-zoom)
+
 Medium-style image zoom for Astro: a click grows each image from its place on the page to fill the
 screen, and the images of a gallery become a carousel you can swipe.
+
+**[Live demo and docs](https://antoniohg.com/astro-image-zoom/)**
 
 > **Beta.** The API may still change before 1.0. Feedback and bug reports are welcome in the
 > [issues](https://github.com/antoniohg/astro-image-zoom/issues).
@@ -9,7 +13,9 @@ screen, and the images of a gallery become a carousel you can swipe.
 ## Features
 
 - **Zoom from the page**: FLIP animations with CSS transforms and `clip-path`, from the thumbnail to
-  the full image and back, crops included.
+  the full image and back, crops included: the `object-fit` and `object-position` of the thumbnail,
+  and thumbnail files cropped to another shape, such as Astro's `<Image width height>`. A file
+  stretched to another shape with `object-fit: fill` animates as with `cover`.
 - **Accessible**: a native modal `<dialog>` that traps and restores focus, keyboard navigation,
   labelled controls, reduced motion and forced colors.
 - **Galleries**: a native scroll-snap carousel with touch and touchpad swipes, arrow keys, buttons and
@@ -50,7 +56,7 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 
 <ImageZoom>
   <!-- Optimized Astro image -->
-  <Image src={photo} alt="Mountain landscape at sunset" width={400} data-zoom-src={fullSize.src} />
+  <Image src={photo} alt="Mountain landscape at sunset" width={400} data-image-zoom-src={fullSize.src} />
 
   <!-- Plain image from public/ -->
   <img src="/photos/city.jpg" alt="City skyline at night" />
@@ -62,17 +68,21 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 
 ### Which image the zoom shows
 
-The zoom opens, in this order:
+- **An image on its own** opens the URL in its `data-image-zoom-src`, or its own `src` without it. Plain
+  images work out of the box: `<img src="/photo.jpg">` opens that same file, at full size.
+- **An image inside a link with `data-image-zoom`** (`<a href="…" data-image-zoom>`) opens the `href` of the
+  link. Put `data-image-zoom-caption` (or `title`) on the link: the image inside gives only its `alt`, and
+  its own `data-image-zoom-src` and `data-image-zoom-caption` are ignored. See
+  [Gallery with Links](#gallery-with-links).
+- **An image inside any other link** is left alone: the link keeps working as a link (a card, a
+  logo) and the image is not part of the gallery. So are the images of other elements whose clicks
+  already do something (a `<button>`, the `<label>` of a form control, the `<summary>` of a
+  `<details>`) and image maps (`<img usemap>`).
 
-1. The URL in `data-zoom-src`, if the image has it.
-2. The `href` of a link around the image (`<a href="…" data-zoom>`).
-3. The image's own `src`.
-
-Plain images work out of the box: `<img src="/photo.jpg">` opens that same file, at full size.
-
-> **Warning: resized images look blurry when zoomed.** If the image on the page is a smaller
-> version (a thumbnail, or Astro's `<Image width={400}>`, which generates a 400 px file), the zoom
-> enlarges that small file. Add `data-zoom-src` with the full-size version, as shown in
+> **Resized images barely grow when zoomed.** The zoom shows each image at most at its real size,
+> never enlarged. If the image on the page is a smaller version (a thumbnail, or Astro's
+> `<Image width={400}>`, which generates a 400 px file), the zoom opens that small file and it
+> stays small. Add `data-image-zoom-src` with the full-size version, as shown in
 > [High-Resolution Images](#high-resolution-images) and
 > [Using with Astro Assets](#using-with-astro-assets-optimized-images).
 
@@ -83,12 +93,12 @@ Plain images work out of the box: `<img src="/photo.jpg">` opens that same file,
   <img
     src="/image1.jpg"
     alt="Beautiful landscape"
-    data-zoom-caption="Sunset over the mountains"
+    data-image-zoom-caption="Sunset over the mountains"
   />
   <img
     src="/image2.jpg"
     alt="City skyline"
-    data-zoom-caption="Downtown at night"
+    data-image-zoom-caption="Downtown at night"
   />
 </ImageZoom>
 ```
@@ -97,24 +107,61 @@ Plain images work out of the box: `<img src="/photo.jpg">` opens that same file,
 
 ```astro
 <ImageZoom>
-  <a href="/full-res-image1.jpg" data-zoom>
+  <a href="/full-res-image1.jpg" data-image-zoom>
     <img src="/thumbnail1.jpg" alt="Thumbnail 1" />
   </a>
-  <a href="/full-res-image2.jpg" data-zoom>
+  <a href="/full-res-image2.jpg" data-image-zoom>
     <img src="/thumbnail2.jpg" alt="Thumbnail 2" />
   </a>
 </ImageZoom>
 ```
 
+The zoom grows from the image inside the link, so a `data-image-zoom` link without one stays a plain link.
+
+### Leaving Images Out
+
+Logos, icons, avatars and decorative images inside a wrapped article should not zoom. List them in
+the `ignore` prop: an ignored image is not wrapped in a link, does not open, and does not count in
+the gallery.
+
+```astro
+<ImageZoom ignore=".logo, .author, [alt='']">
+  <img src="/photo.jpg" alt="Harbor at dawn" />
+  <img class="logo" src="/logo.svg" alt="Harbor Co." />
+  <img src="/divider.svg" alt="" />
+  <aside class="author">
+    <img src="/avatar.jpg" alt="The author" />
+  </aside>
+</ImageZoom>
+```
+
+Each selector is checked against the image and every element around it inside `<ImageZoom>`, so
+`.author` leaves out every image in the aside. `[alt='']` leaves out the images marked as
+decorative, which screen readers skip too.
+
+The images are wrapped on the server, without a DOM, so `ignore` takes simple selectors only: a tag
+name, `.classes`, `#ids` and `[attributes]`, with or without `=value`, combined as in
+`img.logo[alt='']`. Spaces, combinators (`article img`, `>`) and pseudo-classes fail the build with
+an error that names the selector.
+
+For a single image, `data-image-zoom-ignore` on the image or on an element around it does the same without
+the prop:
+
+```astro
+<img src="/signature.svg" alt="Signature" data-image-zoom-ignore />
+```
+
+A link with `data-image-zoom` inside an ignored element stays a plain link.
+
 ### High-Resolution Images
 
-Use `data-zoom-src` to load higher resolution images in the zoom:
+Use `data-image-zoom-src` to load higher resolution images in the zoom:
 
 ```astro
 <ImageZoom>
   <img
     src="/thumbnail.jpg"
-    data-zoom-src="/full-resolution.jpg"
+    data-image-zoom-src="/full-resolution.jpg"
     alt="High quality image"
   />
 </ImageZoom>
@@ -144,13 +191,12 @@ const optimizedImage = await getImage({
     src={myImage}
     alt="A beautiful optimized image"
     width={600}
-    data-zoom-src={optimizedImage.src}
+    data-image-zoom-src={optimizedImage.src}
   />
 </ImageZoom>
 ```
 
-> **Note:** Do not pass the `Image` component directly to `data-zoom-src` or call it as a function. The zoom script expects a string URL for the `data-zoom-src` attribute.
-
+> **Note:** Do not pass the `Image` component directly to `data-image-zoom-src` or call it as a function. The zoom script expects a string URL for the `data-image-zoom-src` attribute.
 
 ## Configuration
 
@@ -164,7 +210,6 @@ const optimizedImage = await getImage({
     navigationColor: '#ffffff'
   }}
   animationDuration={300}
-  keyboardNavigation={true}
   closeOnBackdrop={true}
   showNavigation={true}
   class="my-custom-class"
@@ -173,25 +218,29 @@ const optimizedImage = await getImage({
 
 #### Props Reference
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `theme` | `object` | `{}` | Theme configuration object |
-| `theme.backgroundColor` | `string` | light or dark, following the page | Overlay background color (`--zoom-bg`) |
-| `theme.closeButtonColor` | `string` | light or dark, following the page | Close button color (`--zoom-close-color`) |
-| `theme.navigationColor` | `string` | light or dark, following the page | Arrows and counter color (`--zoom-nav-color`) |
-| `animationDuration` | `number` | — | Animation duration in milliseconds; overrides `--zoom-animation-duration` (300ms by default) |
-| `keyboardNavigation` | `boolean` | `true` | Enable keyboard shortcuts |
-| `closeOnBackdrop` | `boolean` | `true` | Close when clicking backdrop |
-| `closeOnImage` | `boolean` | `true` | Close when clicking the zoomed image |
-| `closeOnScroll` | `boolean` | `true` | Close when scrolling/wheeling |
-| `showNavigation` | `boolean` | `true` | Show navigation arrows |
-| `navigationLayout` | `'bar' \| 'sides'` | `'bar'` | Arrows and counter in a bar at the bottom, or arrows at the sides |
-| `showCounter` | `boolean` | `true` | Show the position in the gallery, such as "3 / 8" |
-| `showCaption` | `boolean` | `true` | Show the caption of the zoomed image |
-| `captionPosition` | `'bottom' \| 'top'` | `'bottom'` | Where the caption sits on the screen |
-| `locale` | `string` | `Astro.currentLocale` | Language of the page, to pick the [translation of the labels](#translating-the-labels) |
-| `labels` | `Partial<ImageZoomLabels>` | English | Labels for this gallery, over the translation of the locale |
-| `class` | `string` | `''` | Custom CSS class |
+| Prop                          | Type                       | Default                           | Description                                                                                                                                |
+| ----------------------------- | -------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `theme`                       | `object`                   | `{}`                              | Theme configuration object                                                                                                                 |
+| `theme.backgroundColor`       | `string`                   | light or dark, following the page | Overlay background color (`--zoom-bg`)                                                                                                     |
+| `theme.closeButtonColor`      | `string`                   | light or dark, following the page | Close icon color (`--zoom-close-color`)                                                                                                    |
+| `theme.closeButtonBackground` | `string`                   | translucent, following the page   | Close button background (`--zoom-close-bg`)                                                                                                |
+| `theme.navigationColor`       | `string`                   | light or dark, following the page | Arrows and counter color (`--zoom-nav-color`)                                                                                              |
+| `theme.navigationBackground`  | `string`                   | translucent, following the page   | Navigation bar background, or each arrow in the sides layout (`--zoom-nav-bg`)                                                             |
+| `theme.captionColor`          | `string`                   | light or dark, following the page | Caption text color (`--zoom-caption-color`)                                                                                                |
+| `theme.captionBackground`     | `string`                   | translucent, following the page   | Caption box background (`--zoom-caption-bg`)                                                                                               |
+| `animationDuration`           | `number`                   | —                                 | Animation duration in milliseconds; overrides `--zoom-animation-duration` (300ms by default)                                               |
+| `closeOnBackdrop`             | `boolean`                  | `true`                            | Close when clicking backdrop                                                                                                               |
+| `closeOnImage`                | `boolean`                  | `true`                            | Close when clicking the zoomed image                                                                                                       |
+| `closeOnScroll`               | `boolean`                  | `true`                            | Close when scrolling/wheeling                                                                                                              |
+| `showNavigation`              | `boolean`                  | `true`                            | Show navigation arrows                                                                                                                     |
+| `navigationLayout`            | `'bar' \| 'sides'`         | `'bar'`                           | Arrows and counter in a bar at the bottom, or arrows at the sides                                                                          |
+| `showCounter`                 | `boolean`                  | `true`                            | Show the position in the gallery, such as "3 / 8"                                                                                          |
+| `showCaption`                 | `boolean`                  | `true`                            | Show the caption of the zoomed image                                                                                                       |
+| `captionPosition`             | `'bottom' \| 'top'`        | `'bottom'`                        | Where the caption sits on the screen                                                                                                       |
+| `locale`                      | `string`                   | `Astro.currentLocale`             | Language of the page, to pick the [translation of the labels](#translating-the-labels)                                                     |
+| `labels`                      | `Partial<ImageZoomLabels>` | English                           | Labels for this gallery, over the translation of the locale                                                                                |
+| `ignore`                      | `string`                   | `''`                              | Images left out of the zoom: simple selectors separated by commas, such as `".logo, [alt='']"` ([Leaving Images Out](#leaving-images-out)) |
+| `class`                       | `string`                   | `''`                              | Custom CSS class                                                                                                                           |
 
 ### Translating the labels
 
@@ -227,14 +276,14 @@ Each page takes the labels of its locale, `Astro.currentLocale` (Astro's i18n ro
 locale falls back to its language (`es-MX` reads `es`), and what is not translated stays in
 English. The integration is optional: without it everything works in English.
 
-| Key | Default | Names |
-| --- | --- | --- |
-| `overlay` | `Image zoom overlay` | The dialog |
-| `close` | `Close zoom overlay` | The close button |
-| `images` | `Images` | The group of images |
-| `previous` | `Previous image` | The previous image button |
-| `next` | `Next image` | The next image button |
-| `enlarge` | `Enlarge image` | The link around an image with no alt text |
+| Key            | Default                | Names                                                           |
+| -------------- | ---------------------- | --------------------------------------------------------------- |
+| `overlay`      | `Image zoom overlay`   | The dialog                                                      |
+| `close`        | `Close zoom overlay`   | The close button                                                |
+| `images`       | `Images`               | The group of images                                             |
+| `previous`     | `Previous image`       | The previous image button                                       |
+| `next`         | `Next image`           | The next image button                                           |
+| `enlarge`      | `Enlarge image`        | The link around an image with no alt text                       |
 | `enlargeNamed` | `Enlarge image: {alt}` | The link around an image; `{alt}` is replaced with its alt text |
 
 Two props of `<ImageZoom>` adjust one gallery:
@@ -266,18 +315,14 @@ You can override the default styles using CSS variables:
   /* Layout */
   --zoom-padding: 0; /* space between the zoomed image and the screen edges */
   --zoom-image-radius: 0; /* corners of the zoomed image */
-  --zoom-button-size: 44px; /* arrows and close button */
+  --zoom-button-size: 40px; /* arrows and close button; 36px on phones */
   --zoom-button-radius: 999px; /* shape of the buttons and the navigation bar */
-  --zoom-controls-offset: 20px; /* distance from the controls and the caption to the edges */
-  --zoom-caption-max-width: 70%; /* 90% on phones */
+  --zoom-controls-offset: 16px; /* distance from the controls and the caption to the edges; 12px on phones */
+  --zoom-caption-max-width: 70%; /* 100% on phones */
   --zoom-caption-font: inherit; /* the font of your site */
-  --zoom-caption-font-size: 13px;
+  --zoom-caption-font-size: 13px; /* 12px on phones */
   --zoom-color-scheme: light dark; /* set "dark" or "light" to follow your own theme toggle */
-  --zoom-caption-radius: 6px;
-
-  /* Focus ring drawn on the image when its link has keyboard focus */
-  --zoom-focus-outline: 3px solid rebeccapurple; /* default: 2px solid currentColor */
-  --zoom-focus-offset: 3px; /* use a negative value if a parent with overflow: hidden clips it */
+  --zoom-caption-radius: 10px;
 }
 ```
 
@@ -305,42 +350,61 @@ astro-image-zoom-overlay::part(caption) {
 }
 ```
 
-| Part | Element |
-|------|---------|
-| `overlay` | The `<dialog>` |
-| `backdrop` | The background behind the image |
-| `track` | The carousel that holds the slides |
-| `slide`, `image` | Each slide of the carousel and its image |
-| `caption` | The caption |
-| `close` | The close button |
-| `toolbar` | The navigation bar |
-| `nav`, `prev`, `next` | The arrows (`nav` matches both) |
-| `counter` | The position in the gallery |
+| Part                  | Element                                  |
+| --------------------- | ---------------------------------------- |
+| `overlay`             | The `<dialog>`                           |
+| `backdrop`            | The background behind the image          |
+| `track`               | The carousel that holds the slides       |
+| `slide`, `image`      | Each slide of the carousel and its image |
+| `caption`             | The caption                              |
+| `close`               | The close button                         |
+| `toolbar`             | The navigation bar                       |
+| `nav`, `prev`, `next` | The arrows (`nav` matches both)          |
+| `counter`             | The position in the gallery              |
 
-The component loads its own stylesheet, so you don't need to import `zoom.css` yourself. Import
-`astro-image-zoom/zoom.css` directly only if you use `ZoomClass` without the `<ImageZoom>` component.
+#### Your page
 
-#### Cascade layer
-
-The styles for the images on your page (the zoom cursor and the focus ring) live in the
-`astro-image-zoom` [cascade layer](https://developer.mozilla.org/en-US/docs/Web/CSS/@layer).
-Any unlayered CSS on your page overrides them, with no specificity tricks or `!important`.
-
-If your site uses its own layers, add `astro-image-zoom` to your layer order so you decide what wins.
-Declare the order before any stylesheet loads (for example, in an inline `<style>` at the top of
-`<head>`), because the first time a layer appears fixes its position:
+How your images look on the page is up to your site: the component doesn't style them, not even
+their focus ring. It only wraps each image in a link, so it opens with the keyboard and, without
+JavaScript, links to the full-size image:
 
 ```html
-<style is:inline>
-  @layer reset, base, astro-image-zoom, components;
-</style>
+<a href="/full-size.jpg" data-image-zoom-generated aria-label="Enlarge image: A red car">
+  <img src="/photo.jpg" alt="A red car" />
+</a>
 ```
 
-With this order your reset can't break the zoom cursor or the focus ring, and your `components`
-layer can still customize them. Class names (`.astro-image-zoom-*`) are prefixed, so the styles don't
-clash with the rest of your site.
+The link is inline and unstyled, so it never changes your layout, and it gets your site's link
+styles, focus ring included. If your images are `display: block`, the outline of an inline link
+doesn't wrap them: depending on the browser it is invisible or spans the whole line. Draw your
+focus ring on the image instead, in your own style:
 
-To style the images of one gallery on the page, pass a class:
+```css
+a[data-image-zoom-generated]:focus-visible {
+  outline: none;
+}
+
+a[data-image-zoom-generated]:focus-visible img {
+  outline: 2px solid green; /* your focus ring */
+  outline-offset: 3px; /* negative if a parent with overflow: hidden clips it */
+}
+```
+
+A zoom cursor, if you want one, is also yours to add:
+
+```css
+a[data-image-zoom-generated] img {
+  cursor: zoom-in;
+}
+```
+
+The component adds no stylesheet to your page. `<astro-image-zoom>` groups the images without
+adding a box of its own (`display: contents`), from its own
+[declarative shadow root](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html),
+so it works without JavaScript and any rule of your site wins over it, cascade layers included.
+
+To style one gallery, pass a class. It can style the images, or lay out the gallery on the element
+itself:
 
 ```astro
 <ImageZoom class="custom-zoom">
@@ -349,6 +413,11 @@ To style the images of one gallery on the page, pass a class:
 
 <style>
   /* Global: the wrapper is rendered by the component, outside the scope of your page */
+  :global(.custom-zoom) {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
   :global(.custom-zoom img) {
     border-radius: 8px;
   }
@@ -373,7 +442,8 @@ To style the images of one gallery on the page, pass a class:
 
 - A native modal `<dialog>`: focus moves to the close button, stays inside while it is open and
   returns to the image when it closes.
-- Each image becomes a link, reachable with the keyboard, with a visible focus ring.
+- Each image becomes a link, reachable with the keyboard. Its focus ring is the one of your site;
+  see [Your page](#your-page) to draw it on the image.
 - Labelled buttons; the caption is announced when the image changes.
 - Reduced motion turns the animations off; forced colors (Windows high contrast) keep the controls
   visible.
@@ -382,6 +452,11 @@ To style the images of one gallery on the page, pass a class:
 
 - The page loads the images you give it; the full-size version loads only when the zoom opens, and
   the neighbors of a gallery are preloaded.
+- The zoom does not wait for the full-size file: it opens as soon as the browser knows its size,
+  with the thumbnail stretched behind it, and sharpens when the file has loaded. A thumbnail file
+  with other proportions (cropped when the site was built, or a different picture) would look
+  distorted, so then the zoom waits for the file, with a spinner if it takes a while. Thumbnails
+  cropped with CSS (`object-fit: cover`) are the whole picture, so they work.
 - Animations are CSS only (transforms, `clip-path` and opacity); the script measures positions and
   waits for them to end.
 - One overlay shared by every gallery on the page, and one delegated click listener per gallery.
@@ -417,24 +492,92 @@ To style the images of one gallery on the page, pass a class:
 </ImageZoom>
 ```
 
-### Programmatic Control (Advanced)
+### Events
+
+Each `<astro-image-zoom>` dispatches three events, which bubble, so one listener on the document
+hears every gallery on the page:
+
+| Event                     | When                                                       |
+| ------------------------- | ---------------------------------------------------------- |
+| `astro-image-zoom:open`   | A zoom opens (a click, Enter on a link)                    |
+| `astro-image-zoom:change` | The gallery moves to another image (arrows, keys, a swipe) |
+| `astro-image-zoom:close`  | The zoom closes, however it closes                         |
+
+Their `detail` describes the image on screen:
+
+| Field     | Type          | Description                                  |
+| --------- | ------------- | -------------------------------------------- |
+| `index`   | `number`      | Position of the image in its gallery, from 0 |
+| `total`   | `number`      | Number of images in the gallery              |
+| `src`     | `string`      | URL of the full-size image the zoom shows    |
+| `alt`     | `string`      | Alt text of the image                        |
+| `caption` | `string`      | Caption, or an empty string                  |
+| `link`    | `HTMLElement` | The link on the page that opens this image   |
 
 ```astro
-<ImageZoom class="my-gallery" />
+<script>
+  document.addEventListener('astro-image-zoom:open', (event) => {
+    const { index, total, src } = event.detail;
+    console.log(`Opened ${index + 1} of ${total}: ${src}`);
+  });
+
+  // Only one gallery: listen on its element instead
+  document.querySelector('.portfolio')?.addEventListener('astro-image-zoom:change', (event) => {
+    console.log('Now showing', event.detail.caption);
+  });
+</script>
+```
+
+`open` does not also dispatch `change`: each event means one thing, so counting `change` counts the
+moves between images. To follow whatever image is on screen, listen to both with one handler:
+
+```js
+const sync = (event) => {
+  history.replaceState(null, '', `#photo-${event.detail.index + 1}`);
+};
+document.addEventListener('astro-image-zoom:open', sync);
+document.addEventListener('astro-image-zoom:change', sync);
+```
+
+The events report, they do not decide: `preventDefault()` does not stop an opening or a close.
+`open` comes when the zoom starts to open, before the image has loaded, and every `open` gets its
+`close`, also when the zoom closes while the image is still loading.
+
+In TypeScript, the events are typed on elements, the document and the window once the package's
+types are in the project. Using `<ImageZoom>` is not enough: add one line to a declaration file,
+such as `src/env.d.ts`, and every script gets them:
+
+```ts
+import type {} from 'astro-image-zoom';
+```
+
+The detail has its own type too: `import type { ZoomEventDetail } from 'astro-image-zoom'`.
+
+### Programmatic Control (Advanced)
+
+`<ImageZoom>` sets up its own zoom. For markup it does not render, such as HTML from a CMS, create
+one with `ZoomClass` on the element around the links:
+
+```astro
+<div class="my-gallery">
+  <a href="/large-1.jpg" data-image-zoom><img src="/small-1.jpg" alt="Harbor at dawn" /></a>
+  <a href="/large-2.jpg" data-image-zoom><img src="/small-2.jpg" alt="Harbor at noon" /></a>
+</div>
 
 <script>
   import { ZoomClass } from 'astro-image-zoom';
 
-  const wrapper = document.querySelector('.my-gallery');
-  const zoom = new ZoomClass(wrapper);
+  const zoom = new ZoomClass(document.querySelector('.my-gallery'));
 
   // Later, if needed:
   // zoom.destroy();
 </script>
 ```
 
-`ZoomClass` reads the options from the `data-*` attributes that `<ImageZoom>` renders; the theme and
-the duration come from the `--zoom-*` variables.
+`ZoomClass` reads the options from the same `data-*` attributes that `<ImageZoom>` renders on its
+element (`data-image-zoom-show-counter="false"`, `data-image-zoom-close-scroll="false"`…); the theme and the duration come
+from the `--zoom-*` variables. Images are not wrapped then, so only links with `data-image-zoom` count, and
+`data-image-zoom-ignore-selector` on the wrapper takes any CSS selector, since the browser matches it.
 
 ## Examples
 
@@ -454,7 +597,7 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
       <img
         src="/trip-photo-1.jpg"
         alt="Mountain landscape"
-        data-zoom-caption="The view from the summit"
+        data-image-zoom-caption="The view from the summit"
       />
       <figcaption>Summit view</figcaption>
     </figure>
@@ -463,7 +606,7 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
       <img
         src="/trip-photo-2.jpg"
         alt="Lake reflection"
-        data-zoom-caption="Perfect morning reflection"
+        data-image-zoom-caption="Perfect morning reflection"
       />
       <figcaption>Lake reflection</figcaption>
     </figure>
@@ -489,9 +632,9 @@ const projects = [
     {projects.map(project => (
       <img
         src={project.thumb}
-        data-zoom-src={project.full}
+        data-image-zoom-src={project.full}
         alt={project.title}
-        data-zoom-caption={project.title}
+        data-image-zoom-caption={project.title}
       />
     ))}
   </div>
