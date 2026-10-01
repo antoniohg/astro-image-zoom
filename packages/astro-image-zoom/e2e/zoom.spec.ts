@@ -211,6 +211,58 @@ test.describe("open and close", () => {
     await expectClosed(page);
   });
 
+  test("stays open when one finger is left on the screen after a pinch", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName !== "chromium",
+      "WebKit on desktop has no Touch constructor to build the touch events",
+    );
+    await openZoom(page, "gallery");
+
+    // Built by hand: a real pinch through the Chrome DevTools Protocol zooms the page in, and then
+    // the page zoom, not the pinch, would keep the zoom open. Here the scale stays at 1
+    const touch = (type: string, points: [number, number][]) =>
+      page.evaluate(
+        ([type, points]) => {
+          const target = document
+            .querySelector("astro-image-zoom-overlay")!
+            .shadowRoot!.querySelector("dialog")!;
+          const touches = points.map(
+            ([clientX, clientY], identifier) =>
+              new Touch({ identifier, target, clientX, clientY }),
+          );
+          target.dispatchEvent(
+            new TouchEvent(type, { touches, bubbles: true, cancelable: true }),
+          );
+        },
+        [type, points] as const,
+      );
+
+    // Two fingers pinch, then one lifts and the other drags down
+    await touch("touchstart", [
+      [300, 300],
+      [400, 400],
+    ]);
+    await touch("touchmove", [
+      [280, 280],
+      [420, 420],
+    ]);
+    for (const y of [330, 380, 430]) await touch("touchmove", [[280, y]]);
+    await touch("touchend", []);
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => window.visualViewport!.scale)).toBe(1);
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    await expect(counter(page)).toHaveText("1 / 3");
+
+    // A new gesture with one finger closes again
+    await touch("touchstart", [[320, 200]]);
+    for (const y of [250, 300, 350]) await touch("touchmove", [[320, y]]);
+    await touch("touchend", []);
+    await expectClosed(page);
+  });
+
   test("locks the page scroll, also when the site sets overflow on <html>", async ({
     page,
   }) => {
