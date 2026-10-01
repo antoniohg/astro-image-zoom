@@ -29,7 +29,7 @@ export interface ZoomEventDetail {
   index: number;
   /** Number of images in the gallery */
   total: number;
-  /** URL of the full-size image the zoom shows */
+  /** URL of the image the zoom shows: data-image-zoom-src, or the src of the image */
   src: string;
   alt: string;
   caption: string;

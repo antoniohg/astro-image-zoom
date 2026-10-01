@@ -73,7 +73,8 @@ const options: ExampleData[] = [
   },
   {
     title: "Stays open while scrolling",
-    description: "Scrolling or a vertical swipe doesn't close it.",
+    description:
+      "A wheel, a touchpad scroll or a vertical swipe doesn't close it.",
     code: "<ImageZoom closeOnScroll={false}>",
     icon: MouseScrollIcon,
     names: ["issArrays"],
@@ -220,8 +221,8 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
     <header class="intro">
       <h1>Docs</h1>
       <p class="lead">
-        Everything <code>{`<ImageZoom>`}</code> can do, with a live example for
-        each option. Every image on this page opens.
+        Everything <code>{`<ImageZoom>`}</code> can do, with live examples.
+        Every image on this page opens.
       </p>
     </header>
 
@@ -233,8 +234,8 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
         <InstallCommand id="docs" />
         <p>
           Put <code>{`<ImageZoom>`}</code> around any markup with images. It
-          wraps each one in a link to its full-size file, so without JavaScript
-          the link still opens the image.
+          wraps each one in a link to the file the zoom opens, so without
+          JavaScript the link still opens the image.
         </p>
         <CodeSample
           open
@@ -248,11 +249,12 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
         <div class="note">
           <p>
             <strong>A larger file for the zoom.</strong> The zoom never shows an
-            image bigger than its file. Astro's{" "}
-            <code>{`<Image width={800}>`}</code> generates an 800&nbsp;px file,
-            so point <code>data-image-zoom-src</code> at a bigger version. Plain{" "}
-            <code>{`<img>`}</code> tags don't need it: the zoom opens the same
-            file.
+            image bigger than its file, and without{" "}
+            <code>data-image-zoom-src</code> it opens the image's own{" "}
+            <code>src</code>. When the page shows a smaller version, such as a
+            thumbnail in an <code>{`<img>`}</code> or the 800&nbsp;px file
+            Astro's <code>{`<Image width={800}>`}</code> generates, point{" "}
+            <code>data-image-zoom-src</code> at the full-size one.
           </p>
           <CodeSample
             open
@@ -278,8 +280,9 @@ const fullSize = await getImage({ src: photo, width: photo.width });
           </p>
           <p>
             Prefer <code>{`<Image>`}</code> or <code>{`<Picture>`}</code>: Astro
-            resizes and compresses them, so the page loads light images and the
-            zoom fetches the full size only when it opens. Plain
+            resizes and compresses them, so the page loads light images; with{" "}
+            <code>data-image-zoom-src</code>, the zoom fetches the full size
+            only when it opens. Plain
             <code>{`<img>`}</code> tags work just as well, but they ship
             whatever file you give them.
           </p>
@@ -359,11 +362,14 @@ const fullSize = await getImage({ src: photo, width: photo.width });
         <Section title="Links" id="links" level={3}>
           <p>
             An image inside a link with <code>data-image-zoom</code> opens the
-            link's <code>href</code>. Put the caption on the link: the image
-            inside only gives its alt text. Images inside any other link are
-            left alone, so cards and logos keep working as links.
+            link's <code>href</code>. Put the caption on the link, in{" "}
+            <code>data-image-zoom-caption</code> or <code>title</code>: the
+            image inside only gives its alt text. Images inside any other link,
+            or inside a button, are left alone, so cards and logos keep working
+            as links.
           </p>
           <CodeSample
+            open
             code={`<ImageZoom>
   <a href="/full-size-1.jpg" data-image-zoom data-image-zoom-caption="Harbor at dawn">
     <img src="/thumbnail-1.jpg" alt="Harbor at dawn" />
@@ -374,8 +380,8 @@ const fullSize = await getImage({ src: photo, width: photo.width });
 
         <Section title="Nested markup" id="nested" level={3}>
           <p>
-            Images nested anywhere inside the component zoom too, like in this
-            card.
+            Images at any depth inside the component zoom too, like those of
+            this card.
           </p>
           <ImageZoom>
             <article class="card">
@@ -426,18 +432,18 @@ const fullSize = await getImage({ src: photo, width: photo.width });
   <img class="logo" src="/logo.svg" alt="Harbor Co." />
   <img src="/divider.svg" alt="" />
   <aside class="author"><img src="/avatar.jpg" alt="The author" /></aside>
-</ImageZoom>
-
-<!-- One image, without the prop -->
-<img src="/signature.svg" alt="Signature" data-image-zoom-ignore />`}
+  <!-- One image, without the prop -->
+  <img src="/signature.svg" alt="Signature" data-image-zoom-ignore />
+</ImageZoom>`}
           />
           <p>
             The images are wrapped on the server, without a DOM, so
             <code>ignore</code> takes simple selectors only: a tag name,
             <code>.classes</code>, <code>#ids</code> and
             <code>[attributes]</code>, combined as in
-            <code>img.logo[alt='']</code>. Spaces, combinators and
-            pseudo-classes fail the build with an error that names the selector.
+            <code>img.logo[alt='']</code>. Spaces inside a selector, combinators
+            and pseudo-classes fail the build with an error that names the
+            selector.
           </p>
         </Section>
 
@@ -451,6 +457,7 @@ const fullSize = await getImage({ src: photo, width: photo.width });
             image instead, as this page does, and add a zoom cursor if you like.
           </p>
           <CodeSample
+            open
             lang="css"
             code={`a[data-image-zoom-generated]:focus-visible {
   outline: none;
@@ -538,8 +545,9 @@ a[data-image-zoom-generated] img {
 
         <Section title="Caption" id="caption" level={3}>
           <p>
-            The caption comes from <code>data-image-zoom-caption</code>, and
-            sits at the bottom by default.
+            The caption comes from <code>data-image-zoom-caption</code> (or the{" "}
+            <code>title</code> of a <code>data-image-zoom</code> link), and sits
+            at the bottom by default.
           </p>
           <ul class="examples" role="list">
             {captions.map(({ names, zoom, ...example }) => (
@@ -586,8 +594,10 @@ a[data-image-zoom-generated] img {
 }`}
           />
           <p>
-            The overlay reads the values each time a gallery opens: turning the
-            phone with a photo open keeps them until the next one.
+            The overlay copies your values each time a gallery opens: when a
+            media query changes them, as when the phone turns with a photo open,
+            the new ones apply from the next opening. The overlay's own smaller
+            defaults follow the screen at once.
           </p>
         </Section>
       </Section>
@@ -696,10 +706,10 @@ a[data-image-zoom-generated] img {
       <!-- Labels -->
       <Section title="Labels" id="labels">
         <p>
-          The only texts the component adds are <code>aria-label</code>s, read
-          by screen readers. They are in English; the <code>labels</code> prop
-          translates the ones you set. The caption is your own text, so the
-          component never translates it.
+          Apart from the counter, which is only numbers, the texts the component
+          adds are <code>aria-label</code>s, read by screen readers. They are in
+          English; the <code>labels</code> prop translates the ones you set. The
+          caption is your own text, so the component never translates it.
         </p>
         <CodeSample
           open
@@ -763,10 +773,12 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
       <!-- Programmatic control -->
       <Section title="JavaScript API" id="javascript-api">
         <p>
-          For markup <code>{`<ImageZoom>`}</code> doesn't render, such as HTML
-          from a CMS, create a zoom with <code>ZoomClass</code> on the element
-          around the links. Images aren't wrapped then, so only links with
-          <code>data-image-zoom</code> count.
+          For images outside any <code>{`<ImageZoom>`}</code>, such as markup
+          your scripts add after the page loads, create a zoom with{" "}
+          <code>ZoomClass</code> on the element around the links. Images aren't
+          wrapped then, so only links with <code>data-image-zoom</code> count.
+          Inside an <code>{`<ImageZoom>`}</code> you don't need it: links with{" "}
+          <code>data-image-zoom</code> added later are picked up when clicked.
         </p>
         <CodeSample
           open
@@ -778,8 +790,11 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
 <script>
   import { ZoomClass } from 'astro-image-zoom';
 
-  const zoom = new ZoomClass(document.querySelector('.my-gallery'));
-  // Later, if needed: zoom.destroy();
+  const gallery = document.querySelector<HTMLElement>('.my-gallery');
+  if (gallery) {
+    const zoom = new ZoomClass(gallery);
+    // Later, if needed: zoom.destroy();
+  }
 </script>`}
         />
         <p>

@@ -22,8 +22,8 @@ screen, and the images of a gallery become a carousel you can swipe.
   a counter.
 - **Isolated**: the overlay lives in a shadow root, so the CSS of your site can't break it.
 - **Customizable**: `--zoom-*` CSS variables, per gallery if you want, `::part()` and props.
-- **Light and dark**: follows the color scheme of the page, or the one you set.
-- **No dependencies**: TypeScript and CSS only; without JavaScript, each image links to its full size.
+- **Light and dark**: follows the light or dark preference of the system, or the scheme you set.
+- **No dependencies**: TypeScript and CSS only; without JavaScript, each image links to the file the zoom opens.
 
 ## Installation
 
@@ -34,7 +34,7 @@ pnpm add astro-image-zoom@beta
 
 ## Browser Support
 
-Current browsers: the overlay uses `<dialog>`, shadow DOM, `:has()` and `light-dark()` (Chrome and
+Current browsers: the overlay uses `<dialog>`, shadow DOM and `light-dark()` (Chrome and
 Edge 123, Firefox 120, Safari 17.5 and later). The end-to-end tests run in Chromium, Firefox and
 WebKit on every change; reports from real devices, especially phones and tablets, are welcome.
 
@@ -44,7 +44,7 @@ Wrap your images in `<ImageZoom>`. You can mix Astro's `<Image>` and `<Picture>`
 tags, local or remote.
 
 `<Image>` and `<Picture>` are recommended for performance: Astro resizes and compresses them, so the
-page loads light images and the zoom fetches the full size only when it opens (see
+page loads light images; with `data-image-zoom-src`, the zoom fetches the full size only when it opens (see
 [Which image the zoom shows](#which-image-the-zoom-shows)). Plain `<img>` tags work too, but they ship
 whatever file you give them.
 
@@ -73,7 +73,7 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 ### Which image the zoom shows
 
 - **An image on its own** opens the URL in its `data-image-zoom-src`, or its own `src` without it. Plain
-  images work out of the box: `<img src="/photo.jpg">` opens that same file, at full size.
+  images work out of the box: `<img src="/photo.jpg">` opens that same file.
 - **An image inside a link with `data-image-zoom`** (`<a href="…" data-image-zoom>`) opens the `href` of the
   link. Put `data-image-zoom-caption` (or `title`) on the link: the image inside gives only its `alt`, and
   its own `data-image-zoom-src` and `data-image-zoom-caption` are ignored. See
@@ -192,14 +192,16 @@ decorative, which screen readers skip too.
 
 The images are wrapped on the server, without a DOM, so `ignore` takes simple selectors only: a tag
 name, `.classes`, `#ids` and `[attributes]`, with or without `=value`, combined as in
-`img.logo[alt='']`. Spaces, combinators (`article img`, `>`) and pseudo-classes fail the build with
+`img.logo[alt='']`. Spaces inside a selector, combinators (`article img`, `>`) and pseudo-classes fail the build with
 an error that names the selector.
 
 For a single image, `data-image-zoom-ignore` on the image or on an element around it does the same without
 the prop:
 
 ```astro
-<img src="/signature.svg" alt="Signature" data-image-zoom-ignore />
+<ImageZoom>
+  <img src="/signature.svg" alt="Signature" data-image-zoom-ignore />
+</ImageZoom>
 ```
 
 A link with `data-image-zoom` inside an ignored element stays a plain link.
@@ -208,7 +210,7 @@ A link with `data-image-zoom` inside an ignored element stays a plain link.
 
 How your images look on the page is up to your site: the component doesn't style them, not even
 their focus ring. It only wraps each image in a link, so it opens with the keyboard and, without
-JavaScript, links to the full-size image:
+JavaScript, links to the file the zoom opens:
 
 ```html
 <a href="/full-size.jpg" data-image-zoom-generated aria-label="Enlarge image: A red car">
@@ -270,32 +272,33 @@ itself:
 
 ### Props
 
-| Prop                          | Type                       | Default                           | Description                                                                                                                                |
-| ----------------------------- | -------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `theme`                       | `object`                   | `{}`                              | Theme configuration object                                                                                                                 |
-| `theme.backgroundColor`       | `string`                   | light or dark, following the page | Overlay background color (`--zoom-bg`)                                                                                                     |
-| `theme.closeButtonColor`      | `string`                   | light or dark, following the page | Close icon color (`--zoom-close-color`)                                                                                                    |
-| `theme.closeButtonBackground` | `string`                   | translucent, following the page   | Close button background (`--zoom-close-bg`)                                                                                                |
-| `theme.navigationColor`       | `string`                   | light or dark, following the page | Arrows and counter color (`--zoom-nav-color`)                                                                                              |
-| `theme.navigationBackground`  | `string`                   | translucent, following the page   | Navigation bar background, or each arrow in the sides layout (`--zoom-nav-bg`)                                                             |
-| `theme.captionColor`          | `string`                   | light or dark, following the page | Caption text color (`--zoom-caption-color`)                                                                                                |
-| `theme.captionBackground`     | `string`                   | translucent, following the page   | Caption box background (`--zoom-caption-bg`)                                                                                               |
-| `animationDuration`           | `number`                   | —                                 | Animation duration in milliseconds; overrides `--zoom-animation-duration` (300ms by default)                                               |
-| `closeOnBackdrop`             | `boolean`                  | `true`                            | Close when clicking backdrop                                                                                                               |
-| `closeOnImage`                | `boolean`                  | `true`                            | Close when clicking the zoomed image                                                                                                       |
-| `closeOnScroll`               | `boolean`                  | `true`                            | Close when scrolling/wheeling                                                                                                              |
-| `showNavigation`              | `boolean`                  | `true`                            | Show navigation arrows                                                                                                                     |
-| `navigationLayout`            | `'bar' \| 'sides'`         | `'bar'`                           | Arrows and counter in a bar at the bottom, or arrows at the sides                                                                          |
-| `showCounter`                 | `boolean`                  | `true`                            | Show the position in the gallery, such as "3 / 8"                                                                                          |
-| `showCaption`                 | `boolean`                  | `true`                            | Show the caption of the zoomed image                                                                                                       |
-| `captionPosition`             | `'bottom' \| 'top'`        | `'bottom'`                        | Where the caption sits on the screen                                                                                                       |
-| `labels`                      | `Partial<ImageZoomLabels>` | English                           | Texts read by screen readers ([Translating the Labels](#translating-the-labels))                                                           |
-| `ignore`                      | `string`                   | `''`                              | Images left out of the zoom: simple selectors separated by commas, such as `".logo, [alt='']"` ([Leaving Images Out](#leaving-images-out)) |
-| `class`                       | `string`                   | `''`                              | Custom CSS class                                                                                                                           |
+| Prop                          | Type                       | Default                             | Description                                                                                                                                |
+| ----------------------------- | -------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `theme`                       | `object`                   | `{}`                                | Theme configuration object                                                                                                                 |
+| `theme.backgroundColor`       | `string`                   | light or dark, following the system | Overlay background color (`--zoom-bg`)                                                                                                     |
+| `theme.closeButtonColor`      | `string`                   | light or dark, following the system | Close icon color (`--zoom-close-color`)                                                                                                    |
+| `theme.closeButtonBackground` | `string`                   | translucent, following the system   | Close button background (`--zoom-close-bg`)                                                                                                |
+| `theme.navigationColor`       | `string`                   | light or dark, following the system | Arrows and counter color (`--zoom-nav-color`)                                                                                              |
+| `theme.navigationBackground`  | `string`                   | translucent, following the system   | Navigation bar background, or each arrow in the sides layout (`--zoom-nav-bg`)                                                             |
+| `theme.captionColor`          | `string`                   | light or dark, following the system | Caption text color (`--zoom-caption-color`)                                                                                                |
+| `theme.captionBackground`     | `string`                   | translucent, following the system   | Caption box background (`--zoom-caption-bg`)                                                                                               |
+| `animationDuration`           | `number`                   | —                                   | Animation duration in milliseconds; overrides `--zoom-animation-duration` (300ms by default)                                               |
+| `closeOnBackdrop`             | `boolean`                  | `true`                              | Close when clicking backdrop                                                                                                               |
+| `closeOnImage`                | `boolean`                  | `true`                              | Close when clicking the zoomed image                                                                                                       |
+| `closeOnScroll`               | `boolean`                  | `true`                              | Close on a wheel or touchpad scroll, or a vertical swipe                                                                                   |
+| `showNavigation`              | `boolean`                  | `true`                              | Show the arrows and the counter in galleries; keys and swipes work without them                                                            |
+| `navigationLayout`            | `'bar' \| 'sides'`         | `'bar'`                             | Arrows and counter in a bar at the bottom, or arrows at the sides                                                                          |
+| `showCounter`                 | `boolean`                  | `true`                              | Show the position in the gallery, such as "3 / 8"                                                                                          |
+| `showCaption`                 | `boolean`                  | `true`                              | Show the caption of the zoomed image                                                                                                       |
+| `captionPosition`             | `'bottom' \| 'top'`        | `'bottom'`                          | Where the caption sits on the screen                                                                                                       |
+| `labels`                      | `Partial<ImageZoomLabels>` | English                             | Texts read by screen readers ([Translating the Labels](#translating-the-labels))                                                           |
+| `ignore`                      | `string`                   | `''`                                | Images left out of the zoom: simple selectors separated by commas, such as `".logo, [alt='']"` ([Leaving Images Out](#leaving-images-out)) |
+| `class`                       | `string`                   | `''`                                | Custom CSS class                                                                                                                           |
 
 ### Translating the Labels
 
-The only texts the component adds are `aria-label`s, read by screen readers. They are in English;
+Apart from the counter, which is only numbers, the texts the component adds are `aria-label`s, read by
+screen readers. They are in English;
 the `labels` prop translates the ones you set, and the rest stay in English:
 
 ```astro
@@ -304,15 +307,15 @@ the `labels` prop translates the ones you set, and the rest stay in English:
 </ImageZoom>
 ```
 
-| Key            | Default                | Names                                                           |
-| -------------- | ---------------------- | --------------------------------------------------------------- |
-| `overlay`      | `Image zoom overlay`   | The dialog                                                      |
-| `close`        | `Close zoom overlay`   | The close button                                                |
-| `images`       | `Images`               | The group of images                                             |
-| `previous`     | `Previous image`       | The previous image button                                       |
-| `next`         | `Next image`           | The next image button                                           |
-| `enlarge`      | `Enlarge image`        | The link around an image with no alt text                       |
-| `enlargeNamed` | `Enlarge image: {alt}` | The link around an image; `{alt}` is replaced with its alt text |
+| Key            | Default                | Names                                                                              |
+| -------------- | ---------------------- | ---------------------------------------------------------------------------------- |
+| `overlay`      | `Image zoom overlay`   | The dialog                                                                         |
+| `close`        | `Close zoom overlay`   | The close button                                                                   |
+| `images`       | `Images`               | The group of images                                                                |
+| `previous`     | `Previous image`       | The previous image button                                                          |
+| `next`         | `Next image`           | The next image button                                                              |
+| `enlarge`      | `Enlarge image`        | The link the component adds around an image with no alt text                       |
+| `enlargeNamed` | `Enlarge image: {alt}` | The link the component adds around an image; `{alt}` is replaced with its alt text |
 
 To translate every gallery of a multilingual site, wrap the component in one of your own that
 picks the labels of the page's locale:
@@ -425,8 +428,8 @@ astro-image-zoom-overlay::part(caption) {
 
 ## Accessibility
 
-- A native modal `<dialog>`: focus moves to the close button, stays inside while it is open and
-  returns to the image when it closes.
+- A native modal `<dialog>`: focus moves to the close button, stays inside while it is open and,
+  when it closes, goes to the link of the image on screen, the one the zoom closes onto.
 - Each image becomes a link, reachable with the keyboard. Its focus ring is the one of your site;
   see [Your page](#your-page) to draw it on the image.
 - Labelled buttons; the caption is announced when the image changes.
@@ -435,6 +438,7 @@ astro-image-zoom-overlay::part(caption) {
 
 ### Keyboard
 
+- **Enter** - Open the focused image
 - **Escape** - Close zoom
 - **Arrow Left** - Previous image
 - **Arrow Right** - Next image
@@ -444,8 +448,8 @@ astro-image-zoom-overlay::part(caption) {
 
 - **Swipe left** - Next image (also a two-finger swipe on a touchpad)
 - **Swipe right** - Previous image
-- **Swipe up or down** - Close the zoom and keep scrolling the page
-- **Tap the backdrop** - Close the zoom
+- **Swipe up or down** - Close the zoom
+- **Tap the image or the backdrop** - Close the zoom
 
 ## Performance
 
@@ -479,7 +483,7 @@ Their `detail` describes the image on screen:
 | --------- | ------------- | -------------------------------------------- |
 | `index`   | `number`      | Position of the image in its gallery, from 0 |
 | `total`   | `number`      | Number of images in the gallery              |
-| `src`     | `string`      | URL of the full-size image the zoom shows    |
+| `src`     | `string`      | URL of the image the zoom shows              |
 | `alt`     | `string`      | Alt text of the image                        |
 | `caption` | `string`      | Caption, or an empty string                  |
 | `link`    | `HTMLElement` | The link on the page that opens this image   |
@@ -525,8 +529,9 @@ The detail has its own type too: `import type { ZoomEventDetail } from 'astro-im
 
 ### Programmatic Control
 
-`<ImageZoom>` sets up its own zoom. For markup it does not render, such as HTML from a CMS, create
-one with `ZoomClass` on the element around the links:
+`<ImageZoom>` sets up its own zoom, and picks up `data-image-zoom` links added inside it later, when
+they are clicked. For images outside any `<ImageZoom>`, such as markup your scripts add after the page
+loads, create a zoom with `ZoomClass` on the element around the links:
 
 ```astro
 <div class="my-gallery">
@@ -537,10 +542,11 @@ one with `ZoomClass` on the element around the links:
 <script>
   import { ZoomClass } from 'astro-image-zoom';
 
-  const zoom = new ZoomClass(document.querySelector('.my-gallery'));
-
-  // Later, if needed:
-  // zoom.destroy();
+  const gallery = document.querySelector<HTMLElement>('.my-gallery');
+  if (gallery) {
+    const zoom = new ZoomClass(gallery);
+    // Later, if needed: zoom.destroy();
+  }
 </script>
 ```
 

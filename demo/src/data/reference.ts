@@ -155,7 +155,8 @@ export const props: ReferenceRow[] = [
   },
   {
     name: "showNavigation",
-    description: "Arrows and counter in galleries",
+    description:
+      "Arrows and counter in galleries; keys and swipes work without them",
     type: "boolean",
     default: "true",
   },
@@ -212,7 +213,7 @@ export const props: ReferenceRow[] = [
   },
   {
     name: "closeOnScroll",
-    description: "Scrolling or a vertical swipe closes it",
+    description: "A wheel or touchpad scroll, or a vertical swipe, closes it",
     type: "boolean",
     default: "true",
   },
@@ -228,12 +229,12 @@ export const attributes: ReferenceRow[] = [
   {
     name: "data-image-zoom-src",
     description:
-      "Full-size image for the zoom. Needed when the image on the page is resized",
+      "Full-size image for the zoom. Needed when the file on the page is a smaller version",
   },
   {
     name: "data-image-zoom-caption",
     description:
-      "Caption shown with the zoomed image; on the `<a>` itself for a link with `data-image-zoom`",
+      "Caption shown with the zoomed image; on the `<a>` itself for a link with `data-image-zoom`, where its `title` works too",
   },
   {
     name: "data-image-zoom",
@@ -264,13 +265,13 @@ export const labels: ReferenceRow[] = [
   { name: "next", description: "The next image button", default: "Next image" },
   {
     name: "enlarge",
-    description: "The link around an image with no alt text",
+    description: "The link the component adds around an image with no alt text",
     default: "Enlarge image",
   },
   {
     name: "enlargeNamed",
     description:
-      "The link around an image; `{alt}` is replaced with its alt text",
+      "The link the component adds around an image; `{alt}` is replaced with its alt text",
     default: "Enlarge image: {alt}",
   },
 ];
@@ -279,7 +280,8 @@ export const labels: ReferenceRow[] = [
 export const events: ReferenceRow[] = [
   {
     name: "astro-image-zoom:open",
-    description: "A zoom opens (a click, Enter on a link)",
+    description:
+      "A zoom starts to open (a click, Enter on a link), before its image has loaded",
   },
   {
     name: "astro-image-zoom:change",
@@ -306,7 +308,7 @@ export const eventDetail: ReferenceRow[] = [
   },
   {
     name: "src",
-    description: "URL of the full-size image the zoom shows",
+    description: "URL of the image the zoom shows",
     type: "string",
   },
   { name: "alt", description: "Alt text of the image", type: "string" },

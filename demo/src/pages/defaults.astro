@@ -131,7 +131,10 @@ const caption = ({
       </ImageZoom>
 
       <h2>A gallery</h2>
-      <p>The second image is only 960 px wide, as small as the original.</p>
+      <p>
+        The original of the second photo is only 960 px wide: the zoom shows it
+        at that size and never enlarges it.
+      </p>
       <ImageZoom>
         {gallery.map((photo, index) => (
           <Image
