@@ -23,6 +23,7 @@ const colors = [
 ];
 
 // phone: the default of the overlay up to 640px wide, where its controls get smaller
+// phoneMax: the limit on that screen, so the photo and the controls keep room to show
 const ranges: {
   name: string;
   label: string;
@@ -32,6 +33,7 @@ const ranges: {
   value: number;
   unit: string;
   phone?: number;
+  phoneMax?: number;
 }[] = [
   {
     name: "--zoom-padding",
@@ -40,6 +42,7 @@ const ranges: {
     max: 96,
     step: 4,
     value: 0,
+    phoneMax: 32,
     unit: "px",
   },
   {
@@ -59,6 +62,7 @@ const ranges: {
     step: 2,
     value: 40,
     phone: 36,
+    phoneMax: 48,
     unit: "px",
   },
   {
@@ -78,6 +82,7 @@ const ranges: {
     step: 4,
     value: 16,
     phone: 12,
+    phoneMax: 24,
     unit: "px",
   },
   {
@@ -114,25 +119,30 @@ const ranges: {
 
     <fieldset class="ranges">
       <legend>Layout and motion</legend>
-      {ranges.map(({ name, label, min, max, step, value, unit, phone }) => (
-        <label class="range">
-          <span class="name">
-            {label}
-            <code>{name}</code>
-          </span>
-          <input
-            type="range"
-            name={name}
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            data-unit={unit}
-            data-phone={phone}
-          />
-          <output data-default={`${value}${unit}`}>{`${value}${unit}`}</output>
-        </label>
-      ))}
+      {ranges.map(
+        ({ name, label, min, max, step, value, unit, phone, phoneMax }) => (
+          <label class="range">
+            <span class="name">
+              {label}
+              <code>{name}</code>
+            </span>
+            <input
+              type="range"
+              name={name}
+              min={min}
+              max={max}
+              step={step}
+              value={value}
+              data-unit={unit}
+              data-phone={phone}
+              data-phone-max={phoneMax}
+            />
+            <output
+              data-default={`${value}${unit}`}
+            >{`${value}${unit}`}</output>
+          </label>
+        ),
+      )}
     </fieldset>
 
     <fieldset class="prop">
@@ -226,15 +236,31 @@ const ranges: {
     connectedCallback() {
       this.form.addEventListener("input", this.handleInput);
       this.form.addEventListener("reset", this.handleReset);
-      this.phone.addEventListener("change", this.showDefaults);
-      this.showDefaults();
+      this.phone.addEventListener("change", this.fitScreen);
+      this.fitScreen();
     }
 
     disconnectedCallback() {
       this.form.removeEventListener("input", this.handleInput);
       this.form.removeEventListener("reset", this.handleReset);
-      this.phone.removeEventListener("change", this.showDefaults);
+      this.phone.removeEventListener("change", this.fitScreen);
     }
+
+    // On phones some sliders stop lower, so the photo and the controls keep room to show
+    private fitScreen = () => {
+      for (const input of this.form.querySelectorAll<HTMLInputElement>(
+        "input[data-phone-max]",
+      )) {
+        input.dataset.max ??= input.max;
+        input.max = this.phone.matches
+          ? input.dataset.phoneMax!
+          : input.dataset.max;
+        // The browser clamps the value to the new max: the variable follows it
+        if (this.changed.has(input.name)) this.setVariable(input);
+      }
+      this.showDefaults();
+      this.render();
+    };
 
     // The sliders the user has not moved show the default of the overlay for this screen
     private showDefaults = () => {
@@ -259,14 +285,18 @@ const ranges: {
         this.zoom.dataset[attribute] =
           input.type === "checkbox" ? String(input.checked) : input.value;
       } else {
-        const value = input.value + (input.dataset.unit ?? "");
-        this.changed.set(input.name, value);
-        this.scope.style.setProperty(input.name, value);
-        const output = input.parentElement?.querySelector("output");
-        if (output) output.value = value;
+        this.setVariable(input);
       }
       this.render();
     };
+
+    private setVariable(input: HTMLInputElement) {
+      const value = input.value + (input.dataset.unit ?? "");
+      this.changed.set(input.name, value);
+      this.scope.style.setProperty(input.name, value);
+      const output = input.parentElement?.querySelector("output");
+      if (output) output.value = value;
+    }
 
     private handleReset = () => {
       for (const name of this.changed.keys())

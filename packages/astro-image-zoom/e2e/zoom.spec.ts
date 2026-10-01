@@ -164,6 +164,105 @@ test.describe("open and close", () => {
     await expect(dialog(page)).toHaveClass(/\bis-open\b/);
   });
 
+  test("stays open on swipes and wheels while zoomed in with a pinch", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName !== "chromium",
+      "the page zoom is set through the Chrome DevTools Protocol",
+    );
+    await openZoom(page, "gallery");
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setPageScaleFactor", { pageScaleFactor: 2 });
+    await expect
+      .poll(() => page.evaluate(() => window.visualViewport!.scale))
+      .toBe(2);
+    await expect(dialog(page)).toHaveClass(/\bis-page-zoomed\b/);
+    await expect(page.locator(".astro-image-zoom-track")).toHaveCSS(
+      "overflow-x",
+      "hidden",
+    );
+
+    await page.mouse.move(640, 360);
+    await page.mouse.wheel(0, 400);
+    await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: true });
+    const touch = (y: number) => [{ x: 320, y }];
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: touch(200),
+    });
+    for (const y of [250, 300, 350])
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: touch(y),
+      });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+    await page.waitForTimeout(300);
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+
+    // Back to the normal size, the wheel closes again
+    await cdp.send("Emulation.setPageScaleFactor", { pageScaleFactor: 1 });
+    await expect(dialog(page)).not.toHaveClass(/\bis-page-zoomed\b/);
+    await page.mouse.wheel(0, 400);
+    await expectClosed(page);
+  });
+
+  test("stays open when one finger is left on the screen after a pinch", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName !== "chromium",
+      "WebKit on desktop has no Touch constructor to build the touch events",
+    );
+    await openZoom(page, "gallery");
+
+    // Built by hand: a real pinch through the Chrome DevTools Protocol zooms the page in, and then
+    // the page zoom, not the pinch, would keep the zoom open. Here the scale stays at 1
+    const touch = (type: string, points: [number, number][]) =>
+      page.evaluate(
+        ([type, points]) => {
+          const target = document
+            .querySelector("astro-image-zoom-overlay")!
+            .shadowRoot!.querySelector("dialog")!;
+          const touches = points.map(
+            ([clientX, clientY], identifier) =>
+              new Touch({ identifier, target, clientX, clientY }),
+          );
+          target.dispatchEvent(
+            new TouchEvent(type, { touches, bubbles: true, cancelable: true }),
+          );
+        },
+        [type, points] as const,
+      );
+
+    // Two fingers pinch, then one lifts and the other drags down
+    await touch("touchstart", [
+      [300, 300],
+      [400, 400],
+    ]);
+    await touch("touchmove", [
+      [280, 280],
+      [420, 420],
+    ]);
+    for (const y of [330, 380, 430]) await touch("touchmove", [[280, y]]);
+    await touch("touchend", []);
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => window.visualViewport!.scale)).toBe(1);
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    await expect(counter(page)).toHaveText("1 / 3");
+
+    // A new gesture with one finger closes again
+    await touch("touchstart", [[320, 200]]);
+    for (const y of [250, 300, 350]) await touch("touchmove", [[320, y]]);
+    await touch("touchend", []);
+    await expectClosed(page);
+  });
+
   test("locks the page scroll, also when the site sets overflow on <html>", async ({
     page,
   }) => {
@@ -807,6 +906,28 @@ test.describe("gallery", () => {
       .boundingBox())!;
     expect(previous.x).toBeLessThan(viewport.width / 4);
     expect(next.x).toBeGreaterThan((viewport.width * 3) / 4);
+  });
+
+  test("moves a top caption below large controls on a phone", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page
+      .locator("#layout astro-image-zoom")
+      .evaluate((wrapper) =>
+        wrapper.setAttribute(
+          "style",
+          "--zoom-button-size: 64px; --zoom-controls-offset: 64px",
+        ),
+      );
+    await openZoom(page, "layout");
+
+    const close = (await page
+      .getByRole("button", { name: "Close zoom overlay" })
+      .boundingBox())!;
+    const captionBox = (await caption(page).boundingBox())!;
+    expect(captionBox.y).toBeGreaterThanOrEqual(close.y + close.height);
+    expect(captionBox.width).toBeGreaterThan(60);
   });
 });
 

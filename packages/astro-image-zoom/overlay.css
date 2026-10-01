@@ -179,6 +179,11 @@
   touch-action: pan-x pan-y pinch-zoom;
 }
 
+/* Zoomed in with a pinch (zoom.ts): swipes pan the page zoom, the arrows still move the track */
+.astro-image-zoom-overlay.is-page-zoomed .astro-image-zoom-track {
+  overflow-x: hidden;
+}
+
 .astro-image-zoom-track::-webkit-scrollbar {
   display: none;
 }
@@ -413,17 +418,50 @@
   display: none;
 }
 
-/* At the top, the caption stays clear of the close button in the corner */
+/*
+ * At the top, the caption stays clear of the close button in the corner: centered beside it, with
+ * the same room on both sides. When large buttons or offsets leave less than 160px there, it moves
+ * below the button and takes the whole width. --astro-image-zoom-caption-below is 0 while the room
+ * is enough and a large length otherwise, a step built with max() and min(). It measures the room
+ * with vw: in top, % would refer to the height.
+ */
 .astro-image-zoom-overlay[data-caption-position="top"]
   .astro-image-zoom-caption {
+  --astro-image-zoom-caption-below: max(
+    0px,
+    (
+        160px - 100vw + 2 *
+          (
+            var(--astro-image-zoom-button-size) + 2 *
+              var(--astro-image-zoom-offset)
+          )
+      ) *
+      1000
+  );
   position: fixed;
-  top: var(--astro-image-zoom-offset);
+  top: calc(
+    var(--astro-image-zoom-offset) +
+      min(
+        var(--astro-image-zoom-caption-below),
+        var(--astro-image-zoom-button-size) + 8px
+      )
+  );
   inset-inline: 0;
   width: fit-content;
-  max-width: min(
-    var(--zoom-caption-max-width, 70%),
-    100% - 2 *
-      (var(--astro-image-zoom-button-size) + 2 * var(--astro-image-zoom-offset))
+  max-width: max(
+    min(
+      var(--zoom-caption-max-width, 70%),
+      100% - 2 *
+        (
+          var(--astro-image-zoom-button-size) + 2 *
+            var(--astro-image-zoom-offset)
+        )
+    ),
+    min(
+      var(--zoom-caption-max-width, 100%),
+      100% - 2 * var(--astro-image-zoom-offset),
+      var(--astro-image-zoom-caption-below)
+    )
   );
   margin-inline: auto;
 }

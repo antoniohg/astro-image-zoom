@@ -187,6 +187,7 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
       { id: "navigation", title: "Navigation" },
       { id: "caption", title: "Caption" },
       { id: "layout-variables", title: "Spacing and controls" },
+      { id: "responsive", title: "Screen sizes" },
     ],
   },
   {
@@ -501,6 +502,36 @@ a[data-image-zoom-generated] img {
             ))}
           </ul>
           <Reference rows={layoutVariables} />
+        </Section>
+
+        <Section title="Screen sizes" id="responsive" level={3}>
+          <p>
+            On screens up to 640px wide the overlay makes its buttons, its
+            distance to the edges and the caption text smaller, and lets the
+            caption take the whole width. A variable you set wins on every
+            screen: <code>--zoom-button-size: 56px</code> keeps 56px buttons on
+            a phone too. Keep the large values for wide screens with a media
+            query, or let them grow with the screen with <code>clamp()</code>.
+          </p>
+          <CodeSample
+            open
+            lang="css"
+            code={`/* <ImageZoom class="gallery"> */
+.gallery {
+  --zoom-padding: clamp(12px, 5vw, 64px);
+}
+
+@media (width > 640px) {
+  .gallery {
+    --zoom-button-size: 56px;
+    --zoom-controls-offset: 32px;
+  }
+}`}
+          />
+          <p>
+            The overlay reads the values each time a gallery opens: turning the
+            phone with a photo open keeps them until the next one.
+          </p>
         </Section>
       </Section>
 
