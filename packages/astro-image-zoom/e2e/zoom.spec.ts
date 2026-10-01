@@ -808,6 +808,28 @@ test.describe("gallery", () => {
     expect(previous.x).toBeLessThan(viewport.width / 4);
     expect(next.x).toBeGreaterThan((viewport.width * 3) / 4);
   });
+
+  test("moves a top caption below large controls on a phone", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page
+      .locator("#layout astro-image-zoom")
+      .evaluate((wrapper) =>
+        wrapper.setAttribute(
+          "style",
+          "--zoom-button-size: 64px; --zoom-controls-offset: 64px",
+        ),
+      );
+    await openZoom(page, "layout");
+
+    const close = (await page
+      .getByRole("button", { name: "Close zoom overlay" })
+      .boundingBox())!;
+    const captionBox = (await caption(page).boundingBox())!;
+    expect(captionBox.y).toBeGreaterThanOrEqual(close.y + close.height);
+    expect(captionBox.width).toBeGreaterThan(60);
+  });
 });
 
 test.describe("theming", () => {
