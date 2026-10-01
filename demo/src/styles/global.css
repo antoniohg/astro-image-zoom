@@ -337,4 +337,12 @@
     font-size: 0.9375rem;
     color: var(--color-text);
   }
+
+  /* Planet Earth, in the line that names it, centered on its letters */
+  .globe {
+    display: inline-block;
+    margin-inline-end: 0.375rem;
+    vertical-align: -0.1875em;
+    color: var(--color-text-muted);
+  }
 }

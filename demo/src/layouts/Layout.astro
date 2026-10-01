@@ -4,6 +4,7 @@
 import "../styles/global.css";
 import { Font, getImage } from "astro:assets";
 import { photos } from "@data/photos";
+import GlobeIcon from "../assets/icons/globe-hemisphere-west.svg";
 
 interface Props {
   title: string;
@@ -97,9 +98,10 @@ const shareImageUrl = new URL(shareImage.src, Astro.site);
 
     <footer>
       <p class="signature">
+        <GlobeIcon class="globe" width={16} height={16} aria-hidden="true" />
         Made on planet Earth by{" "}
         <a href="https://antoniohg.com" rel="author">
-          Antonio
+          antoniohg
         </a>
       </p>
       <p>
