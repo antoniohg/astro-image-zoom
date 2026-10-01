@@ -6,6 +6,7 @@
  * remembers it across pages; without JavaScript, each instance keeps its own choice.
  */
 import { Code } from "astro:components";
+import CopyButton from "./CopyButton.astro";
 
 interface Props {
   /** Names the radio group: radio groups are page-wide by name, so each instance needs its own */
@@ -23,7 +24,7 @@ const managers = [
 ---
 
 <install-command>
-  <fieldset class="install">
+  <fieldset class="install" data-copy-scope>
     <legend class="visually-hidden">Package manager</legend>
     <div class="tabs">
       {managers.map(({ name }, index) => (
@@ -38,11 +39,14 @@ const managers = [
         </label>
       ))}
     </div>
-    {managers.map(({ name, command }) => (
-      <div class="command" data-manager={name}>
-        <Code code={command} lang="sh" theme="github-dark-default" />
-      </div>
-    ))}
+    <div class="commands">
+      {managers.map(({ name, command }) => (
+        <div class="command" data-manager={name}>
+          <Code code={command} lang="sh" theme="github-dark-default" />
+        </div>
+      ))}
+      <CopyButton class="copy" label="Copy install command" />
+    </div>
   </fieldset>
 </install-command>
 
@@ -126,6 +130,28 @@ const managers = [
       margin-block-end: 0.5rem;
       font-family: var(--font-mono);
       font-size: 0.8125rem;
+    }
+
+    /* The copy button at the end of the command's line, which leaves room for it */
+    .commands {
+      position: relative;
+
+      :global(pre) {
+        padding-inline-end: 3rem;
+      }
+    }
+
+    /* From the right edge of the box, inside its border, in its color: the command hides under it.
+       Global, as in CodeSample: the element of CopyButton */
+    .commands > :global(.copy) {
+      position: absolute;
+      inset-block: 1px;
+      inset-inline-end: 1px;
+      display: grid;
+      place-items: center;
+      padding-inline: 0.4375rem;
+      background: #0d1117;
+      border-radius: var(--radius);
     }
 
     label {
