@@ -19,6 +19,7 @@ import {
   colorVariables,
   eventDetail,
   events,
+  labels,
   layoutVariables,
   otherVariables,
   parts,
@@ -176,7 +177,10 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
     title: "Usage",
     children: [
       { id: "sources", title: "Image sources" },
+      { id: "links", title: "Links" },
       { id: "nested", title: "Nested markup" },
+      { id: "ignore", title: "Leaving images out" },
+      { id: "thumbnails", title: "Your thumbnails" },
     ],
   },
   { id: "options", title: "Options" },
@@ -200,14 +204,16 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
       { id: "parts", title: "Parts" },
     ],
   },
+  { id: "labels", title: "Labels" },
   { id: "events", title: "Events" },
+  { id: "zoom-class", title: "Without the component" },
   { id: "api", title: "API" },
 ];
 ---
 
 <Layout
   title="Docs · astro-image-zoom"
-  description="Options, layout, theming, CSS variables and the API of astro-image-zoom, with live examples."
+  description="Options, layout, theming, labels, events and the API of astro-image-zoom, with live examples."
   current="docs"
 >
   <div class="docs">
@@ -258,33 +264,6 @@ const fullSize = await getImage({ src: photo, width: photo.width });
             file.
           </p>
         </div>
-        <div class="note">
-          <p>
-            <strong>Your thumbnails, your styles.</strong> The component doesn't
-            style the images on your page, not even their focus ring. Each one
-            gets an inline <code>{`<a data-image-zoom-generated>`}</code> with
-            your link styles, and if your images are <code>display: block</code>
-            , the outline of that link doesn't wrap them. Draw your focus ring
-            on the image instead, as this page does, and add a zoom cursor if
-            you like.
-          </p>
-          <CodeSample
-            lang="css"
-            code={`a[data-image-zoom-generated]:focus-visible {
-  outline: none;
-}
-
-a[data-image-zoom-generated]:focus-visible img {
-  outline: 2px solid green; /* your focus ring */
-  outline-offset: 3px; /* negative if a parent with overflow: hidden clips it */
-}
-
-a[data-image-zoom-generated] img {
-  cursor: zoom-in;
-}`}
-          />
-        </div>
-
         <Section title="Image sources" id="sources" level={3}>
           <p>
             Astro's <code>{`<Image>`}</code> and <code>{`<Picture>`}</code>, a
@@ -371,6 +350,22 @@ a[data-image-zoom-generated] img {
           />
         </Section>
 
+        <Section title="Links" id="links" level={3}>
+          <p>
+            An image inside a link with <code>data-image-zoom</code> opens the
+            link's <code>href</code>. Put the caption on the link: the image
+            inside only gives its alt text. Images inside any other link are
+            left alone, so cards and logos keep working as links.
+          </p>
+          <CodeSample
+            code={`<ImageZoom>
+  <a href="/full-size-1.jpg" data-image-zoom data-image-zoom-caption="Harbor at dawn">
+    <img src="/thumbnail-1.jpg" alt="Harbor at dawn" />
+  </a>
+</ImageZoom>`}
+          />
+        </Section>
+
         <Section title="Nested markup" id="nested" level={3}>
           <p>
             Images nested anywhere inside the component zoom too, like in this
@@ -408,6 +403,62 @@ a[data-image-zoom-generated] img {
               </div>
             </article>
           </ImageZoom>
+        </Section>
+
+        <Section title="Leaving images out" id="ignore" level={3}>
+          <p>
+            Logos, avatars and decorative images inside a wrapped article
+            shouldn't zoom. List them in the <code>ignore</code> prop: an
+            ignored image isn't wrapped in a link and doesn't count in the
+            gallery. Each selector is checked against the image and every
+            element around it, so <code>.author</code> leaves out every image in
+            the aside.
+          </p>
+          <CodeSample
+            code={`<ImageZoom ignore=".logo, .author, [alt='']">
+  <img src="/photo.jpg" alt="Harbor at dawn" />
+  <img class="logo" src="/logo.svg" alt="Harbor Co." />
+  <img src="/divider.svg" alt="" />
+  <aside class="author"><img src="/avatar.jpg" alt="The author" /></aside>
+</ImageZoom>
+
+<!-- One image, without the prop -->
+<img src="/signature.svg" alt="Signature" data-image-zoom-ignore />`}
+          />
+          <p>
+            The images are wrapped on the server, without a DOM, so
+            <code>ignore</code> takes simple selectors only: a tag name,
+            <code>.classes</code>, <code>#ids</code> and
+            <code>[attributes]</code>, combined as in
+            <code>img.logo[alt='']</code>. Spaces, combinators and
+            pseudo-classes fail the build with an error that names the selector.
+          </p>
+        </Section>
+
+        <Section title="Your thumbnails" id="thumbnails" level={3}>
+          <p>
+            The component doesn't style the images on your page, not even their
+            focus ring. Each one gets an inline
+            <code>{`<a data-image-zoom-generated>`}</code> with your link
+            styles, and if your images are <code>display: block</code>, the
+            outline of that link doesn't wrap them. Draw your focus ring on the
+            image instead, as this page does, and add a zoom cursor if you like.
+          </p>
+          <CodeSample
+            lang="css"
+            code={`a[data-image-zoom-generated]:focus-visible {
+  outline: none;
+}
+
+a[data-image-zoom-generated]:focus-visible img {
+  outline: 2px solid green; /* your focus ring */
+  outline-offset: 3px; /* negative if a parent with overflow: hidden clips it */
+}
+
+a[data-image-zoom-generated] img {
+  cursor: zoom-in;
+}`}
+          />
         </Section>
       </Section>
 
@@ -636,6 +687,41 @@ a[data-image-zoom-generated] img {
         </Section>
       </Section>
 
+      <!-- Labels -->
+      <Section title="Labels" id="labels">
+        <p>
+          The only texts the component adds are <code>aria-label</code>s, read
+          by screen readers. They are in English; the <code>labels</code> prop
+          translates the ones you set. The caption is your own text, so the
+          component never translates it.
+        </p>
+        <CodeSample
+          open
+          code={`<ImageZoom labels={{ close: 'Cerrar zoom', enlargeNamed: 'Ampliar imagen: {alt}' }}>
+  <img src="/photo.jpg" alt="Un coche rojo" />
+</ImageZoom>`}
+        />
+        <Reference rows={labels} />
+        <p>
+          For a multilingual site, wrap the component in one of your own that
+          picks the labels of the page's locale:
+        </p>
+        <CodeSample
+          code={`---
+// src/components/Zoom.astro
+import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
+import type { ImageZoomLabels } from 'astro-image-zoom';
+
+const translations: Record<string, Partial<ImageZoomLabels>> = {
+  es: { close: 'Cerrar zoom', enlargeNamed: 'Ampliar imagen: {alt}' },
+};
+---
+<ImageZoom {...Astro.props} labels={translations[Astro.currentLocale ?? '']}>
+  <slot />
+</ImageZoom>`}
+        />
+      </Section>
+
       <!-- Events -->
       <Section title="Events" id="events">
         <p>
@@ -666,6 +752,38 @@ a[data-image-zoom-generated] img {
           typed as <code>ZoomEventDetail</code>.
         </p>
         <Reference rows={eventDetail} />
+      </Section>
+
+      <!-- Programmatic control -->
+      <Section title="Without the component" id="zoom-class">
+        <p>
+          For markup <code>{`<ImageZoom>`}</code> doesn't render, such as HTML
+          from a CMS, create a zoom with <code>ZoomClass</code> on the element
+          around the links. Images aren't wrapped then, so only links with
+          <code>data-image-zoom</code> count.
+        </p>
+        <CodeSample
+          open
+          code={`<div class="my-gallery">
+  <a href="/large-1.jpg" data-image-zoom><img src="/small-1.jpg" alt="Harbor at dawn" /></a>
+  <a href="/large-2.jpg" data-image-zoom><img src="/small-2.jpg" alt="Harbor at noon" /></a>
+</div>
+
+<script>
+  import { ZoomClass } from 'astro-image-zoom';
+
+  const zoom = new ZoomClass(document.querySelector('.my-gallery'));
+  // Later, if needed: zoom.destroy();
+</script>`}
+        />
+        <p>
+          It reads the options from the same <code>data-*</code> attributes{" "}
+          <code>{`<ImageZoom>`}</code> renders on its element, such as
+          <code>data-image-zoom-show-counter="false"</code>; the theme and the
+          duration come from the <code>--zoom-*</code> variables.
+          <code>data-image-zoom-ignore-selector</code> on the wrapper takes any
+          CSS selector, since the browser matches it.
+        </p>
       </Section>
 
       <!-- API -->

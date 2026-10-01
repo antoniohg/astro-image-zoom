@@ -192,6 +192,13 @@ export const props: ReferenceRow[] = [
     default: '""',
   },
   {
+    name: "labels",
+    description:
+      "Texts read by screen readers, key by key; the keys you leave out stay in English",
+    type: "Partial<ImageZoomLabels>",
+    default: "English",
+  },
+  {
     name: "closeOnBackdrop",
     description: "A click beside the image closes it",
     type: "boolean",
@@ -237,6 +244,34 @@ export const attributes: ReferenceRow[] = [
     name: "data-image-zoom-ignore",
     description:
       "On an image or any element around it: left out of the zoom and the gallery, like the `ignore` prop for a single image",
+  },
+];
+
+// Keys of the labels prop, all of them aria-labels
+export const labels: ReferenceRow[] = [
+  { name: "overlay", description: "The dialog", default: "Image zoom overlay" },
+  {
+    name: "close",
+    description: "The close button",
+    default: "Close zoom overlay",
+  },
+  { name: "images", description: "The group of images", default: "Images" },
+  {
+    name: "previous",
+    description: "The previous image button",
+    default: "Previous image",
+  },
+  { name: "next", description: "The next image button", default: "Next image" },
+  {
+    name: "enlarge",
+    description: "The link around an image with no alt text",
+    default: "Enlarge image",
+  },
+  {
+    name: "enlargeNamed",
+    description:
+      "The link around an image; `{alt}` is replaced with its alt text",
+    default: "Enlarge image: {alt}",
   },
 ];
 
