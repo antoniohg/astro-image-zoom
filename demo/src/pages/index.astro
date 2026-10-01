@@ -129,6 +129,10 @@ const features: { icon: SvgComponent; title: string; text: string }[] = [
   },
 ];
 
+// The size is the gzipped script of the component, overlay CSS included, in the demo build:
+// update it when the package grows. The Astro range is the peer dependency of the package
+const facts = ["8 KB gzipped", "No dependencies", "Astro 4 to 7"];
+
 const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
 ---
 
@@ -148,6 +152,11 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
           screen, and a group of photos becomes a gallery you can swipe.
         </p>
         <InstallCommand id="hero" />
+        <ul class="facts" role="list">
+          {facts.map((fact) => (
+            <li>{fact}</li>
+          ))}
+        </ul>
       </div>
     </header>
 
@@ -269,25 +278,17 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
         <li>
           <Case title="Wrap your images" number={2}>
             <p slot="description">
-              Point <code>data-image-zoom-src</code> at a full-size version when
-              the image on the page is resized.
+              Every image inside opens in the zoom. With Astro's{" "}
+              <code>{`<Image>`}</code>, give the zoom a larger file:{" "}
+              <a href={`${docs}#usage`}>see how</a>.
             </p>
             <CodeSample
               open
               code={`---
 import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
-import { Image, getImage } from 'astro:assets';
-import photo from '../assets/earthrise.jpg';
-
-const fullSize = await getImage({ src: photo, width: photo.width });
 ---
 <ImageZoom>
-  <Image
-    src={photo}
-    alt="Earth rising above the Moon"
-    width={800}
-    data-image-zoom-src={fullSize.src}
-  />
+  <img src="/earthrise.jpg" alt="Earth rising above the Moon" />
 </ImageZoom>`}
             />
           </Case>
@@ -341,6 +342,23 @@ const fullSize = await getImage({ src: photo, width: photo.width });
     .pitch {
       display: grid;
       gap: 1.25rem;
+    }
+
+    /* Three short facts in a row, split by dots */
+    .facts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem 0;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-size: 0.9375rem;
+      color: var(--color-text-muted);
+
+      li + li::before {
+        content: "·" / "";
+        margin-inline: 0.625rem;
+      }
     }
 
     /*

@@ -183,7 +183,7 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
       { id: "thumbnails", title: "Your thumbnails" },
     ],
   },
-  { id: "options", title: "Options" },
+  { id: "behavior", title: "Behavior" },
   {
     id: "layout",
     title: "Layout",
@@ -206,14 +206,14 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
   },
   { id: "labels", title: "Labels" },
   { id: "events", title: "Events" },
-  { id: "zoom-class", title: "Without the component" },
-  { id: "api", title: "API" },
+  { id: "javascript-api", title: "JavaScript API" },
+  { id: "reference", title: "Reference" },
 ];
 ---
 
 <Layout
   title="Docs · astro-image-zoom"
-  description="Options, layout, theming, labels, events and the API of astro-image-zoom, with live examples."
+  description="Behavior, layout, theming, labels, events and the JavaScript API of astro-image-zoom, with live examples."
   current="docs"
 >
   <div class="docs">
@@ -240,6 +240,24 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
           open
           code={`---
 import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
+---
+<ImageZoom>
+  <img src="/earthrise.jpg" alt="Earth rising above the Moon" />
+</ImageZoom>`}
+        />
+        <div class="note">
+          <p>
+            <strong>A larger file for the zoom.</strong> The zoom never shows an
+            image bigger than its file. Astro's{" "}
+            <code>{`<Image width={800}>`}</code> generates an 800&nbsp;px file,
+            so point <code>data-image-zoom-src</code> at a bigger version. Plain{" "}
+            <code>{`<img>`}</code> tags don't need it: the zoom opens the same
+            file.
+          </p>
+          <CodeSample
+            open
+            code={`---
+import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
 import { Image, getImage } from 'astro:assets';
 import photo from '../assets/earthrise.jpg';
 
@@ -250,19 +268,7 @@ const fullSize = await getImage({ src: photo, width: photo.width });
   <Image src={photo} alt="Earth rising above the Moon" width={800}
     data-image-zoom-src={fullSize.src} data-image-zoom-caption="Earthrise — Apollo 8, 1968" />
 </ImageZoom>`}
-        />
-        <div class="note">
-          <p>
-            <strong>
-              Why <code>data-image-zoom-src</code>?
-            </strong>{" "}
-            Astro's <code>{`<Image width={800}>`}</code> generates an
-            800&nbsp;px file, and the zoom never shows an image bigger than it
-            is: it would open that small file, at 800&nbsp;px. Point
-            <code>data-image-zoom-src</code> at a bigger version. Plain{" "}
-            <code>{`<img>`}</code> tags don't need it: the zoom opens the same
-            file.
-          </p>
+          />
         </div>
         <Section title="Image sources" id="sources" level={3}>
           <p>
@@ -462,8 +468,8 @@ a[data-image-zoom-generated] img {
         </Section>
       </Section>
 
-      <!-- Options -->
-      <Section title="Options" id="options">
+      <!-- Behavior -->
+      <Section title="Behavior" id="behavior">
         <p>
           Props change how the zoom moves, closes and animates. Open each
           example to try it.
@@ -755,7 +761,7 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
       </Section>
 
       <!-- Programmatic control -->
-      <Section title="Without the component" id="zoom-class">
+      <Section title="JavaScript API" id="javascript-api">
         <p>
           For markup <code>{`<ImageZoom>`}</code> doesn't render, such as HTML
           from a CMS, create a zoom with <code>ZoomClass</code> on the element
@@ -786,8 +792,8 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
         </p>
       </Section>
 
-      <!-- API -->
-      <Section title="API" id="api">
+      <!-- Reference -->
+      <Section title="Reference" id="reference">
         <h3>Props</h3>
         <Reference rows={props} />
 
@@ -839,6 +845,11 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
       padding-inline-start: 1.25rem;
       color: var(--color-text-muted);
       border-inline-start: 2px solid var(--color-accent);
+
+      /* The measure of the paragraphs of a section; the code under it takes the whole column */
+      p {
+        max-inline-size: 44rem;
+      }
 
       strong {
         color: var(--color-text);
