@@ -130,8 +130,9 @@ const features: { icon: SvgComponent; title: string; text: string }[] = [
 ];
 
 // The size is the gzipped script of the component, overlay CSS included, in the demo build:
-// update it when the package grows. The Astro range is the peer dependency of the package
-const facts = ["8 KB gzipped", "No dependencies", "Astro 4 to 7"];
+// update it when the package grows. Accessible: the overlay passes axe with no help from the site
+// (a11y.spec.ts)
+const facts = ["8 KB gzipped", "No dependencies", "Accessible by default"];
 
 const repository = "https://github.com/antoniohg/astro-image-zoom";
 const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
@@ -192,8 +193,9 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
       <div class="rows wide">
         <Case title="Inside an article" id="article">
           <p slot="description">
-            Photos in the flow of text. The zoom starts from the image itself,
-            so the eye never loses it.
+            Photos in the flow of text. Smooth liftoff, soft landing: the zoom
+            starts from the image itself and lands back on it, so the eye never
+            loses it.
           </p>
           <div class="article">
             <p>
