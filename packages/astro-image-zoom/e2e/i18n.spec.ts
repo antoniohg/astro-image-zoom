@@ -1,10 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { dialog, expectClosed, links, openZoom } from "./helpers";
 
-// The labels come from the translations set in the integration (e2e/fixture/astro.config.mjs),
-// chosen by the locale of the page: the pages under /es/ are Spanish, the rest English.
-test.describe("translations from the integration", () => {
-  test("the Spanish page reads Spanish, in the links and in the overlay", async ({
+// The labels prop translates a gallery (e2e/fixture/src/pages/es/index.astro)
+test.describe("labels", () => {
+  test("a translated gallery reads its labels, in the links and in the overlay", async ({
     page,
   }) => {
     await page.goto("/es/");
@@ -29,23 +28,15 @@ test.describe("translations from the integration", () => {
     await expectClosed(page);
   });
 
-  test("the labels prop overrides the translation of the page", async ({
-    page,
-  }) => {
-    await page.goto("/es/");
-    await openZoom(page, "override");
-    await expect(page.getByRole("button", { name: "Salir" })).toBeVisible();
-    // The rest is still the translation of the page
-    await expect(dialog(page)).toHaveAttribute("aria-label", "Zoom de imagen");
-  });
-
   test("a gallery with its own labels does not leak them into the next one", async ({
     page,
   }) => {
-    // The overlay is shared by the galleries of the page; the second one is English, by its locale
+    // The overlay is shared by the galleries of the page; the second one has no labels
     await page.goto("/es/");
-    await openZoom(page, "override");
-    await expect(page.getByRole("button", { name: "Salir" })).toBeVisible();
+    await openZoom(page, "translated");
+    await expect(
+      page.getByRole("button", { name: "Cerrar zoom" }),
+    ).toBeVisible();
     await page.keyboard.press("Escape");
     await expectClosed(page);
 
@@ -57,18 +48,9 @@ test.describe("translations from the integration", () => {
     await expect(
       page.getByRole("button", { name: "Close zoom overlay" }),
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Salir" })).toHaveCount(0);
-  });
-
-  test("the English page stays in English", async ({ page }) => {
-    await page.goto("/");
-    await expect(links(page, "gallery").first()).toHaveAttribute(
+    await expect(dialog(page)).toHaveAttribute(
       "aria-label",
-      "Enlarge image: Pink portrait",
+      "Image zoom overlay",
     );
-    await openZoom(page, "gallery");
-    await expect(
-      page.getByRole("button", { name: "Close zoom overlay" }),
-    ).toBeVisible();
   });
 });

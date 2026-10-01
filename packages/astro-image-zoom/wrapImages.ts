@@ -3,7 +3,7 @@
  * Runs on the server, so without JavaScript the links still open the full-size image.
  */
 
-import { DEFAULT_LABELS, escapeHtml, type ImageZoomLabels } from "./labels";
+import { DEFAULT_LABELS, type ImageZoomLabels } from "./labels";
 
 // Comments (skipped) or tags; quoted attribute values may contain ">"
 const TOKEN =
@@ -60,10 +60,12 @@ function wrap(html: string, image: Attributes, labels: LinkLabels): string {
   const captionAttribute = caption
     ? ` data-image-zoom-caption="${escapeQuotes(caption)}"`
     : "";
-  // The label is plain text and the alt text keeps its entities, like every attribute value here
+  // The labels are plain text and the alt text keeps its entities, like every attribute value here;
+  // escapeQuotes below takes care of the quotes
+  const text = (label: string) => label.replaceAll("&", "&amp;");
   const label = alt
-    ? escapeHtml(labels.enlargeNamed).split("{alt}").join(alt)
-    : escapeHtml(labels.enlarge);
+    ? text(labels.enlargeNamed).split("{alt}").join(alt)
+    : text(labels.enlarge);
 
   return `<a href="${escapeQuotes(src)}" data-image-zoom-generated${captionAttribute} aria-label="${escapeQuotes(label)}">${html}</a>`;
 }

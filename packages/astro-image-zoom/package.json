@@ -33,8 +33,7 @@
   },
   "exports": {
     ".": "./index.ts",
-    "./ImageZoom.astro": "./ImageZoom.astro",
-    "./integration": "./integration.js"
+    "./ImageZoom.astro": "./ImageZoom.astro"
   },
   "files": [
     "index.ts",
@@ -44,8 +43,6 @@
     "env.d.ts",
     "wrapImages.ts",
     "labels.ts",
-    "config.js",
-    "integration.js",
     "README.md"
   ],
   "peerDependencies": {

@@ -237,44 +237,20 @@ const optimizedImage = await getImage({
 | `showCounter`                 | `boolean`                  | `true`                            | Show the position in the gallery, such as "3 / 8"                                                                                          |
 | `showCaption`                 | `boolean`                  | `true`                            | Show the caption of the zoomed image                                                                                                       |
 | `captionPosition`             | `'bottom' \| 'top'`        | `'bottom'`                        | Where the caption sits on the screen                                                                                                       |
-| `locale`                      | `string`                   | `Astro.currentLocale`             | Language of the page, to pick the [translation of the labels](#translating-the-labels)                                                     |
-| `labels`                      | `Partial<ImageZoomLabels>` | English                           | Labels for this gallery, over the translation of the locale                                                                                |
+| `labels`                      | `Partial<ImageZoomLabels>` | English                           | Texts read by screen readers ([Translating the Labels](#translating-the-labels))                                                           |
 | `ignore`                      | `string`                   | `''`                              | Images left out of the zoom: simple selectors separated by commas, such as `".logo, [alt='']"` ([Leaving Images Out](#leaving-images-out)) |
 | `class`                       | `string`                   | `''`                              | Custom CSS class                                                                                                                           |
 
-### Translating the labels
+### Translating the Labels
 
-The only texts the component adds are `aria-label`s, read by screen readers. They are in English.
-Translate them once for the whole site with the integration, by locale:
+The only texts the component adds are `aria-label`s, read by screen readers. They are in English;
+the `labels` prop translates the ones you set, and the rest stay in English:
 
-```js
-// astro.config.mjs
-import { defineConfig } from "astro/config";
-import imageZoom from "astro-image-zoom/integration";
-
-export default defineConfig({
-  i18n: { locales: ["en", "es"], defaultLocale: "en" },
-  integrations: [
-    imageZoom({
-      labels: {
-        es: {
-          overlay: "Zoom de imagen",
-          close: "Cerrar zoom",
-          images: "Imágenes",
-          previous: "Imagen anterior",
-          next: "Imagen siguiente",
-          enlarge: "Ampliar imagen",
-          enlargeNamed: "Ampliar imagen: {alt}",
-        },
-      },
-    }),
-  ],
-});
+```astro
+<ImageZoom labels={{ close: "Cerrar zoom", enlargeNamed: "Ampliar imagen: {alt}" }}>
+  <img src="/photo.jpg" alt="Un coche rojo" />
+</ImageZoom>
 ```
-
-Each page takes the labels of its locale, `Astro.currentLocale` (Astro's i18n routing). A regional
-locale falls back to its language (`es-MX` reads `es`), and what is not translated stays in
-English. The integration is optional: without it everything works in English.
 
 | Key            | Default                | Names                                                           |
 | -------------- | ---------------------- | --------------------------------------------------------------- |
@@ -286,12 +262,24 @@ English. The integration is optional: without it everything works in English.
 | `enlarge`      | `Enlarge image`        | The link around an image with no alt text                       |
 | `enlargeNamed` | `Enlarge image: {alt}` | The link around an image; `{alt}` is replaced with its alt text |
 
-Two props of `<ImageZoom>` adjust one gallery:
+To translate every gallery of a multilingual site, wrap the component in one of your own that
+picks the labels of the page's locale:
 
-- `locale` picks the translation when the site does not use Astro's i18n routing:
-  `<ImageZoom locale={lang}>`.
-- `labels` overrides single keys, over the translation of the locale:
-  `<ImageZoom labels={{ close: "Salir" }}>`. It also works with no integration.
+```astro
+---
+// src/components/Zoom.astro
+import ImageZoom from "astro-image-zoom/ImageZoom.astro";
+import type { ImageZoomLabels } from "astro-image-zoom";
+
+const translations: Record<string, Partial<ImageZoomLabels>> = {
+  es: { close: "Cerrar zoom", enlargeNamed: "Ampliar imagen: {alt}" },
+};
+---
+
+<ImageZoom {...Astro.props} labels={translations[Astro.currentLocale ?? ""]}>
+  <slot />
+</ImageZoom>
+```
 
 The caption is your own text, so it is not translated by the component.
 

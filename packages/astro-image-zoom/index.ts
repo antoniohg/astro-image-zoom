@@ -6,3 +6,4 @@
 
 export { Zoom as ZoomClass } from "./zoom";
 export type { ZoomEventDetail } from "./zoom";
+export type { ImageZoomLabels } from "./labels";
