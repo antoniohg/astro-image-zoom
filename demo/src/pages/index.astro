@@ -169,7 +169,7 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
       </div>
     </header>
 
-    <!-- The first thing to try: one gallery with a photo of every shape, above the fold -->
+    {/* The first thing to try: one gallery with a photo of every shape, above the fold */}
     <ImageZoom>
       <div class="wall wide">
         {wall.map(({ name, tile, phone, wide, priority }) => (
@@ -329,7 +329,7 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
   @layer components {
     /*
      * The title on the left, the pitch, the install command and the links on the right. The column
-     * on the right is the taller one: the title sits at its middle, with no gap above or under it
+     * on the right is the taller one: the title sits at its middle, with the same room above and under it
      */
     .hero {
       display: grid;

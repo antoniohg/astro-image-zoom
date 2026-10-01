@@ -60,7 +60,7 @@ const photo = (name: Props["names"][number], index: number) => ({
 });
 ---
 
-<!-- One photo takes the whole frame, two share it; with three, the first is bigger and the others stack beside it -->
+{/* One photo takes the whole frame, two share it; with three, the first is bigger and the others stack beside it */}
 <div class="photos" data-count={Math.min(names.length, 3)}>
   {Array.isArray(zoom) ? (
     names.map((name, index) => (

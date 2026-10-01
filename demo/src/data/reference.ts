@@ -1,6 +1,6 @@
 /**
- * Reference lists of the docs: CSS variables, parts, props and image attributes. Text between
- * backticks in a description is shown as code.
+ * Reference lists of the docs: CSS variables, parts, props, image attributes, labels and events.
+ * Text between backticks in a description is shown as code.
  */
 export interface ReferenceRow {
   name: string;

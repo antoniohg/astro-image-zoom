@@ -229,7 +229,6 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
     <TableOfContents entries={toc} />
 
     <article class="flow content">
-      <!-- Usage -->
       <Section title="Usage" id="usage">
         <InstallCommand id="docs" />
         <p>
@@ -317,7 +316,7 @@ const fullSize = await getImage({ src: photo, width: photo.width });
                 </p>
               </div>
               <div class="source">
-                <!-- A small copy for the page, the full file for the zoom -->
+                {/* A small copy for the page, the full file for the zoom */}
                 <img
                   src={`${base}images/as17-148-22727-640.jpg`}
                   alt={photos.blueMarble.alt}
@@ -475,7 +474,6 @@ a[data-image-zoom-generated] img {
         </Section>
       </Section>
 
-      <!-- Behavior -->
       <Section title="Behavior" id="behavior">
         <p>
           Props change how the zoom moves, closes and animates. Open each
@@ -503,7 +501,6 @@ a[data-image-zoom-generated] img {
         </ul>
       </Section>
 
-      <!-- Layout -->
       <Section title="Layout" id="layout">
         <p>
           Props choose where the navigation and the caption go. Spacing, corners
@@ -602,7 +599,6 @@ a[data-image-zoom-generated] img {
         </Section>
       </Section>
 
-      <!-- Theming -->
       <Section title="Theming" id="theming">
         <p>
           The overlay follows the light or dark preference of the system. Change
@@ -703,7 +699,6 @@ a[data-image-zoom-generated] img {
         </Section>
       </Section>
 
-      <!-- Labels -->
       <Section title="Labels" id="labels">
         <p>
           Apart from the counter, which is only numbers, the texts the component
@@ -738,7 +733,6 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
         />
       </Section>
 
-      <!-- Events -->
       <Section title="Events" id="events">
         <p>
           Each <code>{`<astro-image-zoom>`}</code> dispatches an event when the
@@ -770,7 +764,6 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
         <Reference rows={eventDetail} />
       </Section>
 
-      <!-- Programmatic control -->
       <Section title="JavaScript API" id="javascript-api">
         <p>
           For images outside any <code>{`<ImageZoom>`}</code>, such as markup
@@ -807,7 +800,6 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
         </p>
       </Section>
 
-      <!-- Reference -->
       <Section title="Reference" id="reference">
         <h3>Props</h3>
         <Reference rows={props} />
