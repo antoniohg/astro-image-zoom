@@ -1,6 +1,6 @@
 {
   "name": "astro-image-zoom",
-  "version": "0.1.0-beta.6",
+  "version": "0.1.0-beta.7",
   "description": "Medium-style image zoom for Astro: accessible, animated from the page, with swipeable galleries",
   "type": "module",
   "author": "Antonio (https://antoniohg.com)",
@@ -19,6 +19,9 @@
     "withastro",
     "zoom",
     "image-zoom",
+    "image",
+    "lightbox",
+    "ui",
     "image-gallery",
     "a11y",
     "performance"
