@@ -179,6 +179,11 @@
   touch-action: pan-x pan-y pinch-zoom;
 }
 
+/* Zoomed in with a pinch (zoom.ts): swipes pan the page zoom, the arrows still move the track */
+.astro-image-zoom-overlay.is-page-zoomed .astro-image-zoom-track {
+  overflow-x: hidden;
+}
+
 .astro-image-zoom-track::-webkit-scrollbar {
   display: none;
 }

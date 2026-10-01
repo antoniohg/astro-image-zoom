@@ -113,6 +113,10 @@ const CLOSE_ANIMATIONS = [
   "astro-image-zoom-out",
   "astro-image-zoom-backdrop-out",
 ];
+
+// Whether the user has zoomed the page in with a pinch (the visual viewport is scaled up)
+const isPageZoomed = (): boolean => (window.visualViewport?.scale ?? 1) > 1.01;
+
 // How long (ms) a requested slide counts as the target while the smooth scroll runs
 const SCROLL_TARGET_TTL = 500;
 // Vertical wheel deltas below this many pixels do not close the overlay
@@ -371,6 +375,8 @@ class Zoom {
   private escapePressed = false;
   private touchStartX = 0;
   private touchStartY = 0;
+  // A pinch started this touch gesture: the finger left on screen pans, it does not close
+  private touchPinched = false;
   // timeStamp of the last horizontal wheel event; none yet, so the first vertical one always counts
   private lastHorizontalWheel = -Infinity;
   private scrollTarget = 0;
@@ -639,6 +645,12 @@ class Zoom {
       passive: true,
       signal,
     });
+
+    // Zoomed in with a pinch, the swipes pan the page zoom instead of moving through the gallery
+    window.visualViewport?.addEventListener("resize", this.handlePageZoom, {
+      signal,
+    });
+    this.handlePageZoom();
 
     // Smooth close on vertical scroll/wheel (like Medium - non-blocking)
     if (this.options.closeOnScroll) {
@@ -1007,10 +1019,18 @@ class Zoom {
     this.close(false, this.escapePressed); // Trigger animated close
   };
 
-  private handleTouchStart = (e: TouchEvent): void => {
-    // Ignore multi-touch (pinch to zoom)
-    if (e.touches.length > 1) return;
+  private handlePageZoom = (): void => {
+    this.overlay.classList.toggle("is-page-zoomed", isPageZoomed());
+  };
 
+  private handleTouchStart = (e: TouchEvent): void => {
+    // Ignore multi-touch (pinch to zoom) until every finger has left the screen
+    if (e.touches.length > 1) {
+      this.touchPinched = true;
+      return;
+    }
+
+    this.touchPinched = false;
     this.touchStartX = e.touches[0].clientX;
     this.touchStartY = e.touches[0].clientY;
   };
@@ -1018,6 +1038,8 @@ class Zoom {
   private handleWheel = (e: WheelEvent): void => {
     // A touchpad pinch (and Ctrl + wheel) comes as a wheel with ctrlKey: it zooms, it does not scroll
     if (e.ctrlKey) return;
+    // Zoomed in with a pinch, the wheel pans the page zoom: it does not close
+    if (isPageZoomed()) return;
 
     // Horizontal gestures scroll the track natively; the vertical jitter of a touchpad
     // swipe must not close the overlay
@@ -1032,8 +1054,9 @@ class Zoom {
   };
 
   private handleTouchMove = (e: TouchEvent): void => {
-    // Ignore multi-touch (pinch to zoom)
-    if (e.touches.length > 1) return;
+    // Ignore multi-touch (pinch to zoom), and the swipes that pan the page zoom: zoomed in on an
+    // image, the instinct is to drag it around to see the rest of it
+    if (e.touches.length > 1 || this.touchPinched || isPageZoomed()) return;
 
     const touch = e.touches[0];
     const deltaX = Math.abs(touch.clientX - this.touchStartX);
@@ -1181,7 +1204,7 @@ class Zoom {
     this.showThumbnail(sourceImg);
 
     this.overlay.close();
-    this.overlay.classList.remove("is-closing");
+    this.overlay.classList.remove("is-closing", "is-page-zoomed");
     this.backdrop.style.removeProperty("--backdrop-now");
     this.unlockScroll();
 

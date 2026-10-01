@@ -164,6 +164,53 @@ test.describe("open and close", () => {
     await expect(dialog(page)).toHaveClass(/\bis-open\b/);
   });
 
+  test("stays open on swipes and wheels while zoomed in with a pinch", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName !== "chromium",
+      "the page zoom is set through the Chrome DevTools Protocol",
+    );
+    await openZoom(page, "gallery");
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setPageScaleFactor", { pageScaleFactor: 2 });
+    await expect
+      .poll(() => page.evaluate(() => window.visualViewport!.scale))
+      .toBe(2);
+    await expect(dialog(page)).toHaveClass(/\bis-page-zoomed\b/);
+    await expect(page.locator(".astro-image-zoom-track")).toHaveCSS(
+      "overflow-x",
+      "hidden",
+    );
+
+    await page.mouse.move(640, 360);
+    await page.mouse.wheel(0, 400);
+    await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: true });
+    const touch = (y: number) => [{ x: 320, y }];
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: touch(200),
+    });
+    for (const y of [250, 300, 350])
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: touch(y),
+      });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+    await page.waitForTimeout(300);
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+
+    // Back to the normal size, the wheel closes again
+    await cdp.send("Emulation.setPageScaleFactor", { pageScaleFactor: 1 });
+    await expect(dialog(page)).not.toHaveClass(/\bis-page-zoomed\b/);
+    await page.mouse.wheel(0, 400);
+    await expectClosed(page);
+  });
+
   test("locks the page scroll, also when the site sets overflow on <html>", async ({
     page,
   }) => {
