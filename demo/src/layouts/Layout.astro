@@ -8,11 +8,13 @@ import { photos } from "@data/photos";
 interface Props {
   title: string;
   description: string;
-  /** The page of the main navigation this one is, marked with aria-current */
-  current: "home" | "docs";
+  /** The page of the main navigation this one is, marked with aria-current; none for the 404 */
+  current?: "home" | "docs";
+  /** Keeps the page out of search engines, as the 404 */
+  noindex?: boolean;
 }
 
-const { title, description, current } = Astro.props;
+const { title, description, current, noindex = false } = Astro.props;
 const repository = "https://github.com/antoniohg/astro-image-zoom";
 const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
 
@@ -38,6 +40,7 @@ const shareImageUrl = new URL(shareImage.src, Astro.site);
     <meta name="color-scheme" content="light dark" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
     <link rel="canonical" href={canonical} />
     <link rel="sitemap" href={`${base}sitemap-index.xml`} />
     <meta property="og:type" content="website" />
