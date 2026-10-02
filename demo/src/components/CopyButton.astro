@@ -83,9 +83,9 @@ const { label = "Copy code", class: className } = Astro.props;
     /*
      * On the dark code box in both page themes: a quiet icon, lit on hover and focus. Its background
      * is the one of the box (github-dark-default), so code that scrolls under it on a phone hides
-     * behind it
+     * behind it. Not while hidden: display would override the hidden attribute
      */
-    button {
+    button:not([hidden]) {
       display: grid;
       place-items: center;
       inline-size: 2rem;

@@ -66,10 +66,17 @@ const { entries } = Astro.props;
     frame ||= requestAnimationFrame(update);
   };
 
-  // On narrow screens, a link folds the index again, so the section shows under it
+  // Open from 64rem, also in browsers without ::details-content, and folded again below
   const details =
     document.querySelector<HTMLDetailsElement>("[data-toc] details");
   const wide = matchMedia("(width >= 64rem)");
+  const sync = () => {
+    if (details) details.open = wide.matches;
+  };
+  wide.addEventListener("change", sync);
+  sync();
+
+  // On narrow screens, a link folds the index again, so the section shows under it
   for (const { link } of entries) {
     link.addEventListener("click", () => {
       if (details && !wide.matches) details.open = false;
@@ -104,8 +111,9 @@ const { entries } = Astro.props;
       }
 
       /*
-       * Always open from 64rem: no summary, and the content shown even when closed. Browsers
-       * without ::details-content keep the summary, so the index can still be unfolded
+       * Always open from 64rem: no summary, and the content shown even when closed (before the
+       * script opens it, or without JavaScript). Browsers without ::details-content keep the
+       * summary; the script opens the index for them
        */
       @supports selector(::details-content) {
         @media (width >= 64rem) {
