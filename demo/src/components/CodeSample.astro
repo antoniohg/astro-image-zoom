@@ -1,5 +1,6 @@
 ---
 import { Code } from "astro:components";
+import CopyButton from "./CopyButton.astro";
 
 interface Props {
   code: string;
@@ -9,19 +10,41 @@ interface Props {
 }
 
 const { code, lang = "astro", open = false } = Astro.props;
+
+// Open, the block alone; otherwise inside a "Show code" disclosure
+const Wrapper = open ? Fragment : "details";
 ---
 
-{open ? (
-  <Code code={code} lang={lang} theme="github-dark-default" />
-) : (
-  <details class="code-sample">
-    <summary>Show code</summary>
+<Wrapper class={open ? undefined : "code-sample"}>
+  {!open && <summary>Show code</summary>}
+  <div class="code-block" data-copy-scope>
     <Code code={code} lang={lang} theme="github-dark-default" />
-  </details>
-)}
+    <CopyButton class="copy" />
+  </div>
+</Wrapper>
 
 <style>
   @layer components {
+    /* The copy button in the top corner of the block; the lines leave room for it */
+    .code-block {
+      position: relative;
+
+      :global(pre) {
+        margin: 0;
+        padding-inline-end: 3rem;
+      }
+    }
+
+    /* Global: the class lands on the element of CopyButton, outside the scope of this component */
+    .code-block > :global(.copy) {
+      position: absolute;
+      inset-block-start: 1px;
+      inset-inline-end: 1px;
+      padding: 0.4375rem;
+      background: #0d1117;
+      border-radius: var(--radius);
+    }
+
     .code-sample {
       font-family: var(--font-sans);
       font-size: 0.875rem;

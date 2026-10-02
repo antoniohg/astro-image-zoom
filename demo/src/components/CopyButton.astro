@@ -1,0 +1,152 @@
+---
+/**
+ * Copies the code shown in the closest [data-copy-scope]: the visible <pre> in it, so the install
+ * command copies the tab that is checked. An icon in the corner of the dark code box, which turns
+ * into a check for a moment; a status region announces it to screen readers. Hidden until the
+ * script runs: without JavaScript there is no clipboard, and the code can still be selected by hand.
+ */
+import CopyIcon from "../assets/icons/copy.svg";
+import CheckIcon from "../assets/icons/check.svg";
+
+interface Props {
+  /** Accessible name of the button, which shows only an icon */
+  label?: string;
+  class?: string;
+}
+
+const { label = "Copy code", class: className } = Astro.props;
+---
+
+<copy-button class={className}>
+  <button type="button" aria-label={label} hidden>
+    <CopyIcon class="icon copy" width={18} height={18} aria-hidden="true" />
+    <CheckIcon class="icon done" width={18} height={18} aria-hidden="true" />
+  </button>
+  <span class="status" role="status"></span>
+</copy-button>
+
+<script>
+  // How long the check shows, in ms
+  const CONFIRMATION = 2000;
+
+  class CopyButton extends HTMLElement {
+    private timer = 0;
+
+    connectedCallback() {
+      const button = this.querySelector("button");
+      if (!button || !navigator.clipboard) return;
+      button.hidden = false;
+      button.addEventListener("click", this.copy);
+    }
+
+    disconnectedCallback() {
+      this.querySelector("button")?.removeEventListener("click", this.copy);
+      clearTimeout(this.timer);
+    }
+
+    private copy = async () => {
+      const scope = this.closest("[data-copy-scope]");
+      const pre = [...(scope?.querySelectorAll("pre") ?? [])].find((element) =>
+        element.checkVisibility(),
+      );
+      if (!pre) return;
+      try {
+        await navigator.clipboard.writeText(pre.textContent?.trimEnd() ?? "");
+        this.show(true, "Copied");
+      } catch {
+        // Denied, or a page served over plain http: the code can still be selected by hand
+        this.show(false, "Couldn't copy");
+      }
+    };
+
+    private show(copied: boolean, message: string) {
+      const status = this.querySelector(".status")!;
+      this.toggleAttribute("data-copied", copied);
+      status.textContent = message;
+      clearTimeout(this.timer);
+      this.timer = window.setTimeout(() => {
+        this.removeAttribute("data-copied");
+        status.textContent = "";
+      }, CONFIRMATION);
+    }
+  }
+
+  customElements.define("copy-button", CopyButton);
+</script>
+
+<style>
+  @layer components {
+    copy-button {
+      display: block;
+    }
+
+    /*
+     * On the dark code box in both page themes: a quiet icon, lit on hover and focus. Its background
+     * is the one of the box (github-dark-default), so code that scrolls under it on a phone hides
+     * behind it. Not while hidden: display would override the hidden attribute
+     */
+    button:not([hidden]) {
+      display: grid;
+      place-items: center;
+      inline-size: 2rem;
+      aspect-ratio: 1;
+      padding: 0;
+      color: #9198a1;
+      background: #0d1117;
+      border: 0;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition:
+        color 0.15s,
+        background-color 0.15s;
+
+      &:hover,
+      &:focus-visible {
+        color: #e6edf3;
+        background: #1f242c;
+      }
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 0;
+      }
+    }
+
+    /* The check in place of the copy icon while it shows */
+    .icon {
+      grid-area: 1 / 1;
+
+      /* The second tone of the Phosphor duotone icons is 20% of the color: too faint for a small
+         gray icon on the dark box. Global: the paths come from the SVG file, without the scope */
+      :global(path[opacity]) {
+        opacity: 0.4;
+      }
+    }
+
+    .done,
+    [data-copied] .copy {
+      visibility: hidden;
+    }
+
+    [data-copied] .done {
+      visibility: visible;
+      color: #e6edf3;
+    }
+
+    /* Read by screen readers, not shown: the check says it already */
+    .status {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      button {
+        transition: none;
+      }
+    }
+  }
+</style>

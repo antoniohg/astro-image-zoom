@@ -10,16 +10,19 @@ interface Props {
 
 const { images } = Astro.props;
 
-// Starting values of the controls: the ranges at the defaults of the overlay, the colors at a dark
-// theme in the accent of the site. Nothing is applied until a control changes
+// Starting values of the controls: the ranges at the defaults of the overlay, the colors at a deep
+// petrol with sand controls, a theme a real site could use. A color input can't show the default of
+// the overlay (translucent, light or dark), so the playground starts with that theme applied: what
+// the controls show is what the photos open with. Sand on the buttons: 4.9:1, on the backdrop and
+// the caption: 7.6:1
 const colors = [
-  { name: "--zoom-bg", label: "Background", value: "#050814" },
-  { name: "--zoom-close-color", label: "Close icon", value: "#ff7a66" },
-  { name: "--zoom-close-bg", label: "Close button", value: "#1b2238" },
-  { name: "--zoom-nav-color", label: "Arrow icons", value: "#ff7a66" },
-  { name: "--zoom-nav-bg", label: "Arrow buttons", value: "#1b2238" },
-  { name: "--zoom-caption-color", label: "Caption text", value: "#050814" },
-  { name: "--zoom-caption-bg", label: "Caption box", value: "#ff7a66" },
+  { name: "--zoom-bg", label: "Background", value: "#1f4b55" },
+  { name: "--zoom-close-color", label: "Close icon", value: "#f3e3d3" },
+  { name: "--zoom-close-bg", label: "Close button", value: "#2f6a74" },
+  { name: "--zoom-nav-color", label: "Arrows and counter", value: "#f3e3d3" },
+  { name: "--zoom-nav-bg", label: "Navigation bar", value: "#2f6a74" },
+  { name: "--zoom-caption-color", label: "Caption text", value: "#1f4b55" },
+  { name: "--zoom-caption-bg", label: "Caption box", value: "#f3e3d3" },
 ];
 
 // phone: the default of the overlay up to 640px wide, where its controls get smaller
@@ -174,7 +177,7 @@ const ranges: {
   </form>
 
   <div class="preview">
-    <!-- The variables go on this element, around the gallery: only this gallery changes -->
+    {/* The variables go on this element, around the gallery: only this gallery changes */}
     <div class="scope">
       <ImageZoom>
         <div class="photos">
@@ -190,7 +193,7 @@ const ranges: {
         </div>
       </ImageZoom>
     </div>
-    <!-- Rendered by Shiki in the theme of every code block; the script only swaps its text -->
+    {/* Rendered by Shiki in the theme of every code block; the script only swaps its text */}
     <Code
       class="snippet"
       code="/* Change a value to see the code */"
@@ -237,6 +240,7 @@ const ranges: {
       this.form.addEventListener("input", this.handleInput);
       this.form.addEventListener("reset", this.handleReset);
       this.phone.addEventListener("change", this.fitScreen);
+      this.applyColors();
       this.fitScreen();
     }
 
@@ -276,6 +280,14 @@ const ranges: {
       }
     };
 
+    // The colors are always set, from the starting theme on
+    private applyColors() {
+      for (const input of this.form.querySelectorAll<HTMLInputElement>(
+        'input[type="color"]',
+      ))
+        this.setVariable(input);
+    }
+
     private handleInput = (event: Event) => {
       const input = event.target;
       if (!(input instanceof HTMLInputElement)) return;
@@ -306,9 +318,13 @@ const ranges: {
         this.zoom.dataset[attribute] = initial;
       for (const output of this.form.querySelectorAll("output"))
         output.value = output.dataset.default ?? "";
-      // The form puts the sliders back after this event: set the ones of this screen then
-      requestAnimationFrame(this.showDefaults);
-      this.render();
+      // The form puts the controls back after this event: then set the sliders of this screen and
+      // the starting colors again
+      requestAnimationFrame(() => {
+        this.showDefaults();
+        this.applyColors();
+        this.render();
+      });
     };
 
     // The code to copy: the changed variables in a class, and the props that differ from the defaults

@@ -1,6 +1,6 @@
 /**
  * Wraps the images of a rendered HTML string in accessible zoom links.
- * Runs on the server, so without JavaScript the links still open the full-size image.
+ * Runs on the server, so without JavaScript the links still open the image the zoom would show.
  */
 
 import { DEFAULT_LABELS, type ImageZoomLabels } from "./labels";

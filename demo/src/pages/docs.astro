@@ -1,7 +1,7 @@
 ---
+import Layout from "@layouts/Layout.astro";
 import { Picture, getImage } from "astro:assets";
 import ImageZoom from "astro-image-zoom/ImageZoom.astro";
-import Layout from "@layouts/Layout.astro";
 import Section from "@components/Section.astro";
 import CodeSample from "@components/CodeSample.astro";
 import InstallCommand from "@components/InstallCommand.astro";
@@ -19,6 +19,7 @@ import {
   colorVariables,
   eventDetail,
   events,
+  labels,
   layoutVariables,
   otherVariables,
   parts,
@@ -72,7 +73,8 @@ const options: ExampleData[] = [
   },
   {
     title: "Stays open while scrolling",
-    description: "Scrolling or a vertical swipe doesn't close it.",
+    description:
+      "A wheel, a touchpad scroll or a vertical swipe doesn't close it.",
     code: "<ImageZoom closeOnScroll={false}>",
     icon: MouseScrollIcon,
     names: ["issArrays"],
@@ -176,10 +178,13 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
     title: "Usage",
     children: [
       { id: "sources", title: "Image sources" },
+      { id: "links", title: "Links" },
       { id: "nested", title: "Nested markup" },
+      { id: "ignore", title: "Leaving images out" },
+      { id: "thumbnails", title: "Your thumbnails" },
     ],
   },
-  { id: "options", title: "Options" },
+  { id: "behavior", title: "Behavior" },
   {
     id: "layout",
     title: "Layout",
@@ -200,39 +205,59 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
       { id: "parts", title: "Parts" },
     ],
   },
+  { id: "labels", title: "Labels" },
   { id: "events", title: "Events" },
-  { id: "api", title: "API" },
+  { id: "javascript-api", title: "JavaScript API" },
+  { id: "reference", title: "Reference" },
 ];
 ---
 
 <Layout
   title="Docs · astro-image-zoom"
-  description="Options, layout, theming, CSS variables and the API of astro-image-zoom, with live examples."
+  description="Behavior, layout, theming, labels, events and the JavaScript API of astro-image-zoom, with live examples."
   current="docs"
 >
   <div class="docs">
     <header class="intro">
       <h1>Docs</h1>
       <p class="lead">
-        Everything <code>{`<ImageZoom>`}</code> can do, with a live example for
-        each option. Every image on this page opens.
+        Everything <code>{`<ImageZoom>`}</code> can do, with live examples.
+        Every image on this page opens.
       </p>
     </header>
 
     <TableOfContents entries={toc} />
 
     <article class="flow content">
-      <!-- Usage -->
       <Section title="Usage" id="usage">
         <InstallCommand id="docs" />
         <p>
           Put <code>{`<ImageZoom>`}</code> around any markup with images. It
-          wraps each one in a link to its full-size file, so without JavaScript
-          the link still opens the image.
+          wraps each one in a link to the file the zoom opens, so without
+          JavaScript the link still opens the image.
         </p>
         <CodeSample
           open
           code={`---
+import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
+---
+<ImageZoom>
+  <img src="/earthrise.jpg" alt="Earth rising above the Moon" />
+</ImageZoom>`}
+        />
+        <div class="note">
+          <p>
+            <strong>A larger file for the zoom.</strong> The zoom never shows an
+            image bigger than its file, and without{" "}
+            <code>data-image-zoom-src</code> it opens the image's own{" "}
+            <code>src</code>. When the page shows a smaller version, such as a
+            thumbnail in an <code>{`<img>`}</code> or the 800&nbsp;px file
+            Astro's <code>{`<Image width={800}>`}</code> generates, point{" "}
+            <code>data-image-zoom-src</code> at the full-size one.
+          </p>
+          <CodeSample
+            open
+            code={`---
 import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
 import { Image, getImage } from 'astro:assets';
 import photo from '../assets/earthrise.jpg';
@@ -244,47 +269,8 @@ const fullSize = await getImage({ src: photo, width: photo.width });
   <Image src={photo} alt="Earth rising above the Moon" width={800}
     data-image-zoom-src={fullSize.src} data-image-zoom-caption="Earthrise — Apollo 8, 1968" />
 </ImageZoom>`}
-        />
-        <div class="note">
-          <p>
-            <strong>
-              Why <code>data-image-zoom-src</code>?
-            </strong>{" "}
-            Astro's <code>{`<Image width={800}>`}</code> generates an
-            800&nbsp;px file, and the zoom never shows an image bigger than it
-            is: it would open that small file, at 800&nbsp;px. Point
-            <code>data-image-zoom-src</code> at a bigger version. Plain{" "}
-            <code>{`<img>`}</code> tags don't need it: the zoom opens the same
-            file.
-          </p>
-        </div>
-        <div class="note">
-          <p>
-            <strong>Your thumbnails, your styles.</strong> The component doesn't
-            style the images on your page, not even their focus ring. Each one
-            gets an inline <code>{`<a data-image-zoom-generated>`}</code> with
-            your link styles, and if your images are <code>display: block</code>
-            , the outline of that link doesn't wrap them. Draw your focus ring
-            on the image instead, as this page does, and add a zoom cursor if
-            you like.
-          </p>
-          <CodeSample
-            lang="css"
-            code={`a[data-image-zoom-generated]:focus-visible {
-  outline: none;
-}
-
-a[data-image-zoom-generated]:focus-visible img {
-  outline: 2px solid green; /* your focus ring */
-  outline-offset: 3px; /* negative if a parent with overflow: hidden clips it */
-}
-
-a[data-image-zoom-generated] img {
-  cursor: zoom-in;
-}`}
           />
         </div>
-
         <Section title="Image sources" id="sources" level={3}>
           <p>
             Astro's <code>{`<Image>`}</code> and <code>{`<Picture>`}</code>, a
@@ -293,8 +279,9 @@ a[data-image-zoom-generated] img {
           </p>
           <p>
             Prefer <code>{`<Image>`}</code> or <code>{`<Picture>`}</code>: Astro
-            resizes and compresses them, so the page loads light images and the
-            zoom fetches the full size only when it opens. Plain
+            resizes and compresses them, so the page loads light images; with{" "}
+            <code>data-image-zoom-src</code>, the zoom fetches the full size
+            only when it opens. Plain
             <code>{`<img>`}</code> tags work just as well, but they ship
             whatever file you give them.
           </p>
@@ -329,7 +316,7 @@ a[data-image-zoom-generated] img {
                 </p>
               </div>
               <div class="source">
-                <!-- A small copy for the page, the full file for the zoom -->
+                {/* A small copy for the page, the full file for the zoom */}
                 <img
                   src={`${base}images/as17-148-22727-640.jpg`}
                   alt={photos.blueMarble.alt}
@@ -371,10 +358,29 @@ a[data-image-zoom-generated] img {
           />
         </Section>
 
+        <Section title="Links" id="links" level={3}>
+          <p>
+            An image inside a link with <code>data-image-zoom</code> opens the
+            link's <code>href</code>. Put the caption on the link, in{" "}
+            <code>data-image-zoom-caption</code> or <code>title</code>: the
+            image inside only gives its alt text. Images inside any other link,
+            or inside a button, are left alone, so cards and logos keep working
+            as links.
+          </p>
+          <CodeSample
+            open
+            code={`<ImageZoom>
+  <a href="/full-size-1.jpg" data-image-zoom data-image-zoom-caption="Harbor at dawn">
+    <img src="/thumbnail-1.jpg" alt="Harbor at dawn" />
+  </a>
+</ImageZoom>`}
+          />
+        </Section>
+
         <Section title="Nested markup" id="nested" level={3}>
           <p>
-            Images nested anywhere inside the component zoom too, like in this
-            card.
+            Images at any depth inside the component zoom too, like those of
+            this card.
           </p>
           <ImageZoom>
             <article class="card">
@@ -409,10 +415,66 @@ a[data-image-zoom-generated] img {
             </article>
           </ImageZoom>
         </Section>
+
+        <Section title="Leaving images out" id="ignore" level={3}>
+          <p>
+            Logos, avatars and decorative images inside a wrapped article
+            shouldn't zoom. List them in the <code>ignore</code> prop: an
+            ignored image isn't wrapped in a link and doesn't count in the
+            gallery. Each selector is checked against the image and every
+            element around it, so <code>.author</code> leaves out every image in
+            the aside.
+          </p>
+          <CodeSample
+            code={`<ImageZoom ignore=".logo, .author, [alt='']">
+  <img src="/photo.jpg" alt="Harbor at dawn" />
+  <img class="logo" src="/logo.svg" alt="Harbor Co." />
+  <img src="/divider.svg" alt="" />
+  <aside class="author"><img src="/avatar.jpg" alt="The author" /></aside>
+  <!-- One image, without the prop -->
+  <img src="/signature.svg" alt="Signature" data-image-zoom-ignore />
+</ImageZoom>`}
+          />
+          <p>
+            The images are wrapped on the server, without a DOM, so
+            <code>ignore</code> takes simple selectors only: a tag name,
+            <code>.classes</code>, <code>#ids</code> and
+            <code>[attributes]</code>, combined as in
+            <code>img.logo[alt='']</code>. Spaces inside a selector, combinators
+            and pseudo-classes fail the build with an error that names the
+            selector.
+          </p>
+        </Section>
+
+        <Section title="Your thumbnails" id="thumbnails" level={3}>
+          <p>
+            The component doesn't style the images on your page, not even their
+            focus ring. Each one gets an inline
+            <code>{`<a data-image-zoom-generated>`}</code> with your link
+            styles, and if your images are <code>display: block</code>, the
+            outline of that link doesn't wrap them. Draw your focus ring on the
+            image instead, as this page does, and add a zoom cursor if you like.
+          </p>
+          <CodeSample
+            open
+            lang="css"
+            code={`a[data-image-zoom-generated]:focus-visible {
+  outline: none;
+}
+
+a[data-image-zoom-generated]:focus-visible img {
+  outline: 2px solid green; /* your focus ring */
+  outline-offset: 3px; /* negative if a parent with overflow: hidden clips it */
+}
+
+a[data-image-zoom-generated] img {
+  cursor: zoom-in;
+}`}
+          />
+        </Section>
       </Section>
 
-      <!-- Options -->
-      <Section title="Options" id="options">
+      <Section title="Behavior" id="behavior">
         <p>
           Props change how the zoom moves, closes and animates. Open each
           example to try it.
@@ -439,7 +501,6 @@ a[data-image-zoom-generated] img {
         </ul>
       </Section>
 
-      <!-- Layout -->
       <Section title="Layout" id="layout">
         <p>
           Props choose where the navigation and the caption go. Spacing, corners
@@ -481,8 +542,9 @@ a[data-image-zoom-generated] img {
 
         <Section title="Caption" id="caption" level={3}>
           <p>
-            The caption comes from <code>data-image-zoom-caption</code>, and
-            sits at the bottom by default.
+            The caption comes from <code>data-image-zoom-caption</code> (or the{" "}
+            <code>title</code> of a <code>data-image-zoom</code> link), and sits
+            at the bottom by default.
           </p>
           <ul class="examples" role="list">
             {captions.map(({ names, zoom, ...example }) => (
@@ -529,13 +591,14 @@ a[data-image-zoom-generated] img {
 }`}
           />
           <p>
-            The overlay reads the values each time a gallery opens: turning the
-            phone with a photo open keeps them until the next one.
+            The overlay copies your values each time a gallery opens: when a
+            media query changes them, as when the phone turns with a photo open,
+            the new ones apply from the next opening. The overlay's own smaller
+            defaults follow the screen at once.
           </p>
         </Section>
       </Section>
 
-      <!-- Theming -->
       <Section title="Theming" id="theming">
         <p>
           The overlay follows the light or dark preference of the system. Change
@@ -636,7 +699,40 @@ a[data-image-zoom-generated] img {
         </Section>
       </Section>
 
-      <!-- Events -->
+      <Section title="Labels" id="labels">
+        <p>
+          Apart from the counter, which is only numbers, the texts the component
+          adds are <code>aria-label</code>s, read by screen readers. They are in
+          English; the <code>labels</code> prop translates the ones you set. The
+          caption is your own text, so the component never translates it.
+        </p>
+        <CodeSample
+          open
+          code={`<ImageZoom labels={{ close: 'Cerrar zoom', enlargeNamed: 'Ampliar imagen: {alt}' }}>
+  <img src="/photo.jpg" alt="Un coche rojo" />
+</ImageZoom>`}
+        />
+        <Reference rows={labels} />
+        <p>
+          For a multilingual site, wrap the component in one of your own that
+          picks the labels of the page's locale:
+        </p>
+        <CodeSample
+          code={`---
+// src/components/Zoom.astro
+import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
+import type { ImageZoomLabels } from 'astro-image-zoom';
+
+const translations: Record<string, Partial<ImageZoomLabels>> = {
+  es: { close: 'Cerrar zoom', enlargeNamed: 'Ampliar imagen: {alt}' },
+};
+---
+<ImageZoom {...Astro.props} labels={translations[Astro.currentLocale ?? '']}>
+  <slot />
+</ImageZoom>`}
+        />
+      </Section>
+
       <Section title="Events" id="events">
         <p>
           Each <code>{`<astro-image-zoom>`}</code> dispatches an event when the
@@ -668,8 +764,43 @@ a[data-image-zoom-generated] img {
         <Reference rows={eventDetail} />
       </Section>
 
-      <!-- API -->
-      <Section title="API" id="api">
+      <Section title="JavaScript API" id="javascript-api">
+        <p>
+          For images outside any <code>{`<ImageZoom>`}</code>, such as markup
+          your scripts add after the page loads, create a zoom with{" "}
+          <code>ZoomClass</code> on the element around the links. Images aren't
+          wrapped then, so only links with <code>data-image-zoom</code> count.
+          Inside an <code>{`<ImageZoom>`}</code> you don't need it: links with{" "}
+          <code>data-image-zoom</code> added later are picked up when clicked.
+        </p>
+        <CodeSample
+          open
+          code={`<div class="my-gallery">
+  <a href="/large-1.jpg" data-image-zoom><img src="/small-1.jpg" alt="Harbor at dawn" /></a>
+  <a href="/large-2.jpg" data-image-zoom><img src="/small-2.jpg" alt="Harbor at noon" /></a>
+</div>
+
+<script>
+  import { ZoomClass } from 'astro-image-zoom';
+
+  const gallery = document.querySelector<HTMLElement>('.my-gallery');
+  if (gallery) {
+    const zoom = new ZoomClass(gallery);
+    // Later, if needed: zoom.destroy();
+  }
+</script>`}
+        />
+        <p>
+          It reads the options from the same <code>data-*</code> attributes{" "}
+          <code>{`<ImageZoom>`}</code> renders on its element, such as
+          <code>data-image-zoom-show-counter="false"</code>; the theme and the
+          duration come from the <code>--zoom-*</code> variables.
+          <code>data-image-zoom-ignore-selector</code> on the wrapper takes any
+          CSS selector, since the browser matches it.
+        </p>
+      </Section>
+
+      <Section title="Reference" id="reference">
         <h3>Props</h3>
         <Reference rows={props} />
 
@@ -721,6 +852,11 @@ a[data-image-zoom-generated] img {
       padding-inline-start: 1.25rem;
       color: var(--color-text-muted);
       border-inline-start: 2px solid var(--color-accent);
+
+      /* The measure of the paragraphs of a section; the code under it takes the whole column */
+      p {
+        max-inline-size: 44rem;
+      }
 
       strong {
         color: var(--color-text);
