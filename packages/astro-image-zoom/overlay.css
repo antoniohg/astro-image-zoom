@@ -355,7 +355,7 @@
 
   to {
     transform: translate(0, 0) scale(1);
-    clip-path: var(--clip-to, inset(0));
+    clip-path: inset(0);
   }
 }
 
@@ -363,7 +363,7 @@
   /* --transform-now and --clip-now: where the image was when the zoom closed during the opening */
   from {
     transform: var(--transform-now, translate(0, 0) scale(1));
-    clip-path: var(--clip-now, var(--clip-to, inset(0)));
+    clip-path: var(--clip-now, inset(0));
   }
 
   to {
@@ -548,12 +548,18 @@
   background-color: var(--zoom-close-bg, var(--astro-image-zoom-surface));
 }
 
+/* The colors of the navigation: the bar, and in "sides" layout each arrow and the counter */
+.astro-image-zoom-toolbar,
+.astro-image-zoom-overlay[data-navigation-layout="sides"]
+  :is(.astro-image-zoom-nav, .astro-image-zoom-counter) {
+  color: var(--zoom-nav-color, var(--astro-image-zoom-on-surface));
+  background-color: var(--zoom-nav-bg, var(--astro-image-zoom-surface));
+}
+
 .astro-image-zoom-toolbar {
   display: flex;
   align-items: center;
   padding: 2px;
-  color: var(--zoom-nav-color, var(--astro-image-zoom-on-surface));
-  background-color: var(--zoom-nav-bg, var(--astro-image-zoom-surface));
   border-radius: calc(var(--zoom-button-radius, 999px) + 2px);
 }
 
@@ -612,8 +618,6 @@
   position: fixed;
   top: 50%;
   translate: 0 -50%;
-  color: var(--zoom-nav-color, var(--astro-image-zoom-on-surface));
-  background-color: var(--zoom-nav-bg, var(--astro-image-zoom-surface));
 }
 
 .astro-image-zoom-overlay[data-navigation-layout="sides"]
@@ -629,8 +633,6 @@
 .astro-image-zoom-overlay[data-navigation-layout="sides"]
   .astro-image-zoom-counter {
   padding: 6px 10px;
-  color: var(--zoom-nav-color, var(--astro-image-zoom-on-surface));
-  background-color: var(--zoom-nav-bg, var(--astro-image-zoom-surface));
   border-radius: var(--zoom-button-radius, 999px);
 }
 
@@ -661,7 +663,6 @@
 
 /* Accessibility - Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
-  .astro-image-zoom-overlay,
   .astro-image-zoom-image {
     transition: none;
   }

@@ -566,7 +566,7 @@ class Zoom {
     this.inheritVariables();
 
     // Get source image and position
-    const sourceImg = this.state.images[index].element.querySelector("img")!;
+    const sourceImg = this.getThumbnail(index)!;
     const sourceRect = sourceImg.getBoundingClientRect();
     const sourceFit = thumbnailFit(sourceImg);
 
@@ -585,34 +585,22 @@ class Zoom {
 
     // Show overlay and prevent body scroll
     this.overlay.showModal();
-    this.overlay.setAttribute(
-      "data-close-backdrop",
-      String(this.options.closeOnBackdrop),
-    );
-    this.overlay.setAttribute(
-      "data-close-image",
-      String(this.options.closeOnImage),
-    );
     // Read on each opening, so a page can change them after load
-    const captionPosition = this.wrapper.dataset.imageZoomCaptionPosition ?? "";
-    this.overlay.setAttribute(
-      "data-caption-position",
-      CAPTION_POSITIONS.includes(captionPosition) ? captionPosition : "bottom",
-    );
-    this.overlay.setAttribute(
-      "data-show-caption",
-      String(this.wrapper.dataset.imageZoomShowCaption !== "false"),
-    );
-    this.overlay.setAttribute(
-      "data-show-counter",
-      String(this.wrapper.dataset.imageZoomShowCounter !== "false"),
-    );
-    const navigationLayout =
-      this.wrapper.dataset.imageZoomNavigationLayout ?? "";
-    this.overlay.setAttribute(
-      "data-navigation-layout",
-      NAVIGATION_LAYOUTS.includes(navigationLayout) ? navigationLayout : "bar",
-    );
+    const { dataset } = this.wrapper;
+    const captionPosition = dataset.imageZoomCaptionPosition ?? "";
+    const navigationLayout = dataset.imageZoomNavigationLayout ?? "";
+    Object.assign(this.overlay.dataset, {
+      closeBackdrop: String(this.options.closeOnBackdrop),
+      closeImage: String(this.options.closeOnImage),
+      captionPosition: CAPTION_POSITIONS.includes(captionPosition)
+        ? captionPosition
+        : "bottom",
+      showCaption: String(dataset.imageZoomShowCaption !== "false"),
+      showCounter: String(dataset.imageZoomShowCounter !== "false"),
+      navigationLayout: NAVIGATION_LAYOUTS.includes(navigationLayout)
+        ? navigationLayout
+        : "bar",
+    });
     this.applyLabels();
     this.lockScroll();
 
@@ -707,7 +695,7 @@ class Zoom {
 
     // Get source image BEFORE any DOM changes
     const sourceElement = this.state.images[this.state.currentIndex].element;
-    const sourceImg = sourceElement.querySelector("img")!;
+    const sourceImg = this.getThumbnail(this.state.currentIndex)!;
 
     // Focus goes to the link of the image on screen, where the close lands, not to the one that
     // opened the zoom: a keyboard user goes on from the image they were looking at. Not
@@ -821,21 +809,13 @@ class Zoom {
 
   // Moves the images of the slides by `offset` px, gliding there when `animate`, at once otherwise
   private setSlideOffset(offset: number, animate: boolean): void {
-    if (!animate) {
-      this.track.classList.remove("is-sliding");
-      this.track.style.setProperty(
-        "--astro-image-zoom-slide-offset",
-        `${offset}px`,
-      );
-      // Commit the offset before the transition starts from it
-      void this.track.offsetWidth;
-      return;
-    }
-    this.track.classList.add("is-sliding");
+    this.track.classList.toggle("is-sliding", animate);
     this.track.style.setProperty(
       "--astro-image-zoom-slide-offset",
       `${offset}px`,
     );
+    // Commit the offset before the transition starts from it
+    if (!animate) void this.track.offsetWidth;
   }
 
   // Shows a slide without the smooth scroll
@@ -1190,7 +1170,6 @@ class Zoom {
       transform.scale.toString(),
     );
     this.imageElement.style.setProperty("--clip-from", transform.clipPath);
-    this.imageElement.style.setProperty("--clip-to", "inset(0px)");
   }
 
   private getThumbnail(index: number): HTMLImageElement | null {
