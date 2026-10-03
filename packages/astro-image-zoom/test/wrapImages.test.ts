@@ -152,6 +152,20 @@ describe("wrapImages", () => {
       );
     });
 
+    it("reads an out-of-range character reference as U+FFFD, like the browser", () => {
+      const html = '<p class="&#x110000;"><img src="/1.jpg" alt=""></p>';
+      expect(wrapImages(html)).toBe(
+        '<p class="&#x110000;">' + wrapped("/1.jpg") + "</p>",
+      );
+      const replacement = String.fromCodePoint(0xfffd);
+      expect(
+        wrapImages(
+          '<img class="&#99999999;" src="/1.jpg" alt="">',
+          parseIgnore(`[class="${replacement}"]`),
+        ),
+      ).toBe('<img class="&#99999999;" src="/1.jpg" alt="">');
+    });
+
     it("leaves out every image inside an element a selector matches", () => {
       const aside =
         '<aside class="author"><p><img src="/1.jpg" alt=""></p></aside>';

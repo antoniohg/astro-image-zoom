@@ -176,18 +176,21 @@ const ENTITIES: Record<string, string> = {
 // Attribute values as the DOM sees them, so selectors match like in CSS: alt="Salt &amp; pepper"
 // is matched by [alt="Salt & pepper"]. Numeric references and the five named ones Astro writes are
 // decoded; other named ones (&copy;), rare in rendered HTML, would need the whole HTML table, a
-// dependency, and are compared as written
+// dependency, and are compared as written. A number that is no character (0, a surrogate, beyond
+// U+10FFFF) is read as U+FFFD, as the browser does
 const decode = (value: string): string =>
   value.replace(
     /&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi,
-    (_, entity: string) =>
-      entity.startsWith("#")
-        ? String.fromCodePoint(
-            /^#x/i.test(entity)
-              ? Number.parseInt(entity.slice(2), 16)
-              : Number(entity.slice(1)),
-          )
-        : ENTITIES[entity.toLowerCase()],
+    (reference: string, entity: string) => {
+      if (!entity.startsWith("#"))
+        return ENTITIES[entity.toLowerCase()] ?? reference;
+      const code = /^#x/i.test(entity)
+        ? Number.parseInt(entity.slice(2), 16)
+        : Number(entity.slice(1));
+      const valid =
+        code > 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff);
+      return String.fromCodePoint(valid ? code : 0xfffd);
+    },
   );
 
 function matches(
