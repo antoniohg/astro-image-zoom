@@ -1050,6 +1050,44 @@ test.describe("theming", () => {
     await expectClosed(page);
   });
 
+  test("on a scroll close, the image leaves from where it was on a positioned <body>", async ({
+    page,
+  }) => {
+    // <body> becomes the containing block of the image that leaves the dialog
+    await page.addStyleTag({
+      content: "body { position: relative; margin: 120px 0 0 80px; }",
+    });
+    await openZoom(page, "single");
+    await settle(page);
+    const before = (await zoomedImage(page).boundingBox())!;
+
+    // The box of the image the moment it leaves the dialog, when its animation has not moved it yet
+    const detached = page.evaluate(
+      () =>
+        new Promise<{ x: number; y: number }>((resolve) => {
+          const root = document.querySelector(
+            "astro-image-zoom-overlay",
+          )!.shadowRoot!;
+          const observer = new MutationObserver(() => {
+            const image = [...root.children].find((child) =>
+              child.matches(".astro-image-zoom-image"),
+            );
+            if (!image) return;
+            observer.disconnect();
+            const { x, y } = image.getBoundingClientRect();
+            resolve({ x, y });
+          });
+          observer.observe(root, { childList: true });
+        }),
+    );
+    await page.mouse.move(640, 360);
+    await page.mouse.wheel(0, 400);
+    const { x, y } = await detached;
+    expect(x).toBeCloseTo(before.x, 0);
+    expect(y).toBeCloseTo(before.y, 0);
+    await expectClosed(page);
+  });
+
   test("closed by a scroll during the opening, lands on the thumbnail where the page took it", async ({
     page,
   }) => {

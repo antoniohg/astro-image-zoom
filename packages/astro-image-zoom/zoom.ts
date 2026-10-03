@@ -1166,8 +1166,8 @@ class Zoom {
     sourceImg: HTMLImageElement,
   ): void {
     const image = this.imageElement;
-    image.style.top = `${startRect.top + window.scrollY}px`;
-    image.style.left = `${startRect.left + window.scrollX}px`;
+    image.style.top = "0px";
+    image.style.left = "0px";
     image.style.width = `${startRect.width}px`;
     image.style.height = `${startRect.height}px`;
     image.classList.add("is-detached");
@@ -1180,6 +1180,14 @@ class Zoom {
     // touch screens keep a gesture on the element it started on, the overlay, even once it is gone:
     // the page scrolls from the next gesture. Closing the dialog earlier does not change that
     (this.overlay.getRootNode() as ShadowRoot).append(this.backdrop, image);
+
+    // Placed against its containing block: the page, or a <body> the site positions or transforms.
+    // Measured at 0,0 without the animation, then moved in the same frame
+    image.style.animation = "none";
+    const origin = image.getBoundingClientRect();
+    image.style.removeProperty("animation");
+    image.style.top = `${startRect.top - origin.top}px`;
+    image.style.left = `${startRect.left - origin.left}px`;
 
     void Promise.all([
       animationsFinished(image, CLOSE_ANIMATIONS),
