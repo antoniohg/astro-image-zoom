@@ -34,7 +34,6 @@ describe("<ImageZoom>", () => {
   it("renders the defaults as data attributes", async () => {
     const { attributes } = await render();
     expect(Object.fromEntries(attributes)).toMatchObject({
-      class: "astro-image-zoom-wrapper",
       "data-image-zoom-close-backdrop": "true",
       "data-image-zoom-close-image": "true",
       "data-image-zoom-close-scroll": "true",
@@ -46,6 +45,7 @@ describe("<ImageZoom>", () => {
     });
     // No theme and no duration: the variables of the site apply
     expect(attributes.has("style")).toBe(false);
+    expect(attributes.has("class")).toBe(false);
     expect(attributes.has("data-image-zoom-ignore-selector")).toBe(false);
   });
 
@@ -62,7 +62,7 @@ describe("<ImageZoom>", () => {
       class: "portfolio",
     });
     expect(Object.fromEntries(attributes)).toMatchObject({
-      class: "astro-image-zoom-wrapper portfolio",
+      class: "portfolio",
       "data-image-zoom-close-backdrop": "false",
       "data-image-zoom-close-image": "false",
       "data-image-zoom-close-scroll": "false",
