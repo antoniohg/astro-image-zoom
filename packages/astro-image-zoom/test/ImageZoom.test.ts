@@ -160,6 +160,19 @@ describe("<ImageZoom>", () => {
     expect(JSON.parse(value.replaceAll("&quot;", '"'))).toEqual(labels);
   });
 
+  it("hands the overlay only the labels it reads: the link ones stay on the server", async () => {
+    const linkOnly = await render({ labels: { enlarge: "Ampliar imagen" } });
+    expect(linkOnly.attributes.has("data-image-zoom-labels")).toBe(false);
+
+    const { attributes } = await render({
+      labels: { close: "Cerrar", enlargeNamed: "Ampliar imagen: {alt}" },
+    });
+    const value = attributes.get("data-image-zoom-labels")!;
+    expect(JSON.parse(value.replaceAll("&quot;", '"'))).toEqual({
+      close: "Cerrar",
+    });
+  });
+
   it("names the zoom links with the labels", async () => {
     const { html } = await render(
       {
