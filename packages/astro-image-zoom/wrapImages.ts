@@ -234,6 +234,8 @@ export function wrapImages(
   let output = "";
   let cursor = 0;
   let interactiveDepth = 0;
+  // Inside <svg> or <math>, where "/>" closes an element; in HTML it does not, <div/> opens a div
+  let foreignDepth = 0;
   // Inside an ignored element: its name, and how deep elements of that name nest in it
   let ignored: { name: string; depth: number } | null = null;
   // A <picture> is wrapped as a whole: <a> is not valid inside it
@@ -258,24 +260,33 @@ export function wrapImages(
       continue;
     }
 
+    const isForeign = name === "svg" || name === "math";
+    const selfClosing =
+      (foreignDepth > 0 || isForeign) && /\/\s*$/.test(rawAttributes);
+    if (isForeign && !selfClosing)
+      foreignDepth = Math.max(0, foreignDepth + (closing ? -1 : 1));
+
     // Nothing inside an ignored element is wrapped, whatever it holds
     if (ignored) {
-      if (name === ignored.name) ignored.depth += closing ? -1 : 1;
+      if (name === ignored.name && !selfClosing)
+        ignored.depth += closing ? -1 : 1;
       if (ignored.depth === 0) ignored = null;
       continue;
     }
     if (
       !closing &&
       !VOID_ELEMENTS.has(name) &&
-      !/\/\s*$/.test(rawAttributes) &&
+      !selfClosing &&
       isIgnored(name, parseAttributes(rawAttributes))
     ) {
       ignored = { name, depth: 1 };
       continue;
     }
 
+    // SVG has links too: <a> inside it counts, unless it closes itself
     if (INTERACTIVE_ELEMENTS.has(name)) {
-      interactiveDepth = Math.max(0, interactiveDepth + (closing ? -1 : 1));
+      if (!selfClosing)
+        interactiveDepth = Math.max(0, interactiveDepth + (closing ? -1 : 1));
       continue;
     }
     if (interactiveDepth > 0) continue;
