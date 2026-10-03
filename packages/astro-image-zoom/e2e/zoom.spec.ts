@@ -1240,4 +1240,38 @@ test.describe("reduced motion", () => {
     await page.keyboard.press("Escape");
     await expectClosed(page);
   });
+
+  test("the spinner pulses instead of spinning", async ({ page }) => {
+    // A new URL for the zoom, so neither the cache nor a thumbnail serves it
+    await links(page, "single")
+      .first()
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?slow";
+      });
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route("**/landscape.svg?slow", async (route) => {
+      await held;
+      await route.continue();
+    });
+
+    await links(page, "single").first().click();
+    const spinner = page.locator(".astro-image-zoom-slide.is-active");
+    await expect
+      .poll(() =>
+        spinner.evaluate(
+          (slide) => getComputedStyle(slide, "::after").visibility,
+        ),
+      )
+      .toBe("visible");
+    const animations = await spinner.evaluate(
+      (slide) => getComputedStyle(slide, "::after").animationName,
+    );
+    expect(animations).not.toContain("astro-image-zoom-spin");
+    expect(animations).toContain("astro-image-zoom-pulse");
+
+    release();
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+  });
 });
