@@ -91,6 +91,13 @@ describe("wrapImages", () => {
     );
   });
 
+  it("wraps the images after a self-closing SVG link", () => {
+    const svg = '<svg><a href="/a"/></svg>';
+    expect(wrapImages(`${svg}<img src="/a.jpg" alt="">`)).toBe(
+      `${svg}<a href="/a.jpg" data-image-zoom-generated aria-label="Enlarge image"><img src="/a.jpg" alt=""></a>`,
+    );
+  });
+
   it("leaves alone an image map, whose areas are links already", () => {
     const html =
       '<img src="/plan.png" alt="Floor plan" usemap="#rooms">' +
@@ -152,6 +159,20 @@ describe("wrapImages", () => {
       );
     });
 
+    it("reads an out-of-range character reference as U+FFFD, like the browser", () => {
+      const html = '<p class="&#x110000;"><img src="/1.jpg" alt=""></p>';
+      expect(wrapImages(html)).toBe(
+        '<p class="&#x110000;">' + wrapped("/1.jpg") + "</p>",
+      );
+      const replacement = String.fromCodePoint(0xfffd);
+      expect(
+        wrapImages(
+          '<img class="&#99999999;" src="/1.jpg" alt="">',
+          parseIgnore(`[class="${replacement}"]`),
+        ),
+      ).toBe('<img class="&#99999999;" src="/1.jpg" alt="">');
+    });
+
     it("leaves out every image inside an element a selector matches", () => {
       const aside =
         '<aside class="author"><p><img src="/1.jpg" alt=""></p></aside>';
@@ -161,6 +182,17 @@ describe("wrapImages", () => {
           parseIgnore("aside.author"),
         ),
       ).toBe(aside + wrapped("/2.jpg"));
+    });
+
+    it("reads self-closing tags as the browser does: closed in SVG, open in HTML", () => {
+      const svg = '<svg><g class="skip"><g/><img src="/1.jpg"></g></svg>';
+      expect(
+        wrapImages(`${svg}<img src="/2.jpg" alt="">`, parseIgnore(".skip")),
+      ).toBe(svg + wrapped("/2.jpg"));
+      const html = '<div class="skip"/><img src="/1.jpg" alt=""></div>';
+      expect(
+        wrapImages(`${html}<img src="/2.jpg" alt="">`, parseIgnore(".skip")),
+      ).toBe(html + wrapped("/2.jpg"));
     });
 
     it("splits the list on commas, not on those inside a quoted value", () => {

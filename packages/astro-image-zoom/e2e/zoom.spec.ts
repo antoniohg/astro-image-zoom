@@ -327,6 +327,35 @@ test.describe("open and close", () => {
     ).toBeGreaterThan(0);
   });
 
+  test("closes without animating when the page removed the thumbnail while open", async ({
+    page,
+  }) => {
+    await openZoom(page, "single");
+    await links(page, "single")
+      .first()
+      .locator("img")
+      .evaluate((img) => {
+        img.remove();
+      });
+
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).not.toHaveAttribute("open");
+    await expectClosed(page);
+  });
+
+  test("cleans up when a script closes the dialog", async ({ page }) => {
+    await openZoom(page, "single");
+    await dialog(page).evaluate((element: HTMLDialogElement) =>
+      element.close(),
+    );
+    await expectClosed(page);
+
+    // The next opening works as usual
+    await openZoom(page, "single");
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+  });
+
   test("stays open when every close option is off, except Escape", async ({
     page,
   }) => {
@@ -335,6 +364,22 @@ test.describe("open and close", () => {
     const box = (await zoomedImage(page).boundingBox())!;
     await page.mouse.click(box.x / 2, box.y + box.height / 2);
     await page.mouse.wheel(0, 400);
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+  });
+
+  test("reads the close options on each opening, so a page can change them after load", async ({
+    page,
+  }) => {
+    await page
+      .locator("#single astro-image-zoom")
+      .evaluate((wrapper: HTMLElement) => {
+        wrapper.dataset.imageZoomCloseImage = "false";
+      });
+    await openZoom(page, "single");
+    await zoomedImage(page).click();
     await expect(dialog(page)).toHaveClass(/\bis-open\b/);
 
     await page.keyboard.press("Escape");
@@ -1004,6 +1049,98 @@ test.describe("theming", () => {
     }
     await expectClosed(page);
   });
+
+  test("on a scroll close, the image leaves from where it was on a positioned <body>", async ({
+    page,
+  }) => {
+    // <body> becomes the containing block of the image that leaves the dialog
+    await page.addStyleTag({
+      content: "body { position: relative; margin: 120px 0 0 80px; }",
+    });
+    await openZoom(page, "single");
+    await settle(page);
+    const before = (await zoomedImage(page).boundingBox())!;
+
+    // The box of the image the moment it leaves the dialog, when its animation has not moved it yet
+    const detached = page.evaluate(
+      () =>
+        new Promise<{ x: number; y: number }>((resolve) => {
+          const root = document.querySelector(
+            "astro-image-zoom-overlay",
+          )!.shadowRoot!;
+          const observer = new MutationObserver(() => {
+            const image = [...root.children].find((child) =>
+              child.matches(".astro-image-zoom-image"),
+            );
+            if (!image) return;
+            observer.disconnect();
+            const { x, y } = image.getBoundingClientRect();
+            resolve({ x, y });
+          });
+          observer.observe(root, { childList: true });
+        }),
+    );
+    await page.mouse.move(640, 360);
+    await page.mouse.wheel(0, 400);
+    const { x, y } = await detached;
+    expect(x).toBeCloseTo(before.x, 0);
+    expect(y).toBeCloseTo(before.y, 0);
+    await expectClosed(page);
+  });
+
+  // Stuck at the top already, the thumbnail stays while the page scrolls. Not yet, it scrolls
+  // with the page and then sticks during the close
+  for (const [when, scrolled] of [
+    ["already stuck", 200],
+    ["that sticks during the close", 0],
+  ] as const) {
+    test(`on a scroll close, lands on a thumbnail in a sticky box ${when}`, async ({
+      page,
+    }) => {
+      await page.addStyleTag({
+        content:
+          "#single { position: sticky; top: 0; } body { min-height: 400vh; }",
+      });
+      await page.evaluate((y) => window.scrollTo(0, y), scrolled);
+      // Without the scroll into view of a real click, which Firefox does even on a link on screen
+      await links(page, "single").first().dispatchEvent("click");
+      await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+      await settle(page);
+
+      // The last box of the image before it goes, and the box of the thumbnail then. Read after
+      // each paint: the image follows the thumbnail in a frame callback of its own
+      const landing = page.evaluate(
+        () =>
+          new Promise<number[][]>((resolve) => {
+            const root = document.querySelector(
+              "astro-image-zoom-overlay",
+            )!.shadowRoot!;
+            const thumbnail = document.querySelector("#single img")!;
+            const box = (element: Element) => {
+              const { left, top } = element.getBoundingClientRect();
+              return [left, top];
+            };
+            let last: number[][] = [];
+            const frame = () => {
+              const image = [...root.children].find((child) =>
+                child.matches(".astro-image-zoom-image"),
+              );
+              if (image) last = [box(image), box(thumbnail)];
+              else if (last.length) return resolve(last);
+              requestAnimationFrame(() => setTimeout(frame));
+            };
+            frame();
+          }),
+      );
+      await page.mouse.move(640, 360);
+      for (let step = 0; step < 6; step++) await page.mouse.wheel(0, 80);
+      const [image, thumbnail] = await landing;
+      expect(await page.evaluate(() => scrollY)).toBeGreaterThan(scrolled);
+      expect(image[0]).toBeCloseTo(thumbnail[0], 0);
+      expect(image[1]).toBeCloseTo(thumbnail[1], 0);
+      await expectClosed(page);
+    });
+  }
 
   test("closed by a scroll during the opening, lands on the thumbnail where the page took it", async ({
     page,

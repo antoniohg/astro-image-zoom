@@ -1,8 +1,3 @@
-/**
- * Zoom TypeScript Module
- * Medium-style zoom with accessibility and performance optimizations
- */
-
 import overlayStyles from "./overlay.css?inline";
 import { DEFAULT_LABELS, type ImageZoomLabels } from "./labels";
 
@@ -14,7 +9,6 @@ interface ZoomImage {
 }
 
 interface ZoomState {
-  isOpen: boolean;
   currentIndex: number;
   images: ZoomImage[];
 }
@@ -55,6 +49,8 @@ declare global {
 interface ZoomSlide {
   figure: HTMLElement;
   img: HTMLImageElement;
+  // URL of the full-size image
+  src: string;
   // Resolves when the image can be shown: see loadSlide()
   ready?: Promise<void>;
 }
@@ -105,8 +101,43 @@ const ZOOM_VARIABLES = [
   "--zoom-color-scheme",
 ];
 
-const CAPTION_POSITIONS = ["bottom", "top"];
-const NAVIGATION_LAYOUTS = ["bar", "sides"];
+// The options of a gallery, from the data-image-zoom-* attributes of its wrapper
+interface ZoomOptions {
+  closeOnBackdrop: boolean;
+  closeOnImage: boolean;
+  closeOnScroll: boolean;
+  showNavigation: boolean;
+  showCaption: boolean;
+  showCounter: boolean;
+  captionPosition: "bottom" | "top";
+  navigationLayout: "bar" | "sides";
+}
+
+// The first value is the default, also for a value it does not know
+function oneOf<T extends string>(
+  value: string | undefined,
+  allowed: readonly [T, ...T[]],
+): T {
+  return allowed.find((option) => option === value) ?? allowed[0];
+}
+
+// Read on each opening, so a page can change them after load. A flag is on unless it says "false"
+function readOptions(dataset: DOMStringMap): ZoomOptions {
+  const flag = (value: string | undefined): boolean => value !== "false";
+  return {
+    closeOnBackdrop: flag(dataset.imageZoomCloseBackdrop),
+    closeOnImage: flag(dataset.imageZoomCloseImage),
+    closeOnScroll: flag(dataset.imageZoomCloseScroll),
+    showNavigation: flag(dataset.imageZoomShowNav),
+    showCaption: flag(dataset.imageZoomShowCaption),
+    showCounter: flag(dataset.imageZoomShowCounter),
+    captionPosition: oneOf(dataset.imageZoomCaptionPosition, ["bottom", "top"]),
+    navigationLayout: oneOf(dataset.imageZoomNavigationLayout, [
+      "bar",
+      "sides",
+    ]),
+  };
+}
 
 // The CSS animations of the overlay that open() and close() wait for
 const OPEN_ANIMATIONS = ["astro-image-zoom-in", "astro-image-zoom-backdrop-in"];
@@ -168,6 +199,15 @@ function fromKeyboard(e: MouseEvent): boolean {
   return e.detail === 0 || (e as PointerEvent).pointerType === "";
 }
 
+// Whether the element sits in a sticky or fixed box, which does not scroll away with the page
+function staysOnScreen(element: Element): boolean {
+  for (let box = element.parentElement; box; box = box.parentElement) {
+    const { position } = getComputedStyle(box);
+    if (position === "sticky" || position === "fixed") return true;
+  }
+  return false;
+}
+
 // Resolves when the named CSS animations of the element or its descendants end or are cancelled,
 // and at once when none runs. The durations live in CSS only: with reduced motion they are 0s.
 function animationsFinished(
@@ -206,6 +246,16 @@ function getOverlay(): HTMLDialogElement {
   root.append(style, template.content);
   document.body.append(host);
   return root.querySelector("dialog")!;
+}
+
+// An element of the overlay, which OVERLAY_HTML always has
+function overlayPart<T extends HTMLElement>(
+  overlay: HTMLDialogElement,
+  name: string,
+): T {
+  const element = overlay.querySelector<T>(`.astro-image-zoom-${name}`);
+  if (!element) throw new Error(`astro-image-zoom: no ${name} in the overlay`);
+  return element;
 }
 
 // A box on the screen, such as the one getBoundingClientRect() returns
@@ -336,39 +386,35 @@ export function flipTransform(
 class Zoom {
   private wrapper: HTMLElement;
   // The element that holds the overlay's shadow root, and its --zoom-* variables
-  private host!: HTMLElement;
-  private overlay!: HTMLDialogElement;
-  private backdrop!: HTMLElement;
-  private track!: HTMLElement;
-  private captionElement!: HTMLElement;
-  private closeButton!: HTMLButtonElement;
-  private toolbar!: HTMLElement;
-  private counter!: HTMLElement;
-  private prevButton!: HTMLButtonElement;
-  private nextButton!: HTMLButtonElement;
+  private host: HTMLElement;
+  private overlay: HTMLDialogElement;
+  private backdrop: HTMLElement;
+  private track: HTMLElement;
+  private captionElement: HTMLElement;
+  private closeButton: HTMLButtonElement;
+  private toolbar: HTMLElement;
+  private counter: HTMLElement;
+  private prevButton: HTMLButtonElement;
+  private nextButton: HTMLButtonElement;
   private slides: ZoomSlide[] = [];
 
   private state: ZoomState = {
-    isOpen: false,
     currentIndex: 0,
     images: [],
   };
 
-  private options = {
-    closeOnBackdrop: true,
-    closeOnImage: true,
-    closeOnScroll: true,
-    showNavigation: true,
-  };
+  // Set by open(), for that opening
+  private options!: ZoomOptions;
 
-  private isClosing = false;
+  // closed, then loading while the full-size image loads, opening during the opening animation,
+  // open, and closing until finalizeClose()
+  private phase: "closed" | "loading" | "opening" | "open" | "closing" =
+    "closed";
   // The inline styles of <html> that lockScroll() changed, to restore them; null while unlocked
   private lockedStyles: Record<
     "overflow-x" | "overflow-y" | "padding-right",
     [string, string]
   > | null = null;
-  // True from open() until the image is ready and the opening animation starts
-  private openPending = false;
   private returnFocus: HTMLElement | null = null;
   // Whether the link that gets the focus back draws its ring: only after a close from the keyboard
   private returnFocusVisible = false;
@@ -392,36 +438,29 @@ class Zoom {
   constructor(wrapper: HTMLElement) {
     this.wrapper = wrapper;
 
-    // Get configuration from data attributes
-    this.options.closeOnBackdrop =
-      wrapper.dataset.imageZoomCloseBackdrop !== "false";
-    this.options.closeOnImage = wrapper.dataset.imageZoomCloseImage !== "false";
-    this.options.closeOnScroll =
-      wrapper.dataset.imageZoomCloseScroll !== "false";
-    this.options.showNavigation = wrapper.dataset.imageZoomShowNav !== "false";
-
     // One overlay is shared by every zoom instance on the page
     this.overlay = getOverlay();
     this.host = (this.overlay.getRootNode() as ShadowRoot).host as HTMLElement;
-    this.backdrop = this.overlay.querySelector(".astro-image-zoom-backdrop")!;
-    this.track = this.overlay.querySelector(".astro-image-zoom-track")!;
-    this.captionElement = this.overlay.querySelector(
-      ".astro-image-zoom-caption",
-    )!;
-    this.closeButton = this.overlay.querySelector(".astro-image-zoom-close")!;
-    this.toolbar = this.overlay.querySelector(".astro-image-zoom-toolbar")!;
-    this.counter = this.overlay.querySelector(".astro-image-zoom-counter")!;
-    this.prevButton = this.overlay.querySelector(".astro-image-zoom-prev")!;
-    this.nextButton = this.overlay.querySelector(".astro-image-zoom-next")!;
+    this.backdrop = overlayPart(this.overlay, "backdrop");
+    this.track = overlayPart(this.overlay, "track");
+    this.captionElement = overlayPart(this.overlay, "caption");
+    this.closeButton = overlayPart(this.overlay, "close");
+    this.toolbar = overlayPart(this.overlay, "toolbar");
+    this.counter = overlayPart(this.overlay, "counter");
+    this.prevButton = overlayPart(this.overlay, "prev");
+    this.nextButton = overlayPart(this.overlay, "next");
 
     this.setupEventListeners();
   }
 
-  // The overlay is shared: each opening sets the labels of its gallery, English for the ones it lacks
+  // The labels of the gallery, English for the ones it lacks
   private applyLabels(): void {
-    const labels: Partial<ImageZoomLabels> = JSON.parse(
-      this.wrapper.dataset.imageZoomLabels ?? "{}",
-    );
+    let labels: Partial<ImageZoomLabels> = {};
+    try {
+      labels = JSON.parse(this.wrapper.dataset.imageZoomLabels ?? "{}") ?? {};
+    } catch {
+      // Malformed (a page that sets the attribute by hand): the overlay opens in English
+    }
     for (const element of [
       this.overlay,
       ...this.overlay.querySelectorAll<HTMLElement>("[data-label]"),
@@ -501,7 +540,7 @@ class Zoom {
         if (index === -1) return;
 
         e.preventDefault();
-        this.open(index, fromKeyboard(e));
+        void this.open(index, fromKeyboard(e));
       },
       { signal: this.controller.signal },
     );
@@ -517,6 +556,9 @@ class Zoom {
       { signal },
     );
     this.overlay.addEventListener("cancel", this.handleCancel, { signal });
+    // Closed from outside (a script calling close(), a close the browser forces): clean up. The
+    // listener is gone by the time finalizeClose() closes the dialog itself
+    this.overlay.addEventListener("close", () => this.close(), { signal });
 
     this.closeButton.addEventListener(
       "click",
@@ -524,10 +566,8 @@ class Zoom {
       { signal },
     );
 
-    if (this.options.showNavigation) {
-      this.prevButton.addEventListener("click", () => this.prev(), { signal });
-      this.nextButton.addEventListener("click", () => this.next(), { signal });
-    }
+    this.prevButton.addEventListener("click", () => this.prev(), { signal });
+    this.nextButton.addEventListener("click", () => this.next(), { signal });
 
     // The slides cover the backdrop, so they receive its clicks. Click on the image closes
     // (like Medium), click beside it counts as a backdrop click. The caption and the controls
@@ -545,114 +585,22 @@ class Zoom {
     );
   }
 
-  // The image of the slide on screen
-  private get imageElement(): HTMLImageElement {
-    return this.slides[this.state.currentIndex].img;
+  // The overlay is shared: each opening sets the options and the labels of its gallery
+  private applyOverlayConfig(): void {
+    const { options } = this;
+    Object.assign(this.overlay.dataset, {
+      closeBackdrop: String(options.closeOnBackdrop),
+      closeImage: String(options.closeOnImage),
+      captionPosition: options.captionPosition,
+      showCaption: String(options.showCaption),
+      showCounter: String(options.showCounter),
+      navigationLayout: options.navigationLayout,
+    });
+    this.applyLabels();
   }
 
-  private async open(index: number, byKeyboard = false): Promise<void> {
-    if (this.state.isOpen) return;
-
-    // Identifies this opening; close() increments it to cancel a pending open
-    const currentOpenId = ++this.openId;
-
-    // Update state
-    this.state.isOpen = true;
-    this.state.currentIndex = index;
-    // The grace period after a horizontal wheel belongs to one opening, not to the previous one
-    this.lastHorizontalWheel = -Infinity;
-
-    // The variables of this gallery (the theme and animationDuration props among them)
-    this.inheritVariables();
-
-    // Get source image and position
-    const sourceImg = this.state.images[index].element.querySelector("img")!;
-    const sourceRect = sourceImg.getBoundingClientRect();
-    const sourceFit = thumbnailFit(sourceImg);
-
-    this.buildSlides();
-    this.renderActive(index);
-    this.placeSpinner(this.slides[index].figure, sourceRect);
-    this.emit("open");
-    // Hidden until the image is ready, so the FLIP animation starts from a clean frame. Before any
-    // layout, so its opacity transition does not run: it would show the image for a frame
-    this.imageElement.style.opacity = "0";
-
-    // Listen to the overlay from now until close(), also while the image is loading
-    this.openController = new AbortController();
-    const { signal } = this.openController;
-    this.bindOverlayListeners(signal);
-
-    // Show overlay and prevent body scroll
-    this.overlay.showModal();
-    this.overlay.setAttribute(
-      "data-close-backdrop",
-      String(this.options.closeOnBackdrop),
-    );
-    this.overlay.setAttribute(
-      "data-close-image",
-      String(this.options.closeOnImage),
-    );
-    // Read on each opening, so a page can change them after load
-    const captionPosition = this.wrapper.dataset.imageZoomCaptionPosition ?? "";
-    this.overlay.setAttribute(
-      "data-caption-position",
-      CAPTION_POSITIONS.includes(captionPosition) ? captionPosition : "bottom",
-    );
-    this.overlay.setAttribute(
-      "data-show-caption",
-      String(this.wrapper.dataset.imageZoomShowCaption !== "false"),
-    );
-    this.overlay.setAttribute(
-      "data-show-counter",
-      String(this.wrapper.dataset.imageZoomShowCounter !== "false"),
-    );
-    const navigationLayout =
-      this.wrapper.dataset.imageZoomNavigationLayout ?? "";
-    this.overlay.setAttribute(
-      "data-navigation-layout",
-      NAVIGATION_LAYOUTS.includes(navigationLayout) ? navigationLayout : "bar",
-    );
-    this.applyLabels();
-    this.lockScroll();
-
-    // Show the slide of the image, without letting a swipe move it away while it loads
-    this.track.style.overflowX = "hidden";
-    this.jumpToSlide(index);
-
-    this.openPending = true;
-    await this.loadSlide(index);
-
-    // Closed while loading: close() already restored everything
-    if (currentOpenId !== this.openId) return;
-    this.openPending = false;
-    this.track.style.overflowX = "";
-    // Shown at once, in the frame the thumbnail hides: its opacity transition would fade it in over
-    // an empty spot, a blink. The transition comes back for later changes
-    this.imageElement.style.transition = "none";
-    this.imageElement.style.opacity = "1";
-    void this.imageElement.offsetWidth;
-    this.imageElement.style.transition = "";
-    this.preloadNeighbors(index);
-
-    // FLIP Animation
-    const finalRect = this.imageElement.getBoundingClientRect();
-    const transform = flipTransform(sourceRect, finalRect, sourceFit);
-
-    // Set CSS variables for animation
-    this.setAnimationVariables(transform);
-
-    // Hide thumbnail instantly and trigger CSS animation simultaneously
-    this.hideThumbnail(sourceImg);
-    this.overlay.classList.add("is-opening");
-
-    // After the animation, switch to the is-open state
-    void animationsFinished(this.overlay, OPEN_ANIMATIONS).then(() => {
-      if (currentOpenId !== this.openId) return;
-      this.overlay.classList.remove("is-opening");
-      this.overlay.classList.add("is-open");
-    });
-
+  // The gestures and keys of the open zoom, once the image is shown
+  private bindOpenListeners(signal: AbortSignal): void {
     // Arrow keys move through the gallery
     document.addEventListener("keydown", this.handleKeydown, { signal });
 
@@ -683,6 +631,97 @@ class Zoom {
         signal,
       });
     }
+  }
+
+  // From open() until close() starts
+  private get isOpen(): boolean {
+    return this.phase !== "closed" && this.phase !== "closing";
+  }
+
+  // The slide on screen. The slides exist from open() until finalizeClose()
+  private get currentSlide(): ZoomSlide {
+    const slide = this.slides[this.state.currentIndex];
+    if (!slide) throw new Error("astro-image-zoom: no slide on screen");
+    return slide;
+  }
+
+  private get imageElement(): HTMLImageElement {
+    return this.currentSlide.img;
+  }
+
+  private async open(index: number, byKeyboard = false): Promise<void> {
+    const sourceImg = this.getThumbnail(index);
+    if (this.phase !== "closed" || !sourceImg) return;
+
+    // Identifies this opening; close() increments it to cancel a pending open
+    const currentOpenId = ++this.openId;
+
+    this.phase = "loading";
+    this.state.currentIndex = index;
+    // The grace period after a horizontal wheel belongs to one opening, not to the previous one
+    this.lastHorizontalWheel = -Infinity;
+
+    // The options of this gallery, and its variables (the theme and animationDuration among them)
+    this.options = readOptions(this.wrapper.dataset);
+    this.inheritVariables();
+
+    const sourceRect = sourceImg.getBoundingClientRect();
+    const sourceFit = thumbnailFit(sourceImg);
+
+    this.buildSlides();
+    this.renderActive(index);
+    this.placeSpinner(this.currentSlide.figure, sourceRect);
+    this.emit("open");
+    // Hidden until the image is ready, so the FLIP animation starts from a clean frame. Before any
+    // layout, so its opacity transition does not run: it would show the image for a frame
+    this.imageElement.style.opacity = "0";
+
+    // Listen to the overlay from now until close(), also while the image is loading
+    this.openController = new AbortController();
+    const { signal } = this.openController;
+    this.bindOverlayListeners(signal);
+
+    // Show overlay and prevent body scroll
+    this.overlay.showModal();
+    this.applyOverlayConfig();
+    this.lockScroll();
+
+    // Show the slide of the image, without letting a swipe move it away while it loads
+    this.track.style.overflowX = "hidden";
+    this.jumpToSlide(index);
+
+    await this.loadSlide(index);
+
+    // Closed while loading: close() already restored everything
+    if (currentOpenId !== this.openId) return;
+    this.track.style.overflowX = "";
+    // Shown at once, in the frame the thumbnail hides: its opacity transition would fade it in over
+    // an empty spot, a blink. The transition comes back for later changes
+    this.imageElement.style.transition = "none";
+    this.imageElement.style.opacity = "1";
+    void this.imageElement.offsetWidth;
+    this.imageElement.style.transition = "";
+    this.preloadNeighbors(index);
+
+    const finalRect = this.imageElement.getBoundingClientRect();
+    const transform = flipTransform(sourceRect, finalRect, sourceFit);
+
+    this.setAnimationVariables(transform);
+
+    // Hide thumbnail instantly and trigger CSS animation simultaneously
+    this.hideThumbnail(sourceImg);
+    this.phase = "opening";
+    this.overlay.classList.add("is-opening");
+
+    // After the animation, switch to the is-open state
+    void animationsFinished(this.overlay, OPEN_ANIMATIONS).then(() => {
+      if (currentOpenId !== this.openId) return;
+      this.phase = "open";
+      this.overlay.classList.remove("is-opening");
+      this.overlay.classList.add("is-open");
+    });
+
+    this.bindOpenListeners(signal);
 
     // The modal dialog traps the focus natively. Its ring only after a keyboard opening: Safari
     // draws it after a click or a tap too, and carries it to the link the close then focuses
@@ -690,33 +729,37 @@ class Zoom {
   }
 
   private close(byScroll = false, byKeyboard = false): void {
-    if (!this.state.isOpen || this.isClosing) return;
+    if (!this.isOpen) return;
 
-    this.isClosing = true;
-    this.state.isOpen = false;
+    const closedFrom = this.phase;
+    this.phase = "closing";
     this.emit("close");
 
     // Cancel a pending open() that is still waiting for the image to load
     this.openId++;
-    const openWasPending = this.openPending;
-    this.openPending = false;
 
     // Release the shared overlay: no listener of this instance survives the close
     this.openController?.abort();
     this.openController = null;
 
     // Get source image BEFORE any DOM changes
-    const sourceElement = this.state.images[this.state.currentIndex].element;
-    const sourceImg = sourceElement.querySelector("img")!;
+    const sourceElement = this.state.images[this.state.currentIndex]?.element;
+    const sourceImg = this.getThumbnail(this.state.currentIndex);
 
     // Focus goes to the link of the image on screen, where the close lands, not to the one that
     // opened the zoom: a keyboard user goes on from the image they were looking at. Not
     // document.activeElement at open: Safari does not focus a link on click, so it would be <body>
-    this.returnFocus = sourceElement;
+    this.returnFocus = sourceElement ?? null;
     this.returnFocusVisible = byKeyboard;
 
-    // Closed while loading: the opening animation never ran, so close without animating
-    if (openWasPending) {
+    // Closed while loading: the opening animation never ran, so close without animating. Nor when
+    // the dialog is already closed, or the page removed the thumbnail while the zoom was open:
+    // there is nothing on screen to animate, or nowhere to fly back to
+    if (
+      closedFrom === "loading" ||
+      !this.overlay.open ||
+      !sourceImg?.isConnected
+    ) {
       this.finalizeClose(sourceImg);
       return;
     }
@@ -728,7 +771,7 @@ class Zoom {
 
     // Closed during the opening: the close starts from where the image and the backdrop are, read
     // before the opening stops, not from the end of it
-    if (this.overlay.classList.contains("is-opening")) {
+    if (closedFrom === "opening") {
       const image = getComputedStyle(this.imageElement);
       this.imageElement.style.setProperty("--transform-now", image.transform);
       this.imageElement.style.setProperty("--clip-now", image.clipPath);
@@ -821,21 +864,13 @@ class Zoom {
 
   // Moves the images of the slides by `offset` px, gliding there when `animate`, at once otherwise
   private setSlideOffset(offset: number, animate: boolean): void {
-    if (!animate) {
-      this.track.classList.remove("is-sliding");
-      this.track.style.setProperty(
-        "--astro-image-zoom-slide-offset",
-        `${offset}px`,
-      );
-      // Commit the offset before the transition starts from it
-      void this.track.offsetWidth;
-      return;
-    }
-    this.track.classList.add("is-sliding");
+    this.track.classList.toggle("is-sliding", animate);
     this.track.style.setProperty(
       "--astro-image-zoom-slide-offset",
       `${offset}px`,
     );
+    // Commit the offset before the transition starts from it
+    if (!animate) void this.track.offsetWidth;
   }
 
   // Shows a slide without the smooth scroll
@@ -847,7 +882,7 @@ class Zoom {
   }
 
   private buildSlides(): void {
-    this.slides = this.state.images.map(({ alt }) => {
+    this.slides = this.state.images.map(({ src, alt }) => {
       const figure = document.createElement("figure");
       figure.className = "astro-image-zoom-slide";
       figure.part.add("slide");
@@ -856,7 +891,7 @@ class Zoom {
       img.part.add("image");
       img.alt = alt;
       figure.append(img);
-      return { figure, img };
+      return { figure, img, src };
     });
 
     // Before the caption and the controls, which stay in the track
@@ -873,10 +908,11 @@ class Zoom {
   // thumbnail can stand in for it until it decodes, or once it decodes otherwise
   private loadSlide(index: number): Promise<void> {
     const slide = this.slides[index];
+    if (!slide) return Promise.resolve();
     if (slide.ready) return slide.ready;
 
     const { img, figure } = slide;
-    img.src = this.state.images[index].src;
+    img.src = slide.src;
     // The CSS shows the spinner only if the wait lasts
     figure.classList.add("is-loading");
 
@@ -999,7 +1035,7 @@ class Zoom {
       figure.setAttribute("aria-hidden", String(i !== index));
     });
 
-    this.captionElement.textContent = this.state.images[index].caption || "";
+    this.captionElement.textContent = this.state.images[index]?.caption ?? "";
     this.updateNavigationButtons();
   }
 
@@ -1016,7 +1052,7 @@ class Zoom {
   }
 
   private handleKeydown = (e: KeyboardEvent): void => {
-    if (!this.state.isOpen) return;
+    if (!this.isOpen) return;
 
     switch (e.key) {
       case "ArrowLeft":
@@ -1031,8 +1067,9 @@ class Zoom {
   };
 
   private handleCancel = (e: Event): void => {
-    e.preventDefault(); // Prevent immediate closing
-    this.close(false, this.escapePressed); // Trigger animated close
+    // Not the native close at once: the animated one
+    e.preventDefault();
+    this.close(false, this.escapePressed);
   };
 
   private handlePageZoom = (): void => {
@@ -1046,9 +1083,11 @@ class Zoom {
       return;
     }
 
+    const touch = e.touches[0];
+    if (!touch) return;
     this.touchPinched = false;
-    this.touchStartX = e.touches[0].clientX;
-    this.touchStartY = e.touches[0].clientY;
+    this.touchStartX = touch.clientX;
+    this.touchStartY = touch.clientY;
   };
 
   private handleWheel = (e: WheelEvent): void => {
@@ -1075,6 +1114,7 @@ class Zoom {
     if (e.touches.length > 1 || this.touchPinched || isPageZoomed()) return;
 
     const touch = e.touches[0];
+    if (!touch) return;
     const deltaX = Math.abs(touch.clientX - this.touchStartX);
     const deltaY = Math.abs(touch.clientY - this.touchStartY);
 
@@ -1089,9 +1129,7 @@ class Zoom {
     this.controller.abort();
 
     // Close if open (also releases the overlay listeners)
-    if (this.state.isOpen) {
-      this.close();
-    }
+    if (this.isOpen) this.close();
   }
 
   // Copies the --zoom-* values around the wrapper to the overlay's host, which lives in <body> and
@@ -1149,14 +1187,17 @@ class Zoom {
   }
 
   // The image shrinks back to the thumbnail with the closing animation (its variables are set),
-  // but out of the dialog and positioned on the page, so it scrolls away with it
+  // but out of the dialog and positioned on the page, so it scrolls away with it. A thumbnail in a
+  // sticky or fixed box stays on screen while the page scrolls: the image is fixed then
   private animateScrollClose(
     startRect: DOMRect,
     sourceImg: HTMLImageElement,
   ): void {
     const image = this.imageElement;
-    image.style.top = `${startRect.top + window.scrollY}px`;
-    image.style.left = `${startRect.left + window.scrollX}px`;
+    const fixed = staysOnScreen(sourceImg);
+    if (fixed) image.style.position = "fixed";
+    image.style.top = "0px";
+    image.style.left = "0px";
     image.style.width = `${startRect.width}px`;
     image.style.height = `${startRect.height}px`;
     image.classList.add("is-detached");
@@ -1170,11 +1211,39 @@ class Zoom {
     // the page scrolls from the next gesture. Closing the dialog earlier does not change that
     (this.overlay.getRootNode() as ShadowRoot).append(this.backdrop, image);
 
+    // Placed against its containing block: the page, or a <body> the site positions or transforms.
+    // Measured at 0,0 without the animation, then moved in the same frame
+    image.style.animation = "none";
+    const origin = image.getBoundingClientRect();
+    image.style.removeProperty("animation");
+    const top = startRect.top - origin.top;
+    const left = startRect.left - origin.left;
+    image.style.top = `${top}px`;
+    image.style.left = `${left}px`;
+
+    // Then it follows the thumbnail where the page alone does not take it: a sticky box that sticks
+    // or comes unstuck, a fixed one in a box that scrolls, a scroller inside the page
+    const thumbnail = sourceImg.getBoundingClientRect();
+    const page = { x: scrollX, y: scrollY };
+    let following = true;
+    const follow = () => {
+      if (!following) return;
+      const { top: thumbnailTop, left: thumbnailLeft } =
+        sourceImg.getBoundingClientRect();
+      const scrolledY = fixed ? 0 : scrollY - page.y;
+      const scrolledX = fixed ? 0 : scrollX - page.x;
+      image.style.top = `${top + thumbnailTop - thumbnail.top + scrolledY}px`;
+      image.style.left = `${left + thumbnailLeft - thumbnail.left + scrolledX}px`;
+      requestAnimationFrame(follow);
+    };
+    requestAnimationFrame(follow);
+
     void Promise.all([
       animationsFinished(image, CLOSE_ANIMATIONS),
       animationsFinished(this.backdrop, CLOSE_ANIMATIONS),
     ]).then(() => {
       // finalizeClose() discards the slides, so the image does not go back to its slide
+      following = false;
       image.remove();
       this.backdrop.classList.remove("is-detached");
       this.overlay.prepend(this.backdrop);
@@ -1190,7 +1259,6 @@ class Zoom {
       transform.scale.toString(),
     );
     this.imageElement.style.setProperty("--clip-from", transform.clipPath);
-    this.imageElement.style.setProperty("--clip-to", "inset(0px)");
   }
 
   private getThumbnail(index: number): HTMLImageElement | null {
@@ -1215,12 +1283,17 @@ class Zoom {
     img.style.transition = "";
   }
 
-  private finalizeClose(sourceImg: HTMLImageElement): void {
+  private finalizeClose(sourceImg: HTMLImageElement | null): void {
     // Restore the thumbnail as the overlay goes away - same frame
     this.showThumbnail(sourceImg);
 
     this.overlay.close();
-    this.overlay.classList.remove("is-closing", "is-page-zoomed");
+    this.overlay.classList.remove(
+      "is-opening",
+      "is-open",
+      "is-closing",
+      "is-page-zoomed",
+    );
     this.backdrop.style.removeProperty("--backdrop-now");
     this.unlockScroll();
 
@@ -1243,9 +1316,8 @@ class Zoom {
       this.returnFocus = null;
     }
 
-    this.isClosing = false;
+    this.phase = "closed";
   }
 }
 
-// Export class for advanced usage
 export { Zoom };

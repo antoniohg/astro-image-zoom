@@ -20,13 +20,6 @@
   --astro-image-zoom-duration: var(--zoom-animation-duration, 300ms);
 }
 
-/* Reduced motion: the zoom runs in no time; zoom.ts still waits for its end, which comes at once */
-@media (prefers-reduced-motion: reduce) {
-  :host {
-    --astro-image-zoom-duration: 0s;
-  }
-}
-
 /* Overlay container: a modal <dialog>, so it lives in the top layer */
 .astro-image-zoom-overlay {
   position: fixed;
@@ -42,18 +35,11 @@
   border: none;
   padding: 0;
   margin: 0;
-}
-
-.astro-image-zoom-overlay[open] {
-  display: flex;
-}
-
-/*
- * Defaults shared by the controls and the caption. Set on the dialog, so nothing inherited from the
- * page can reach them; a --zoom-* variable, when set, wins on every screen size. The surfaces are
- * translucent and blur the image behind them, so they cover little of it.
- */
-.astro-image-zoom-overlay {
+  /*
+   * Defaults shared by the controls and the caption. Set on the dialog, so nothing inherited from
+   * the page can reach them; a --zoom-* variable, when set, wins on every screen size. The surfaces
+   * are translucent and blur the image behind them, so they cover little of it.
+   */
   --astro-image-zoom-button-size: var(--zoom-button-size, 40px);
   --astro-image-zoom-offset: var(--zoom-controls-offset, 16px);
   --astro-image-zoom-caption-font-size: var(--zoom-caption-font-size, 13px);
@@ -71,12 +57,8 @@
   );
 }
 
-@media (max-width: 640px) {
-  .astro-image-zoom-overlay {
-    --astro-image-zoom-button-size: var(--zoom-button-size, 36px);
-    --astro-image-zoom-offset: var(--zoom-controls-offset, 12px);
-    --astro-image-zoom-caption-font-size: var(--zoom-caption-font-size, 12px);
-  }
+.astro-image-zoom-overlay[open] {
+  display: flex;
 }
 
 /* Native backdrop - make transparent to use our custom one */
@@ -355,7 +337,7 @@
 
   to {
     transform: translate(0, 0) scale(1);
-    clip-path: var(--clip-to, inset(0));
+    clip-path: inset(0);
   }
 }
 
@@ -363,7 +345,7 @@
   /* --transform-now and --clip-now: where the image was when the zoom closed during the opening */
   from {
     transform: var(--transform-now, translate(0, 0) scale(1));
-    clip-path: var(--clip-now, var(--clip-to, inset(0)));
+    clip-path: var(--clip-now, inset(0));
   }
 
   to {
@@ -548,12 +530,18 @@
   background-color: var(--zoom-close-bg, var(--astro-image-zoom-surface));
 }
 
+/* The colors of the navigation: the bar, and in "sides" layout each arrow and the counter */
+.astro-image-zoom-toolbar,
+.astro-image-zoom-overlay[data-navigation-layout="sides"]
+  :is(.astro-image-zoom-nav, .astro-image-zoom-counter) {
+  color: var(--zoom-nav-color, var(--astro-image-zoom-on-surface));
+  background-color: var(--zoom-nav-bg, var(--astro-image-zoom-surface));
+}
+
 .astro-image-zoom-toolbar {
   display: flex;
   align-items: center;
   padding: 2px;
-  color: var(--zoom-nav-color, var(--astro-image-zoom-on-surface));
-  background-color: var(--zoom-nav-bg, var(--astro-image-zoom-surface));
   border-radius: calc(var(--zoom-button-radius, 999px) + 2px);
 }
 
@@ -612,8 +600,6 @@
   position: fixed;
   top: 50%;
   translate: 0 -50%;
-  color: var(--zoom-nav-color, var(--astro-image-zoom-on-surface));
-  background-color: var(--zoom-nav-bg, var(--astro-image-zoom-surface));
 }
 
 .astro-image-zoom-overlay[data-navigation-layout="sides"]
@@ -629,8 +615,6 @@
 .astro-image-zoom-overlay[data-navigation-layout="sides"]
   .astro-image-zoom-counter {
   padding: 6px 10px;
-  color: var(--zoom-nav-color, var(--astro-image-zoom-on-surface));
-  background-color: var(--zoom-nav-bg, var(--astro-image-zoom-surface));
   border-radius: var(--zoom-button-radius, 999px);
 }
 
@@ -651,17 +635,26 @@
   }
 }
 
-/* Phones: the caption may take the whole width between the offsets */
+/* Phones: smaller controls, and the caption may take the whole width between the offsets */
 @media (max-width: 640px) {
+  .astro-image-zoom-overlay {
+    --astro-image-zoom-button-size: var(--zoom-button-size, 36px);
+    --astro-image-zoom-offset: var(--zoom-controls-offset, 12px);
+    --astro-image-zoom-caption-font-size: var(--zoom-caption-font-size, 12px);
+  }
+
   .astro-image-zoom-caption {
     max-width: var(--zoom-caption-max-width, 100%);
     padding: 6px 12px;
   }
 }
 
-/* Accessibility - Reduced Motion */
+/* Reduced motion: the zoom runs in no time; zoom.ts still waits for its end, which comes at once */
 @media (prefers-reduced-motion: reduce) {
-  .astro-image-zoom-overlay,
+  :host {
+    --astro-image-zoom-duration: 0s;
+  }
+
   .astro-image-zoom-image {
     transition: none;
   }

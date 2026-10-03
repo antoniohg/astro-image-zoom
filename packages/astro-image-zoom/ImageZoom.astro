@@ -123,9 +123,6 @@ const variables = Object.entries({
   .filter(([, value]) => value)
   .map(([name, value]) => `${name}: ${value}`)
   .join("; ");
-const wrapperClasses = ["astro-image-zoom-wrapper", className]
-  .filter(Boolean)
-  .join(" ");
 
 // Wrap the slot's images in accessible links
 const slotContent = wrapImages(
@@ -142,14 +139,14 @@ const shadowRoot =
 ---
 
 <astro-image-zoom
-  class={wrapperClasses}
-  data-image-zoom-close-backdrop={closeOnBackdrop ? "true" : "false"}
-  data-image-zoom-close-image={closeOnImage ? "true" : "false"}
-  data-image-zoom-close-scroll={closeOnScroll ? "true" : "false"}
-  data-image-zoom-show-nav={showNavigation ? "true" : "false"}
+  class={className || undefined}
+  data-image-zoom-close-backdrop={String(closeOnBackdrop)}
+  data-image-zoom-close-image={String(closeOnImage)}
+  data-image-zoom-close-scroll={String(closeOnScroll)}
+  data-image-zoom-show-nav={String(showNavigation)}
   data-image-zoom-navigation-layout={navigationLayout}
-  data-image-zoom-show-counter={showCounter ? "true" : "false"}
-  data-image-zoom-show-caption={showCaption ? "true" : "false"}
+  data-image-zoom-show-counter={String(showCounter)}
+  data-image-zoom-show-caption={String(showCaption)}
   data-image-zoom-caption-position={captionPosition}
   data-image-zoom-ignore-selector={ignore.trim() || undefined}
   style={variables || undefined}

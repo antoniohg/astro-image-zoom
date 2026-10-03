@@ -53,4 +53,21 @@ test.describe("labels", () => {
       "Image zoom overlay",
     );
   });
+
+  test("malformed labels from a script leave the overlay in English", async ({
+    page,
+  }) => {
+    await page.goto("/es/");
+    await page
+      .locator("#translated astro-image-zoom")
+      .evaluate((element: HTMLElement) => {
+        element.dataset.imageZoomLabels = "{not json";
+      });
+    await openZoom(page, "translated");
+    await expect(
+      page.getByRole("button", { name: "Close zoom overlay" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+  });
 });

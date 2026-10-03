@@ -16,7 +16,9 @@ type LinkLabels = Pick<ImageZoomLabels, "enlarge" | "enlargeNamed">;
 
 function parseAttributes(source: string): Attributes {
   const attributes: Attributes = new Map();
-  for (const [, name, double, single, bare] of source.matchAll(ATTRIBUTE)) {
+  for (const [, name = "", double, single, bare] of source.matchAll(
+    ATTRIBUTE,
+  )) {
     // First occurrence wins, like in a browser
     const key = name.toLowerCase();
     if (!attributes.has(key))
@@ -108,7 +110,7 @@ export interface Selector {
   tag?: string;
   classes: string[];
   ids: string[];
-  attributes: { name: string; value?: string }[];
+  attributes: { name: string; value?: string | undefined }[];
 }
 
 // A CSS identifier without escapes: what classes, ids, attribute names and unquoted values must be
@@ -140,7 +142,7 @@ function parseSelector(source: string): Selector {
     const [, className, id, name, double, single, bare] = match;
     if (className) selector.classes.push(className);
     else if (id) selector.ids.push(id);
-    else
+    else if (name)
       selector.attributes.push({
         name: name.toLowerCase(),
         value: double ?? single ?? bare,
@@ -176,18 +178,21 @@ const ENTITIES: Record<string, string> = {
 // Attribute values as the DOM sees them, so selectors match like in CSS: alt="Salt &amp; pepper"
 // is matched by [alt="Salt & pepper"]. Numeric references and the five named ones Astro writes are
 // decoded; other named ones (&copy;), rare in rendered HTML, would need the whole HTML table, a
-// dependency, and are compared as written
+// dependency, and are compared as written. A number that is no character (0, a surrogate, beyond
+// U+10FFFF) is read as U+FFFD, as the browser does
 const decode = (value: string): string =>
   value.replace(
     /&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi,
-    (_, entity: string) =>
-      entity.startsWith("#")
-        ? String.fromCodePoint(
-            /^#x/i.test(entity)
-              ? Number.parseInt(entity.slice(2), 16)
-              : Number(entity.slice(1)),
-          )
-        : ENTITIES[entity.toLowerCase()],
+    (reference: string, entity: string) => {
+      if (!entity.startsWith("#"))
+        return ENTITIES[entity.toLowerCase()] ?? reference;
+      const code = /^#x/i.test(entity)
+        ? Number.parseInt(entity.slice(2), 16)
+        : Number(entity.slice(1));
+      const valid =
+        code > 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff);
+      return String.fromCodePoint(valid ? code : 0xfffd);
+    },
   );
 
 function matches(
@@ -229,6 +234,8 @@ export function wrapImages(
   let output = "";
   let cursor = 0;
   let interactiveDepth = 0;
+  // Inside <svg> or <math>, where "/>" closes an element; in HTML it does not, <div/> opens a div
+  let foreignDepth = 0;
   // Inside an ignored element: its name, and how deep elements of that name nest in it
   let ignored: { name: string; depth: number } | null = null;
   // A <picture> is wrapped as a whole: <a> is not valid inside it
@@ -238,7 +245,7 @@ export function wrapImages(
   const token = new RegExp(TOKEN.source, "g");
   let match: RegExpExecArray | null;
   while ((match = token.exec(html))) {
-    const [tag, closing, rawName, rawAttributes] = match;
+    const [tag, closing, rawName, rawAttributes = ""] = match;
     if (!rawName) continue; // comment
 
     const name = rawName.toLowerCase();
@@ -253,24 +260,33 @@ export function wrapImages(
       continue;
     }
 
+    const isForeign = name === "svg" || name === "math";
+    const selfClosing =
+      (foreignDepth > 0 || isForeign) && /\/\s*$/.test(rawAttributes);
+    if (isForeign && !selfClosing)
+      foreignDepth = Math.max(0, foreignDepth + (closing ? -1 : 1));
+
     // Nothing inside an ignored element is wrapped, whatever it holds
     if (ignored) {
-      if (name === ignored.name) ignored.depth += closing ? -1 : 1;
+      if (name === ignored.name && !selfClosing)
+        ignored.depth += closing ? -1 : 1;
       if (ignored.depth === 0) ignored = null;
       continue;
     }
     if (
       !closing &&
       !VOID_ELEMENTS.has(name) &&
-      !/\/\s*$/.test(rawAttributes) &&
+      !selfClosing &&
       isIgnored(name, parseAttributes(rawAttributes))
     ) {
       ignored = { name, depth: 1 };
       continue;
     }
 
+    // SVG has links too: <a> inside it counts, unless it closes itself
     if (INTERACTIVE_ELEMENTS.has(name)) {
-      interactiveDepth = Math.max(0, interactiveDepth + (closing ? -1 : 1));
+      if (!selfClosing)
+        interactiveDepth = Math.max(0, interactiveDepth + (closing ? -1 : 1));
       continue;
     }
     if (interactiveDepth > 0) continue;
