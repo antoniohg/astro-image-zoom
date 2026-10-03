@@ -205,6 +205,15 @@ function fromKeyboard(e: MouseEvent): boolean {
   return e.detail === 0 || (e as PointerEvent).pointerType === "";
 }
 
+// Whether the element sits in a sticky or fixed box, which does not scroll away with the page
+function staysOnScreen(element: Element): boolean {
+  for (let box = element.parentElement; box; box = box.parentElement) {
+    const { position } = getComputedStyle(box);
+    if (position === "sticky" || position === "fixed") return true;
+  }
+  return false;
+}
+
 // Resolves when the named CSS animations of the element or its descendants end or are cancelled,
 // and at once when none runs. The durations live in CSS only: with reduced motion they are 0s.
 function animationsFinished(
@@ -1163,12 +1172,15 @@ class Zoom {
   }
 
   // The image shrinks back to the thumbnail with the closing animation (its variables are set),
-  // but out of the dialog and positioned on the page, so it scrolls away with it
+  // but out of the dialog and positioned on the page, so it scrolls away with it. A thumbnail in a
+  // sticky or fixed box stays on screen while the page scrolls: the image is fixed then
   private animateScrollClose(
     startRect: DOMRect,
     sourceImg: HTMLImageElement,
   ): void {
     const image = this.imageElement;
+    const fixed = staysOnScreen(sourceImg);
+    if (fixed) image.style.position = "fixed";
     image.style.top = "0px";
     image.style.left = "0px";
     image.style.width = `${startRect.width}px`;
@@ -1189,14 +1201,34 @@ class Zoom {
     image.style.animation = "none";
     const origin = image.getBoundingClientRect();
     image.style.removeProperty("animation");
-    image.style.top = `${startRect.top - origin.top}px`;
-    image.style.left = `${startRect.left - origin.left}px`;
+    const top = startRect.top - origin.top;
+    const left = startRect.left - origin.left;
+    image.style.top = `${top}px`;
+    image.style.left = `${left}px`;
+
+    // Then it follows the thumbnail where the page alone does not take it: a sticky box that sticks
+    // or comes unstuck, a fixed one in a box that scrolls, a scroller inside the page
+    const thumbnail = sourceImg.getBoundingClientRect();
+    const page = { x: scrollX, y: scrollY };
+    let following = true;
+    const follow = () => {
+      if (!following) return;
+      const { top: thumbnailTop, left: thumbnailLeft } =
+        sourceImg.getBoundingClientRect();
+      const scrolledY = fixed ? 0 : scrollY - page.y;
+      const scrolledX = fixed ? 0 : scrollX - page.x;
+      image.style.top = `${top + thumbnailTop - thumbnail.top + scrolledY}px`;
+      image.style.left = `${left + thumbnailLeft - thumbnail.left + scrolledX}px`;
+      requestAnimationFrame(follow);
+    };
+    requestAnimationFrame(follow);
 
     void Promise.all([
       animationsFinished(image, CLOSE_ANIMATIONS),
       animationsFinished(this.backdrop, CLOSE_ANIMATIONS),
     ]).then(() => {
       // finalizeClose() discards the slides, so the image does not go back to its slide
+      following = false;
       image.remove();
       this.backdrop.classList.remove("is-detached");
       this.overlay.prepend(this.backdrop);

@@ -1088,6 +1088,60 @@ test.describe("theming", () => {
     await expectClosed(page);
   });
 
+  // Stuck at the top already, the thumbnail stays while the page scrolls. Not yet, it scrolls
+  // with the page and then sticks during the close
+  for (const [when, scrolled] of [
+    ["already stuck", 200],
+    ["that sticks during the close", 0],
+  ] as const) {
+    test(`on a scroll close, lands on a thumbnail in a sticky box ${when}`, async ({
+      page,
+    }) => {
+      await page.addStyleTag({
+        content:
+          "#single { position: sticky; top: 0; } body { min-height: 400vh; }",
+      });
+      await page.evaluate((y) => window.scrollTo(0, y), scrolled);
+      // Without the scroll into view of a real click, which Firefox does even on a link on screen
+      await links(page, "single").first().dispatchEvent("click");
+      await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+      await settle(page);
+
+      // The last box of the image before it goes, and the box of the thumbnail then. Read after
+      // each paint: the image follows the thumbnail in a frame callback of its own
+      const landing = page.evaluate(
+        () =>
+          new Promise<number[][]>((resolve) => {
+            const root = document.querySelector(
+              "astro-image-zoom-overlay",
+            )!.shadowRoot!;
+            const thumbnail = document.querySelector("#single img")!;
+            const box = (element: Element) => {
+              const { left, top } = element.getBoundingClientRect();
+              return [left, top];
+            };
+            let last: number[][] = [];
+            const frame = () => {
+              const image = [...root.children].find((child) =>
+                child.matches(".astro-image-zoom-image"),
+              );
+              if (image) last = [box(image), box(thumbnail)];
+              else if (last.length) return resolve(last);
+              requestAnimationFrame(() => setTimeout(frame));
+            };
+            frame();
+          }),
+      );
+      await page.mouse.move(640, 360);
+      for (let step = 0; step < 6; step++) await page.mouse.wheel(0, 80);
+      const [image, thumbnail] = await landing;
+      expect(await page.evaluate(() => scrollY)).toBeGreaterThan(scrolled);
+      expect(image[0]).toBeCloseTo(thumbnail[0], 0);
+      expect(image[1]).toBeCloseTo(thumbnail[1], 0);
+      await expectClosed(page);
+    });
+  }
+
   test("closed by a scroll during the opening, lands on the thumbnail where the page took it", async ({
     page,
   }) => {
