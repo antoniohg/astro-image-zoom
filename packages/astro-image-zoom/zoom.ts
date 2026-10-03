@@ -444,9 +444,12 @@ class Zoom {
 
   // The overlay is shared: each opening sets the labels of its gallery, English for the ones it lacks
   private applyLabels(): void {
-    const labels: Partial<ImageZoomLabels> = JSON.parse(
-      this.wrapper.dataset.imageZoomLabels ?? "{}",
-    );
+    let labels: Partial<ImageZoomLabels> = {};
+    try {
+      labels = JSON.parse(this.wrapper.dataset.imageZoomLabels ?? "{}") ?? {};
+    } catch {
+      // Malformed (a page that sets the attribute by hand): the overlay opens in English
+    }
     for (const element of [
       this.overlay,
       ...this.overlay.querySelectorAll<HTMLElement>("[data-label]"),
