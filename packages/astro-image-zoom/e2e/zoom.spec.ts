@@ -370,6 +370,22 @@ test.describe("open and close", () => {
     await expectClosed(page);
   });
 
+  test("reads the close options on each opening, so a page can change them after load", async ({
+    page,
+  }) => {
+    await page
+      .locator("#single astro-image-zoom")
+      .evaluate((wrapper: HTMLElement) => {
+        wrapper.dataset.imageZoomCloseImage = "false";
+      });
+    await openZoom(page, "single");
+    await zoomedImage(page).click();
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+  });
+
   test("each <ImageZoom> is its own gallery, with its own options, on the shared overlay", async ({
     page,
   }) => {

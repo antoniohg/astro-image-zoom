@@ -107,8 +107,43 @@ const ZOOM_VARIABLES = [
   "--zoom-color-scheme",
 ];
 
-const CAPTION_POSITIONS = ["bottom", "top"];
-const NAVIGATION_LAYOUTS = ["bar", "sides"];
+// The options of a gallery, from the data-image-zoom-* attributes of its wrapper
+interface ZoomOptions {
+  closeOnBackdrop: boolean;
+  closeOnImage: boolean;
+  closeOnScroll: boolean;
+  showNavigation: boolean;
+  showCaption: boolean;
+  showCounter: boolean;
+  captionPosition: "bottom" | "top";
+  navigationLayout: "bar" | "sides";
+}
+
+// The first value is the default, also for a value it does not know
+function oneOf<T extends string>(
+  value: string | undefined,
+  allowed: readonly [T, ...T[]],
+): T {
+  return allowed.find((option) => option === value) ?? allowed[0];
+}
+
+// Read on each opening, so a page can change them after load. A flag is on unless it says "false"
+function readOptions(dataset: DOMStringMap): ZoomOptions {
+  const flag = (value: string | undefined): boolean => value !== "false";
+  return {
+    closeOnBackdrop: flag(dataset.imageZoomCloseBackdrop),
+    closeOnImage: flag(dataset.imageZoomCloseImage),
+    closeOnScroll: flag(dataset.imageZoomCloseScroll),
+    showNavigation: flag(dataset.imageZoomShowNav),
+    showCaption: flag(dataset.imageZoomShowCaption),
+    showCounter: flag(dataset.imageZoomShowCounter),
+    captionPosition: oneOf(dataset.imageZoomCaptionPosition, ["bottom", "top"]),
+    navigationLayout: oneOf(dataset.imageZoomNavigationLayout, [
+      "bar",
+      "sides",
+    ]),
+  };
+}
 
 // The CSS animations of the overlay that open() and close() wait for
 const OPEN_ANIMATIONS = ["astro-image-zoom-in", "astro-image-zoom-backdrop-in"];
@@ -356,12 +391,8 @@ class Zoom {
     images: [],
   };
 
-  private options = {
-    closeOnBackdrop: true,
-    closeOnImage: true,
-    closeOnScroll: true,
-    showNavigation: true,
-  };
+  // Set by open(), for that opening
+  private options!: ZoomOptions;
 
   private isClosing = false;
   // The inline styles of <html> that lockScroll() changed, to restore them; null while unlocked
@@ -393,14 +424,6 @@ class Zoom {
 
   constructor(wrapper: HTMLElement) {
     this.wrapper = wrapper;
-
-    // Get configuration from data attributes
-    this.options.closeOnBackdrop =
-      wrapper.dataset.imageZoomCloseBackdrop !== "false";
-    this.options.closeOnImage = wrapper.dataset.imageZoomCloseImage !== "false";
-    this.options.closeOnScroll =
-      wrapper.dataset.imageZoomCloseScroll !== "false";
-    this.options.showNavigation = wrapper.dataset.imageZoomShowNav !== "false";
 
     // One overlay is shared by every zoom instance on the page
     this.overlay = getOverlay();
@@ -529,10 +552,8 @@ class Zoom {
       { signal },
     );
 
-    if (this.options.showNavigation) {
-      this.prevButton.addEventListener("click", () => this.prev(), { signal });
-      this.nextButton.addEventListener("click", () => this.next(), { signal });
-    }
+    this.prevButton.addEventListener("click", () => this.prev(), { signal });
+    this.nextButton.addEventListener("click", () => this.next(), { signal });
 
     // The slides cover the backdrop, so they receive its clicks. Click on the image closes
     // (like Medium), click beside it counts as a backdrop click. The caption and the controls
@@ -574,7 +595,8 @@ class Zoom {
     // The grace period after a horizontal wheel belongs to one opening, not to the previous one
     this.lastHorizontalWheel = -Infinity;
 
-    // The variables of this gallery (the theme and animationDuration props among them)
+    // The options of this gallery, and its variables (the theme and animationDuration among them)
+    this.options = readOptions(this.wrapper.dataset);
     this.inheritVariables();
 
     const sourceRect = sourceImg.getBoundingClientRect();
@@ -595,21 +617,14 @@ class Zoom {
 
     // Show overlay and prevent body scroll
     this.overlay.showModal();
-    // Read on each opening, so a page can change them after load
-    const { dataset } = this.wrapper;
-    const captionPosition = dataset.imageZoomCaptionPosition ?? "";
-    const navigationLayout = dataset.imageZoomNavigationLayout ?? "";
+    const { options } = this;
     Object.assign(this.overlay.dataset, {
-      closeBackdrop: String(this.options.closeOnBackdrop),
-      closeImage: String(this.options.closeOnImage),
-      captionPosition: CAPTION_POSITIONS.includes(captionPosition)
-        ? captionPosition
-        : "bottom",
-      showCaption: String(dataset.imageZoomShowCaption !== "false"),
-      showCounter: String(dataset.imageZoomShowCounter !== "false"),
-      navigationLayout: NAVIGATION_LAYOUTS.includes(navigationLayout)
-        ? navigationLayout
-        : "bar",
+      closeBackdrop: String(options.closeOnBackdrop),
+      closeImage: String(options.closeOnImage),
+      captionPosition: options.captionPosition,
+      showCaption: String(options.showCaption),
+      showCounter: String(options.showCounter),
+      navigationLayout: options.navigationLayout,
     });
     this.applyLabels();
     this.lockScroll();
