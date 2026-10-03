@@ -532,8 +532,13 @@ class Zoom {
         )
           return;
 
+        // Most clicks in an article are not on a zoom link: no need to collect the images
+        const link = (e.target as Element).closest(
+          "a[data-image-zoom-generated], a[data-image-zoom]",
+        );
+        if (!link) return;
+
         this.collectImages();
-        const link = (e.target as Element).closest("a");
         const index = this.state.images.findIndex(
           ({ element }) => element === link,
         );
