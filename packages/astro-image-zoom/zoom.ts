@@ -454,7 +454,7 @@ class Zoom {
     this.setupEventListeners();
   }
 
-  // The overlay is shared: each opening sets the labels of its gallery, English for the ones it lacks
+  // The labels of the gallery, English for the ones it lacks
   private applyLabels(): void {
     let labels: Partial<ImageZoomLabels> = {};
     try {
@@ -586,6 +586,54 @@ class Zoom {
     );
   }
 
+  // The overlay is shared: each opening sets the options and the labels of its gallery
+  private applyOverlayConfig(): void {
+    const { options } = this;
+    Object.assign(this.overlay.dataset, {
+      closeBackdrop: String(options.closeOnBackdrop),
+      closeImage: String(options.closeOnImage),
+      captionPosition: options.captionPosition,
+      showCaption: String(options.showCaption),
+      showCounter: String(options.showCounter),
+      navigationLayout: options.navigationLayout,
+    });
+    this.applyLabels();
+  }
+
+  // The gestures and keys of the open zoom, once the image is shown
+  private bindOpenListeners(signal: AbortSignal): void {
+    // Arrow keys move through the gallery
+    document.addEventListener("keydown", this.handleKeydown, { signal });
+
+    // Horizontal swipes scroll the track natively; the slide on screen follows the scroll
+    this.track.addEventListener("scroll", this.handleScroll, {
+      passive: true,
+      signal,
+    });
+
+    // Zoomed in with a pinch, the swipes pan the page zoom instead of moving through the gallery
+    window.visualViewport?.addEventListener("resize", this.handlePageZoom, {
+      signal,
+    });
+    this.handlePageZoom();
+
+    // Smooth close on vertical scroll/wheel (like Medium - non-blocking)
+    if (this.options.closeOnScroll) {
+      this.overlay.addEventListener("touchstart", this.handleTouchStart, {
+        passive: true,
+        signal,
+      });
+      this.overlay.addEventListener("touchmove", this.handleTouchMove, {
+        passive: true,
+        signal,
+      });
+      this.overlay.addEventListener("wheel", this.handleWheel, {
+        passive: true,
+        signal,
+      });
+    }
+  }
+
   // The slide on screen. The slides exist from open() until finalizeClose()
   private get currentSlide(): ZoomSlide {
     const slide = this.slides[this.state.currentIndex];
@@ -631,16 +679,7 @@ class Zoom {
 
     // Show overlay and prevent body scroll
     this.overlay.showModal();
-    const { options } = this;
-    Object.assign(this.overlay.dataset, {
-      closeBackdrop: String(options.closeOnBackdrop),
-      closeImage: String(options.closeOnImage),
-      captionPosition: options.captionPosition,
-      showCaption: String(options.showCaption),
-      showCounter: String(options.showCounter),
-      navigationLayout: options.navigationLayout,
-    });
-    this.applyLabels();
+    this.applyOverlayConfig();
     this.lockScroll();
 
     // Show the slide of the image, without letting a swipe move it away while it loads
@@ -678,36 +717,7 @@ class Zoom {
       this.overlay.classList.add("is-open");
     });
 
-    // Arrow keys move through the gallery
-    document.addEventListener("keydown", this.handleKeydown, { signal });
-
-    // Horizontal swipes scroll the track natively; the slide on screen follows the scroll
-    this.track.addEventListener("scroll", this.handleScroll, {
-      passive: true,
-      signal,
-    });
-
-    // Zoomed in with a pinch, the swipes pan the page zoom instead of moving through the gallery
-    window.visualViewport?.addEventListener("resize", this.handlePageZoom, {
-      signal,
-    });
-    this.handlePageZoom();
-
-    // Smooth close on vertical scroll/wheel (like Medium - non-blocking)
-    if (this.options.closeOnScroll) {
-      this.overlay.addEventListener("touchstart", this.handleTouchStart, {
-        passive: true,
-        signal,
-      });
-      this.overlay.addEventListener("touchmove", this.handleTouchMove, {
-        passive: true,
-        signal,
-      });
-      this.overlay.addEventListener("wheel", this.handleWheel, {
-        passive: true,
-        signal,
-      });
-    }
+    this.bindOpenListeners(signal);
 
     // The modal dialog traps the focus natively. Its ring only after a keyboard opening: Safari
     // draws it after a click or a tap too, and carries it to the link the close then focuses
