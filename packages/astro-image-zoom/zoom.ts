@@ -9,7 +9,6 @@ interface ZoomImage {
 }
 
 interface ZoomState {
-  isOpen: boolean;
   currentIndex: number;
   images: ZoomImage[];
 }
@@ -400,7 +399,6 @@ class Zoom {
   private slides: ZoomSlide[] = [];
 
   private state: ZoomState = {
-    isOpen: false,
     currentIndex: 0,
     images: [],
   };
@@ -408,14 +406,15 @@ class Zoom {
   // Set by open(), for that opening
   private options!: ZoomOptions;
 
-  private isClosing = false;
+  // closed, then loading while the full-size image loads, opening during the opening animation,
+  // open, and closing until finalizeClose()
+  private phase: "closed" | "loading" | "opening" | "open" | "closing" =
+    "closed";
   // The inline styles of <html> that lockScroll() changed, to restore them; null while unlocked
   private lockedStyles: Record<
     "overflow-x" | "overflow-y" | "padding-right",
     [string, string]
   > | null = null;
-  // True from open() until the image is ready and the opening animation starts
-  private openPending = false;
   private returnFocus: HTMLElement | null = null;
   // Whether the link that gets the focus back draws its ring: only after a close from the keyboard
   private returnFocusVisible = false;
@@ -634,6 +633,11 @@ class Zoom {
     }
   }
 
+  // From open() until close() starts
+  private get isOpen(): boolean {
+    return this.phase !== "closed" && this.phase !== "closing";
+  }
+
   // The slide on screen. The slides exist from open() until finalizeClose()
   private get currentSlide(): ZoomSlide {
     const slide = this.slides[this.state.currentIndex];
@@ -647,12 +651,12 @@ class Zoom {
 
   private async open(index: number, byKeyboard = false): Promise<void> {
     const sourceImg = this.getThumbnail(index);
-    if (this.state.isOpen || !sourceImg) return;
+    if (this.phase !== "closed" || !sourceImg) return;
 
     // Identifies this opening; close() increments it to cancel a pending open
     const currentOpenId = ++this.openId;
 
-    this.state.isOpen = true;
+    this.phase = "loading";
     this.state.currentIndex = index;
     // The grace period after a horizontal wheel belongs to one opening, not to the previous one
     this.lastHorizontalWheel = -Infinity;
@@ -686,12 +690,10 @@ class Zoom {
     this.track.style.overflowX = "hidden";
     this.jumpToSlide(index);
 
-    this.openPending = true;
     await this.loadSlide(index);
 
     // Closed while loading: close() already restored everything
     if (currentOpenId !== this.openId) return;
-    this.openPending = false;
     this.track.style.overflowX = "";
     // Shown at once, in the frame the thumbnail hides: its opacity transition would fade it in over
     // an empty spot, a blink. The transition comes back for later changes
@@ -708,11 +710,13 @@ class Zoom {
 
     // Hide thumbnail instantly and trigger CSS animation simultaneously
     this.hideThumbnail(sourceImg);
+    this.phase = "opening";
     this.overlay.classList.add("is-opening");
 
     // After the animation, switch to the is-open state
     void animationsFinished(this.overlay, OPEN_ANIMATIONS).then(() => {
       if (currentOpenId !== this.openId) return;
+      this.phase = "open";
       this.overlay.classList.remove("is-opening");
       this.overlay.classList.add("is-open");
     });
@@ -725,16 +729,14 @@ class Zoom {
   }
 
   private close(byScroll = false, byKeyboard = false): void {
-    if (!this.state.isOpen || this.isClosing) return;
+    if (!this.isOpen) return;
 
-    this.isClosing = true;
-    this.state.isOpen = false;
+    const closedFrom = this.phase;
+    this.phase = "closing";
     this.emit("close");
 
     // Cancel a pending open() that is still waiting for the image to load
     this.openId++;
-    const openWasPending = this.openPending;
-    this.openPending = false;
 
     // Release the shared overlay: no listener of this instance survives the close
     this.openController?.abort();
@@ -753,7 +755,11 @@ class Zoom {
     // Closed while loading: the opening animation never ran, so close without animating. Nor when
     // the dialog is already closed, or the page removed the thumbnail while the zoom was open:
     // there is nothing on screen to animate, or nowhere to fly back to
-    if (openWasPending || !this.overlay.open || !sourceImg?.isConnected) {
+    if (
+      closedFrom === "loading" ||
+      !this.overlay.open ||
+      !sourceImg?.isConnected
+    ) {
       this.finalizeClose(sourceImg);
       return;
     }
@@ -765,7 +771,7 @@ class Zoom {
 
     // Closed during the opening: the close starts from where the image and the backdrop are, read
     // before the opening stops, not from the end of it
-    if (this.overlay.classList.contains("is-opening")) {
+    if (closedFrom === "opening") {
       const image = getComputedStyle(this.imageElement);
       this.imageElement.style.setProperty("--transform-now", image.transform);
       this.imageElement.style.setProperty("--clip-now", image.clipPath);
@@ -1046,7 +1052,7 @@ class Zoom {
   }
 
   private handleKeydown = (e: KeyboardEvent): void => {
-    if (!this.state.isOpen) return;
+    if (!this.isOpen) return;
 
     switch (e.key) {
       case "ArrowLeft":
@@ -1123,9 +1129,7 @@ class Zoom {
     this.controller.abort();
 
     // Close if open (also releases the overlay listeners)
-    if (this.state.isOpen) {
-      this.close();
-    }
+    if (this.isOpen) this.close();
   }
 
   // Copies the --zoom-* values around the wrapper to the overlay's host, which lives in <body> and
@@ -1312,7 +1316,7 @@ class Zoom {
       this.returnFocus = null;
     }
 
-    this.isClosing = false;
+    this.phase = "closed";
   }
 }
 
