@@ -80,7 +80,6 @@ const full = await getImage({
   src: photo.src,
   width: photo.src.width,
   format: "avif",
-  quality: "high",
 });
 const meta = [photo.mission, photo.year].filter(Boolean).join(" · ");
 ---
@@ -105,6 +104,7 @@ const meta = [photo.mission, photo.year].filter(Boolean).join(" · ");
       widths={widths}
       sizes={sizes}
       format="avif"
+      quality="mid"
       loading={loading}
       fetchpriority={fetchpriority}
       data-image-zoom-src={full.src}

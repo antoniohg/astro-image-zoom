@@ -40,11 +40,11 @@
   :root {
     color-scheme: light dark;
 
-    /* Fonts: --font-archivo and --font-plex-mono come from the fonts config (astro.config.mjs) */
+    /* Fonts: --font-archivo* and --font-plex-mono come from the fonts config (astro.config.mjs) */
     --font-sans: var(--font-archivo);
     --font-mono: var(--font-plex-mono);
     /* Headings use the same family, expanded: the type widens like a photo that zooms */
-    --heading-width: "wdth" 125;
+    --font-heading: var(--font-archivo-expanded);
 
     /*
      * Palette: neutral so the photos carry the color. A cool light table in light mode, a
@@ -127,7 +127,7 @@
 
   :where(h1, h2, h3, h4) {
     font-weight: 700;
-    font-variation-settings: var(--heading-width);
+    font-family: var(--font-heading);
     line-height: 1.05;
     letter-spacing: -0.025em;
     text-wrap: balance;
@@ -280,7 +280,7 @@
   .logo {
     font-size: 1rem;
     font-weight: 700;
-    font-variation-settings: var(--heading-width);
+    font-family: var(--font-heading);
     letter-spacing: -0.01em;
     text-decoration: none;
     white-space: nowrap;

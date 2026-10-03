@@ -12,7 +12,7 @@ const gallery = [photos.twinJet, photos.veil];
 
 // Full-size versions for the zoom
 const full = async (src: ImageMetadata) =>
-  (await getImage({ src, width: src.width, format: "avif", quality: "high" }))
+  (await getImage({ src, width: src.width, format: "avif", quality: "mid" }))
     .src;
 const singleFull = await full(single.src);
 const galleryFull = await Promise.all(gallery.map(({ src }) => full(src)));
