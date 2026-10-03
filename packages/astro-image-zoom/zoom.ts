@@ -1,8 +1,3 @@
-/**
- * Zoom TypeScript Module
- * Medium-style zoom with accessibility and performance optimizations
- */
-
 import overlayStyles from "./overlay.css?inline";
 import { DEFAULT_LABELS, type ImageZoomLabels } from "./labels";
 
@@ -254,6 +249,16 @@ function getOverlay(): HTMLDialogElement {
   return root.querySelector("dialog")!;
 }
 
+// An element of the overlay, which OVERLAY_HTML always has
+function overlayPart<T extends HTMLElement>(
+  overlay: HTMLDialogElement,
+  name: string,
+): T {
+  const element = overlay.querySelector<T>(`.astro-image-zoom-${name}`);
+  if (!element) throw new Error(`astro-image-zoom: no ${name} in the overlay`);
+  return element;
+}
+
 // A box on the screen, such as the one getBoundingClientRect() returns
 type Box = Pick<DOMRect, "left" | "top" | "width" | "height">;
 
@@ -382,16 +387,16 @@ export function flipTransform(
 class Zoom {
   private wrapper: HTMLElement;
   // The element that holds the overlay's shadow root, and its --zoom-* variables
-  private host!: HTMLElement;
-  private overlay!: HTMLDialogElement;
-  private backdrop!: HTMLElement;
-  private track!: HTMLElement;
-  private captionElement!: HTMLElement;
-  private closeButton!: HTMLButtonElement;
-  private toolbar!: HTMLElement;
-  private counter!: HTMLElement;
-  private prevButton!: HTMLButtonElement;
-  private nextButton!: HTMLButtonElement;
+  private host: HTMLElement;
+  private overlay: HTMLDialogElement;
+  private backdrop: HTMLElement;
+  private track: HTMLElement;
+  private captionElement: HTMLElement;
+  private closeButton: HTMLButtonElement;
+  private toolbar: HTMLElement;
+  private counter: HTMLElement;
+  private prevButton: HTMLButtonElement;
+  private nextButton: HTMLButtonElement;
   private slides: ZoomSlide[] = [];
 
   private state: ZoomState = {
@@ -437,16 +442,14 @@ class Zoom {
     // One overlay is shared by every zoom instance on the page
     this.overlay = getOverlay();
     this.host = (this.overlay.getRootNode() as ShadowRoot).host as HTMLElement;
-    this.backdrop = this.overlay.querySelector(".astro-image-zoom-backdrop")!;
-    this.track = this.overlay.querySelector(".astro-image-zoom-track")!;
-    this.captionElement = this.overlay.querySelector(
-      ".astro-image-zoom-caption",
-    )!;
-    this.closeButton = this.overlay.querySelector(".astro-image-zoom-close")!;
-    this.toolbar = this.overlay.querySelector(".astro-image-zoom-toolbar")!;
-    this.counter = this.overlay.querySelector(".astro-image-zoom-counter")!;
-    this.prevButton = this.overlay.querySelector(".astro-image-zoom-prev")!;
-    this.nextButton = this.overlay.querySelector(".astro-image-zoom-next")!;
+    this.backdrop = overlayPart(this.overlay, "backdrop");
+    this.track = overlayPart(this.overlay, "track");
+    this.captionElement = overlayPart(this.overlay, "caption");
+    this.closeButton = overlayPart(this.overlay, "close");
+    this.toolbar = overlayPart(this.overlay, "toolbar");
+    this.counter = overlayPart(this.overlay, "counter");
+    this.prevButton = overlayPart(this.overlay, "prev");
+    this.nextButton = overlayPart(this.overlay, "next");
 
     this.setupEventListeners();
   }
@@ -538,7 +541,7 @@ class Zoom {
         if (index === -1) return;
 
         e.preventDefault();
-        this.open(index, fromKeyboard(e));
+        void this.open(index, fromKeyboard(e));
       },
       { signal: this.controller.signal },
     );
@@ -601,7 +604,6 @@ class Zoom {
     // Identifies this opening; close() increments it to cancel a pending open
     const currentOpenId = ++this.openId;
 
-    // Update state
     this.state.isOpen = true;
     this.state.currentIndex = index;
     // The grace period after a horizontal wheel belongs to one opening, not to the previous one
@@ -660,11 +662,9 @@ class Zoom {
     this.imageElement.style.transition = "";
     this.preloadNeighbors(index);
 
-    // FLIP Animation
     const finalRect = this.imageElement.getBoundingClientRect();
     const transform = flipTransform(sourceRect, finalRect, sourceFit);
 
-    // Set CSS variables for animation
     this.setAnimationVariables(transform);
 
     // Hide thumbnail instantly and trigger CSS animation simultaneously
@@ -1051,8 +1051,9 @@ class Zoom {
   };
 
   private handleCancel = (e: Event): void => {
-    e.preventDefault(); // Prevent immediate closing
-    this.close(false, this.escapePressed); // Trigger animated close
+    // Not the native close at once: the animated one
+    e.preventDefault();
+    this.close(false, this.escapePressed);
   };
 
   private handlePageZoom = (): void => {
@@ -1305,5 +1306,4 @@ class Zoom {
   }
 }
 
-// Export class for advanced usage
 export { Zoom };
