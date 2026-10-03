@@ -519,6 +519,9 @@ class Zoom {
       { signal },
     );
     this.overlay.addEventListener("cancel", this.handleCancel, { signal });
+    // Closed from outside (a script calling close(), a close the browser forces): clean up. The
+    // listener is gone by the time finalizeClose() closes the dialog itself
+    this.overlay.addEventListener("close", () => this.close(), { signal });
 
     this.closeButton.addEventListener(
       "click",
@@ -559,7 +562,8 @@ class Zoom {
   }
 
   private async open(index: number, byKeyboard = false): Promise<void> {
-    if (this.state.isOpen) return;
+    const sourceImg = this.getThumbnail(index);
+    if (this.state.isOpen || !sourceImg) return;
 
     // Identifies this opening; close() increments it to cancel a pending open
     const currentOpenId = ++this.openId;
@@ -573,8 +577,6 @@ class Zoom {
     // The variables of this gallery (the theme and animationDuration props among them)
     this.inheritVariables();
 
-    // Get source image and position
-    const sourceImg = this.getThumbnail(index)!;
     const sourceRect = sourceImg.getBoundingClientRect();
     const sourceFit = thumbnailFit(sourceImg);
 
@@ -703,7 +705,7 @@ class Zoom {
 
     // Get source image BEFORE any DOM changes
     const sourceElement = this.state.images[this.state.currentIndex]?.element;
-    const sourceImg = this.getThumbnail(this.state.currentIndex)!;
+    const sourceImg = this.getThumbnail(this.state.currentIndex);
 
     // Focus goes to the link of the image on screen, where the close lands, not to the one that
     // opened the zoom: a keyboard user goes on from the image they were looking at. Not
@@ -711,8 +713,10 @@ class Zoom {
     this.returnFocus = sourceElement ?? null;
     this.returnFocusVisible = byKeyboard;
 
-    // Closed while loading: the opening animation never ran, so close without animating
-    if (openWasPending) {
+    // Closed while loading: the opening animation never ran, so close without animating. Nor when
+    // the dialog is already closed, or the page removed the thumbnail while the zoom was open:
+    // there is nothing on screen to animate, or nowhere to fly back to
+    if (openWasPending || !this.overlay.open || !sourceImg?.isConnected) {
       this.finalizeClose(sourceImg);
       return;
     }
@@ -1206,12 +1210,17 @@ class Zoom {
     img.style.transition = "";
   }
 
-  private finalizeClose(sourceImg: HTMLImageElement): void {
+  private finalizeClose(sourceImg: HTMLImageElement | null): void {
     // Restore the thumbnail as the overlay goes away - same frame
     this.showThumbnail(sourceImg);
 
     this.overlay.close();
-    this.overlay.classList.remove("is-closing", "is-page-zoomed");
+    this.overlay.classList.remove(
+      "is-opening",
+      "is-open",
+      "is-closing",
+      "is-page-zoomed",
+    );
     this.backdrop.style.removeProperty("--backdrop-now");
     this.unlockScroll();
 

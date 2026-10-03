@@ -327,6 +327,35 @@ test.describe("open and close", () => {
     ).toBeGreaterThan(0);
   });
 
+  test("closes without animating when the page removed the thumbnail while open", async ({
+    page,
+  }) => {
+    await openZoom(page, "single");
+    await links(page, "single")
+      .first()
+      .locator("img")
+      .evaluate((img) => {
+        img.remove();
+      });
+
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).not.toHaveAttribute("open");
+    await expectClosed(page);
+  });
+
+  test("cleans up when a script closes the dialog", async ({ page }) => {
+    await openZoom(page, "single");
+    await dialog(page).evaluate((element: HTMLDialogElement) =>
+      element.close(),
+    );
+    await expectClosed(page);
+
+    // The next opening works as usual
+    await openZoom(page, "single");
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+  });
+
   test("stays open when every close option is off, except Escape", async ({
     page,
   }) => {
