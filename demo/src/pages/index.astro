@@ -25,7 +25,7 @@ type LocalPhoto = Exclude<PhotoName, "blueMarble">;
 type Crop = { width: number; height?: number; sizes: string };
 const desktop = "(min-width: 48rem)";
 // priority: the largest image of the first screen (LCP), the cliffs from 48rem and the rocket on
-// phones, fetched first
+// phones, fetched first; the other tiles load lazily, so they leave the bandwidth to it
 const wall: {
   name: LocalPhoto;
   tile: string;
@@ -181,7 +181,7 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
               sources={[{ media: desktop, ...wide }]}
               caption={false}
               fill
-              loading="eager"
+              loading={priority ? "eager" : "lazy"}
               fetchpriority={priority ? "high" : undefined}
             />
           </div>
@@ -349,7 +349,6 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
       h1 {
         /* At least 12vw on the narrowest phones, where 2.75rem would push "zoom" to a line of its own */
         font-size: clamp(min(2.75rem, 12vw), 1rem + 6vw, 6.5rem);
-        font-weight: 800;
         line-height: 0.95;
         letter-spacing: -0.04em;
 
@@ -572,7 +571,7 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
       justify-self: start;
       padding: 0.75rem 1.25rem;
       font-weight: 700;
-      font-variation-settings: var(--heading-width);
+      font-family: var(--font-heading);
       text-decoration: none;
       color: var(--color-bg);
       background: var(--color-text);

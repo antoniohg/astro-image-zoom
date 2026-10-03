@@ -14,6 +14,9 @@ export default defineConfig({
   // Prefetch every link on hover or focus: the pages, and the full-size image of each zoom link,
   // which the zoom then finds in the cache. Without prefetchAll only links with data-astro-prefetch
   prefetch: { prefetchAll: true },
+  build: {
+    inlineStylesheets: "always",
+  },
   vite: {
     optimizeDeps: {
       // Use the workspace package directly so edits show up without a restart
@@ -23,16 +26,25 @@ export default defineConfig({
   // Downloaded at build time and served from the site itself (no requests to Google)
   fonts: [
     {
-      // One family for text and headings: the headings use its expanded width (wdth axis)
+      // Text: the regular width; with the wdth axis the file would be 90 KB instead of 35 KB
       provider: fontProviders.google(),
       name: "Archivo",
       cssVariable: "--font-archivo",
       weights: ["400 800"],
       styles: ["normal"],
       fallbacks: ["sans-serif"],
+    },
+    {
+      // Headings: the same family at its expanded width (wdth 125), one bold instance
+      provider: fontProviders.google(),
+      name: "Archivo",
+      cssVariable: "--font-archivo-expanded",
+      weights: ["700"],
+      styles: ["normal"],
+      fallbacks: ["sans-serif"],
       options: {
         experimental: {
-          variableAxis: { wdth: [["100", "125"]] },
+          variableAxis: { wdth: ["125"] },
         },
       },
     },
