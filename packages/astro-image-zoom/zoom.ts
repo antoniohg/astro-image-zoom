@@ -55,6 +55,8 @@ declare global {
 interface ZoomSlide {
   figure: HTMLElement;
   img: HTMLImageElement;
+  // URL of the full-size image
+  src: string;
   // Resolves when the image can be shown: see loadSlide()
   ready?: Promise<void>;
 }
@@ -545,9 +547,15 @@ class Zoom {
     );
   }
 
-  // The image of the slide on screen
+  // The slide on screen. The slides exist from open() until finalizeClose()
+  private get currentSlide(): ZoomSlide {
+    const slide = this.slides[this.state.currentIndex];
+    if (!slide) throw new Error("astro-image-zoom: no slide on screen");
+    return slide;
+  }
+
   private get imageElement(): HTMLImageElement {
-    return this.slides[this.state.currentIndex].img;
+    return this.currentSlide.img;
   }
 
   private async open(index: number, byKeyboard = false): Promise<void> {
@@ -572,7 +580,7 @@ class Zoom {
 
     this.buildSlides();
     this.renderActive(index);
-    this.placeSpinner(this.slides[index].figure, sourceRect);
+    this.placeSpinner(this.currentSlide.figure, sourceRect);
     this.emit("open");
     // Hidden until the image is ready, so the FLIP animation starts from a clean frame. Before any
     // layout, so its opacity transition does not run: it would show the image for a frame
@@ -694,13 +702,13 @@ class Zoom {
     this.openController = null;
 
     // Get source image BEFORE any DOM changes
-    const sourceElement = this.state.images[this.state.currentIndex].element;
+    const sourceElement = this.state.images[this.state.currentIndex]?.element;
     const sourceImg = this.getThumbnail(this.state.currentIndex)!;
 
     // Focus goes to the link of the image on screen, where the close lands, not to the one that
     // opened the zoom: a keyboard user goes on from the image they were looking at. Not
     // document.activeElement at open: Safari does not focus a link on click, so it would be <body>
-    this.returnFocus = sourceElement;
+    this.returnFocus = sourceElement ?? null;
     this.returnFocusVisible = byKeyboard;
 
     // Closed while loading: the opening animation never ran, so close without animating
@@ -827,7 +835,7 @@ class Zoom {
   }
 
   private buildSlides(): void {
-    this.slides = this.state.images.map(({ alt }) => {
+    this.slides = this.state.images.map(({ src, alt }) => {
       const figure = document.createElement("figure");
       figure.className = "astro-image-zoom-slide";
       figure.part.add("slide");
@@ -836,7 +844,7 @@ class Zoom {
       img.part.add("image");
       img.alt = alt;
       figure.append(img);
-      return { figure, img };
+      return { figure, img, src };
     });
 
     // Before the caption and the controls, which stay in the track
@@ -853,10 +861,11 @@ class Zoom {
   // thumbnail can stand in for it until it decodes, or once it decodes otherwise
   private loadSlide(index: number): Promise<void> {
     const slide = this.slides[index];
+    if (!slide) return Promise.resolve();
     if (slide.ready) return slide.ready;
 
     const { img, figure } = slide;
-    img.src = this.state.images[index].src;
+    img.src = slide.src;
     // The CSS shows the spinner only if the wait lasts
     figure.classList.add("is-loading");
 
@@ -979,7 +988,7 @@ class Zoom {
       figure.setAttribute("aria-hidden", String(i !== index));
     });
 
-    this.captionElement.textContent = this.state.images[index].caption || "";
+    this.captionElement.textContent = this.state.images[index]?.caption ?? "";
     this.updateNavigationButtons();
   }
 
@@ -1026,9 +1035,11 @@ class Zoom {
       return;
     }
 
+    const touch = e.touches[0];
+    if (!touch) return;
     this.touchPinched = false;
-    this.touchStartX = e.touches[0].clientX;
-    this.touchStartY = e.touches[0].clientY;
+    this.touchStartX = touch.clientX;
+    this.touchStartY = touch.clientY;
   };
 
   private handleWheel = (e: WheelEvent): void => {
@@ -1055,6 +1066,7 @@ class Zoom {
     if (e.touches.length > 1 || this.touchPinched || isPageZoomed()) return;
 
     const touch = e.touches[0];
+    if (!touch) return;
     const deltaX = Math.abs(touch.clientX - this.touchStartX);
     const deltaY = Math.abs(touch.clientY - this.touchStartY);
 

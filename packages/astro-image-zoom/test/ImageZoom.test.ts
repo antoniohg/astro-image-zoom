@@ -21,7 +21,10 @@ async function render(
   if (!tag) throw new Error(`No <astro-image-zoom> in:\n${html}`);
 
   const attributes = new Map<string, string>();
-  for (const [, name, value] of tag[1].matchAll(/([\w-]+)(?:="([^"]*)")?/g)) {
+  const source = tag[1] ?? "";
+  for (const [, name = "", value] of source.matchAll(
+    /([\w-]+)(?:="([^"]*)")?/g,
+  )) {
     attributes.set(name, value ?? "");
   }
   return { html, attributes };

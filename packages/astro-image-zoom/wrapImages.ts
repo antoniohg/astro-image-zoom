@@ -16,7 +16,9 @@ type LinkLabels = Pick<ImageZoomLabels, "enlarge" | "enlargeNamed">;
 
 function parseAttributes(source: string): Attributes {
   const attributes: Attributes = new Map();
-  for (const [, name, double, single, bare] of source.matchAll(ATTRIBUTE)) {
+  for (const [, name = "", double, single, bare] of source.matchAll(
+    ATTRIBUTE,
+  )) {
     // First occurrence wins, like in a browser
     const key = name.toLowerCase();
     if (!attributes.has(key))
@@ -108,7 +110,7 @@ export interface Selector {
   tag?: string;
   classes: string[];
   ids: string[];
-  attributes: { name: string; value?: string }[];
+  attributes: { name: string; value?: string | undefined }[];
 }
 
 // A CSS identifier without escapes: what classes, ids, attribute names and unquoted values must be
@@ -140,7 +142,7 @@ function parseSelector(source: string): Selector {
     const [, className, id, name, double, single, bare] = match;
     if (className) selector.classes.push(className);
     else if (id) selector.ids.push(id);
-    else
+    else if (name)
       selector.attributes.push({
         name: name.toLowerCase(),
         value: double ?? single ?? bare,
@@ -241,7 +243,7 @@ export function wrapImages(
   const token = new RegExp(TOKEN.source, "g");
   let match: RegExpExecArray | null;
   while ((match = token.exec(html))) {
-    const [tag, closing, rawName, rawAttributes] = match;
+    const [tag, closing, rawName, rawAttributes = ""] = match;
     if (!rawName) continue; // comment
 
     const name = rawName.toLowerCase();

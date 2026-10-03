@@ -4,8 +4,12 @@ import { flipTransform, type ThumbnailFit } from "../zoom";
 type Box = { left: number; top: number; width: number; height: number };
 
 // Numbers of an inset() clip-path, in px
-const insets = (clipPath: string): number[] =>
-  [...clipPath.matchAll(/(-?[\d.]+)px/g)].map(([, value]) => Number(value));
+const insets = (clipPath: string): [number, number, number, number] => {
+  const [top = NaN, right = NaN, bottom = NaN, left = NaN] = [
+    ...clipPath.matchAll(/(-?[\d.]+)px/g),
+  ].map(([, value]) => Number(value));
+  return [top, right, bottom, left];
+};
 
 // Applies a transform the way the animation does, to see where the zoomed image (`final`) ends up
 // on the screen: `whole` is the image once scaled around its center and moved, `visible` the part
