@@ -153,8 +153,21 @@ const isPageZoomed = (): boolean => (window.visualViewport?.scale ?? 1) > 1.01;
 const SCROLL_TARGET_TTL = 500;
 // Vertical wheel deltas below this many pixels do not close the overlay
 const WHEEL_CLOSE_DELTA = 4;
+// Pixels in a line, for the wheels that scroll by lines (deltaMode 1)
+const WHEEL_LINE_HEIGHT = 16;
 // After a horizontal wheel event (ms), vertical jitter of the same touchpad swipe is ignored
 const WHEEL_HORIZONTAL_GRACE = 250;
+
+// The vertical delta of a wheel in pixels, whether it scrolls by pixels, lines or pages. deltaY is
+// read before deltaMode: Firefox reports lines to the pages that read deltaMode first
+function wheelPixels(e: WheelEvent): number {
+  const { deltaY } = e;
+  if (e.deltaMode === WheelEvent.DOM_DELTA_LINE)
+    return deltaY * WHEEL_LINE_HEIGHT;
+  if (e.deltaMode === WheelEvent.DOM_DELTA_PAGE)
+    return deltaY * window.innerHeight;
+  return deltaY;
+}
 
 const OVERLAY_ID = "astro-image-zoom-global-overlay";
 
@@ -1108,7 +1121,7 @@ class Zoom {
       return;
     }
 
-    if (Math.abs(e.deltaY) < WHEEL_CLOSE_DELTA) return;
+    if (Math.abs(wheelPixels(e)) < WHEEL_CLOSE_DELTA) return;
     if (e.timeStamp - this.lastHorizontalWheel < WHEEL_HORIZONTAL_GRACE) return;
     this.close(true);
   };

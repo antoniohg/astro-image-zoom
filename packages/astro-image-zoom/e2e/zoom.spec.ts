@@ -94,6 +94,22 @@ test.describe("open and close", () => {
     await expectClosed(page);
   });
 
+  test("closes with a wheel that scrolls by lines", async ({ page }) => {
+    // Some mice and systems report lines, not pixels: 3 lines is one notch of the wheel
+    await openZoom(page, "single");
+    await dialog(page).evaluate((overlay) =>
+      overlay.dispatchEvent(
+        new WheelEvent("wheel", {
+          deltaY: 3,
+          deltaMode: WheelEvent.DOM_DELTA_LINE,
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    );
+    await expectClosed(page);
+  });
+
   test("on a scroll close, the image stays above the backdrop that fades out", async ({
     page,
   }) => {
