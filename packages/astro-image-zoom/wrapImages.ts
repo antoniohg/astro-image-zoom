@@ -205,7 +205,9 @@ function matches(
     const raw = attributes.get(attribute);
     return raw === undefined ? undefined : decode(raw);
   };
-  const classes = (value("class") ?? "").split(/\s+/);
+  const classes = selector.classes.length
+    ? (value("class") ?? "").split(/\s+/)
+    : [];
   return (
     selector.classes.every((className) => classes.includes(className)) &&
     selector.ids.every((id) => value("id") === id) &&
@@ -230,6 +232,10 @@ export function wrapImages(
   const selectors = [ALWAYS_IGNORED, ...ignore];
   const isIgnored = (name: string, attributes: Attributes): boolean =>
     selectors.some((selector) => matches(name, attributes, selector));
+  // Most tags can match no selector: the attributes are parsed only for those that may
+  const mayBeIgnored = (name: string, rawAttributes: string): boolean =>
+    /data-image-zoom-ignore/i.test(rawAttributes) ||
+    ignore.some(({ tag }) => !tag || tag === name);
 
   let output = "";
   let cursor = 0;
@@ -277,6 +283,7 @@ export function wrapImages(
       !closing &&
       !VOID_ELEMENTS.has(name) &&
       !selfClosing &&
+      mayBeIgnored(name, rawAttributes) &&
       isIgnored(name, parseAttributes(rawAttributes))
     ) {
       ignored = { name, depth: 1 };
