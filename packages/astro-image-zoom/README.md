@@ -24,6 +24,8 @@ screen, and the images of a gallery become a carousel you can swipe.
 - **Customizable**: `--zoom-*` CSS variables, per gallery if you want, `::part()` and props.
 - **Light and dark**: follows the light or dark preference of the system, or the scheme you set.
 - **No dependencies**: TypeScript and CSS only; without JavaScript, each image links to the file the zoom opens.
+- **Starlight**: one line in the config zooms every image of the docs, in Starlight's colors and
+  languages ([Starlight](#starlight)).
 
 ## Installation
 
@@ -286,6 +288,71 @@ itself:
   }
 </style>
 ```
+
+## Starlight
+
+In a [Starlight](https://starlight.astro.build/) site, one line in the config makes every image of
+the docs zoomable, with no component in the pages:
+
+```js
+// astro.config.mjs
+import starlight from "@astrojs/starlight";
+import imageZoom from "astro-image-zoom/starlight";
+import { defineConfig } from "astro/config";
+
+export default defineConfig({
+  integrations: [starlight({ title: "My docs", plugins: [imageZoom()] })],
+});
+```
+
+Everything the component does works in the docs. Each page is one gallery, with arrow keys, swipes
+and a counter, and the zoom can open a full-size file. A Markdown image's title becomes its caption:
+`![A red car](./car.jpg "Our first car")`. On phones, a swipe closes the zoom, and a wheel or
+touchpad scroll closes it without stopping the page. Without JavaScript, each image still links to
+its file.
+
+An image in a link stays a link. To leave one out, write it in HTML with `data-image-zoom-ignore`,
+or pass the `ignore` option. The overlay takes Starlight's colors, follows its theme toggle and reads
+its labels in the language of each page.
+
+The options are the [props](#props) of `<ImageZoom>`, except `labels` and `class`:
+
+```js
+imageZoom({ showCounter: false, theme: { backgroundColor: "black" } });
+```
+
+Starlight's colors are only defaults: the [CSS variables](#css-variables) of your site replace
+them, and `theme` replaces both, color by color.
+
+### Translations
+
+The labels come from Starlight's [UI translations](https://starlight.astro.build/guides/i18n/#translate-starlights-ui),
+in English and Spanish. For another language, or other words, add the keys to
+`src/content/i18n/<lang>.json`: `astroImageZoom.overlay`, `astroImageZoom.close`,
+`astroImageZoom.images`, `astroImageZoom.previous`, `astroImageZoom.next`,
+`astroImageZoom.enlarge` and `astroImageZoom.enlargeNamed` (see the [keys](#translating-the-labels)).
+
+### With your own MarkdownContent
+
+The plugin overrides Starlight's `MarkdownContent` component. If your site already overrides it, the
+plugin leaves yours and logs a warning. Keep the plugin in the config, and wrap Starlight's
+component in `astro-image-zoom/starlight/ImageZoom.astro` inside your override: it brings the
+options, the translations and the colors.
+
+```astro
+---
+// src/components/MarkdownContent.astro
+import Default from "@astrojs/starlight/components/MarkdownContent.astro";
+import ImageZoom from "astro-image-zoom/starlight/ImageZoom.astro";
+---
+
+<ImageZoom>
+  <Default><slot /></Default>
+</ImageZoom>
+```
+
+A plugin listed after this one that overrides `MarkdownContent` too replaces it without a warning:
+keep only one of them.
 
 ## Configuration
 
