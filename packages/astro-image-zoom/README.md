@@ -333,6 +333,8 @@ in English and Spanish. For another language, or other words, add the keys to
 `src/content/i18n/<lang>.json`: `astroImageZoom.overlay`, `astroImageZoom.close`,
 `astroImageZoom.images`, `astroImageZoom.previous`, `astroImageZoom.next`,
 `astroImageZoom.enlarge` and `astroImageZoom.enlargeNamed` (see the [keys](#translating-the-labels)).
+A label missing in a language comes from your default language, as in Starlight, and stays in
+English when that one has none either.
 
 ### With your own MarkdownContent
 

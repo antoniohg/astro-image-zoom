@@ -11,7 +11,8 @@ const SPANISH: ImageZoomLabels = {
 };
 
 // Starlight's UI strings for the labels, under the astroImageZoom namespace. Other languages fall
-// back to English, and a site translates or overrides them in src/content/i18n/<lang>.json
+// back to the site's default language, and to English when it has none (ImageZoom.astro); a site
+// translates or overrides them in src/content/i18n/<lang>.json
 const strings = (labels: ImageZoomLabels): Record<string, string> =>
   Object.fromEntries(
     Object.entries(labels).map(([key, value]) => [

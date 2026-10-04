@@ -1,8 +1,13 @@
 import type { HookParameters } from "@astrojs/starlight/types";
 import type { AstroIntegration } from "astro";
+import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_LABELS } from "../labels";
+import StarlightImageZoom from "../starlight/ImageZoom.astro";
 import imageZoom, { VIRTUAL_CONFIG_ID } from "../starlight/index";
+
+// The options the plugin would serve; the component only spreads them
+vi.mock("virtual:astro-image-zoom/starlight-config", () => ({ default: {} }));
 
 const OVERRIDE = "astro-image-zoom/starlight/MarkdownContent.astro";
 
@@ -92,5 +97,25 @@ describe("Starlight plugin", () => {
       DEFAULT_LABELS.enlargeNamed,
     );
     expect(translations.es["astroImageZoom.close"]).toBe("Cerrar zoom");
+  });
+
+  // Starlight's t() for a page whose language has only the given strings, as on a site whose
+  // default language the plugin does not translate: a missing key comes back as the key itself
+  async function renderWith(strings: Record<string, string>): Promise<string> {
+    const t = Object.assign((key: string) => strings[key] ?? key, {
+      exists: (key: string) => key in strings,
+    });
+    const container = await AstroContainer.create();
+    return container.renderToString(StarlightImageZoom, {
+      locals: { t },
+      slots: { default: '<img src="/photo.jpg" alt="Une photo">' },
+    });
+  }
+
+  it("keeps the English labels the page's language has no string for", async () => {
+    const html = await renderWith({ "astroImageZoom.close": "Fermer le zoom" });
+    expect(html).not.toContain("astroImageZoom.");
+    expect(html).toContain('aria-label="Enlarge image: Une photo"');
+    expect(html).toContain("Fermer le zoom");
   });
 });
