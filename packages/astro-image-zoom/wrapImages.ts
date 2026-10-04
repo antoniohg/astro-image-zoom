@@ -59,9 +59,11 @@ function wrap(html: string, image: Attributes, labels: LinkLabels): string {
   const caption = image.get("data-image-zoom-caption");
   const alt = image.get("alt");
 
-  const captionAttribute = caption
-    ? ` data-image-zoom-caption="${escapeQuotes(caption)}"`
-    : "";
+  // Copied even when empty: an empty caption turns off the figcaption and title fallbacks
+  const captionAttribute =
+    caption !== undefined
+      ? ` data-image-zoom-caption="${escapeQuotes(caption)}"`
+      : "";
   // The labels are plain text and the alt text keeps its entities, like every attribute value here;
   // escapeQuotes below takes care of the quotes
   const text = (label: string) => label.replaceAll("&", "&amp;");

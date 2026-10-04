@@ -75,8 +75,8 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 - **An image on its own** opens the URL in its `data-image-zoom-src`, or its own `src` without it. Plain
   images work out of the box: `<img src="/photo.jpg">` opens that same file.
 - **An image inside a link with `data-image-zoom`** (`<a href="…" data-image-zoom>`) opens the `href` of the
-  link. Put `data-image-zoom-caption` (or `title`) on the link: the image inside gives only its `alt`, and
-  its own `data-image-zoom-src` and `data-image-zoom-caption` are ignored. See
+  link. Put `data-image-zoom-caption` (or `title`) on the link: the image inside gives only its `alt`
+  and its `title`, and its own `data-image-zoom-src` and `data-image-zoom-caption` are ignored. See
   [Gallery with Links](#gallery-with-links).
 - **An image inside any other link** is left alone: the link keeps working as a link (a card, a
   logo) and the image is not part of the gallery. So are the images of other elements whose clicks
@@ -146,6 +146,25 @@ const optimizedImage = await getImage({
     alt="City skyline"
     data-image-zoom-caption="Downtown at night"
   />
+</ImageZoom>
+```
+
+Without `data-image-zoom-caption`, the caption comes from the page:
+
+1. The `<figcaption>` of the `<figure>` around the image, as plain text. Only when the figure holds
+   that one image: a figcaption shared by several images describes the group, not each of them.
+2. The `title` of the link, or of the image. Markdown's `![alt](src "title")` renders it, so
+   Markdown images get a caption with no extra markup.
+
+An empty `data-image-zoom-caption=""` leaves an image without a caption, whatever its figure or
+title say.
+
+```astro
+<ImageZoom>
+  <figure>
+    <img src="/image1.jpg" alt="Beautiful landscape" />
+    <figcaption>Sunset over the <em>mountains</em></figcaption>
+  </figure>
 </ImageZoom>
 ```
 
