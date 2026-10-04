@@ -129,10 +129,15 @@ const features: { icon: SvgComponent; title: string; text: string }[] = [
   },
 ];
 
-// The size is the gzipped script of the component, overlay CSS included, in the demo build:
-// update it when the package grows. Accessible: the overlay passes axe with no help from the site
+// The size is the gzipped script of the component, overlay CSS included, in the demo build (8.6 KB
+// in 0.1.0-beta.10): a bound, not the exact figure, so it holds as the package grows. Revisit it
+// only if the script nears 10 KB. Accessible: the overlay passes axe with no help from the site
 // (a11y.spec.ts)
-const facts = ["8 KB gzipped", "No dependencies", "Accessible by default"];
+const facts = [
+  "Under 10 KB gzipped",
+  "No dependencies",
+  "Accessible by default",
+];
 
 const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
 ---
