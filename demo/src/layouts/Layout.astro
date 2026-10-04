@@ -2,8 +2,7 @@
 // First import, and the layout first in every page: Astro orders the stylesheets by the position
 // of their imports, so global.css, with the order of the cascade layers, comes before any other
 import "../styles/global.css";
-import { Font, getImage } from "astro:assets";
-import { photos } from "@data/photos";
+import { Font } from "astro:assets";
 import GlobeIcon from "../assets/icons/globe-hemisphere-west.svg";
 
 interface Props {
@@ -21,16 +20,10 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
 
 // Absolute URLs for search engines and link previews; Astro.site comes from `site` in the config
 const canonical = new URL(Astro.url.pathname, Astro.site);
-// Preview image when a page is shared: the first photo of the home, cropped to the 1.91:1 card
-const share = photos.cosmicCliffs;
-const shareImage = await getImage({
-  src: share.src,
-  width: 1200,
-  height: 630,
-  fit: "cover",
-  format: "jpg",
-});
-const shareImageUrl = new URL(shareImage.src, Astro.site);
+// Preview image when a page is shared: the same card as the social preview of the repository
+const shareImageUrl = new URL(`${base}og.png`, Astro.site);
+const shareImageAlt =
+  "astro-image-zoom, Medium-style image zoom for Astro: an image grows from a page into an overlay";
 ---
 
 <!doctype html>
@@ -50,9 +43,9 @@ const shareImageUrl = new URL(shareImage.src, Astro.site);
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={shareImageUrl} />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content={share.alt} />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="640" />
+    <meta property="og:image:alt" content={shareImageAlt} />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href={`${base}favicon.ico`} sizes="32x32" />
     <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />

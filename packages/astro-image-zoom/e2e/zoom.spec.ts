@@ -94,6 +94,22 @@ test.describe("open and close", () => {
     await expectClosed(page);
   });
 
+  test("closes with a wheel that scrolls by lines", async ({ page }) => {
+    // Some mice and systems report lines, not pixels: 3 lines is one notch of the wheel
+    await openZoom(page, "single");
+    await dialog(page).evaluate((overlay) =>
+      overlay.dispatchEvent(
+        new WheelEvent("wheel", {
+          deltaY: 3,
+          deltaMode: WheelEvent.DOM_DELTA_LINE,
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    );
+    await expectClosed(page);
+  });
+
   test("on a scroll close, the image stays above the backdrop that fades out", async ({
     page,
   }) => {
@@ -709,11 +725,13 @@ test.describe("gallery", () => {
       // A figcaption shared by several images describes the group, not each one
       "",
       "",
+      // Also when the other image is left out of the zoom
+      "",
       // An empty data-image-zoom-caption leaves the image without a caption on purpose
       "",
     ];
     for (const [index, text] of expected.entries()) {
-      await expect(counter(page)).toHaveText(`${index + 1} / 6`);
+      await expect(counter(page)).toHaveText(`${index + 1} / 7`);
       await expect(caption(page)).toHaveText(text);
       if (!text) await expect(caption(page)).toBeHidden();
       await page.keyboard.press("ArrowRight");
@@ -1243,6 +1261,40 @@ test.describe("reduced motion", () => {
     await page.keyboard.press("ArrowRight");
     await expect(counter(page)).toHaveText("2 / 3");
     await expect(zoomedImage(page)).toHaveCSS("transition-duration", "0s");
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+  });
+
+  test("the spinner pulses instead of spinning", async ({ page }) => {
+    // A new URL for the zoom, so neither the cache nor a thumbnail serves it
+    await links(page, "single")
+      .first()
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?slow";
+      });
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route("**/landscape.svg?slow", async (route) => {
+      await held;
+      await route.continue();
+    });
+
+    await links(page, "single").first().click();
+    const spinner = page.locator(".astro-image-zoom-slide.is-active");
+    await expect
+      .poll(() =>
+        spinner.evaluate(
+          (slide) => getComputedStyle(slide, "::after").visibility,
+        ),
+      )
+      .toBe("visible");
+    const animations = await spinner.evaluate(
+      (slide) => getComputedStyle(slide, "::after").animationName,
+    );
+    expect(animations).not.toContain("astro-image-zoom-spin");
+    expect(animations).toContain("astro-image-zoom-pulse");
+
+    release();
     await page.keyboard.press("Escape");
     await expectClosed(page);
   });

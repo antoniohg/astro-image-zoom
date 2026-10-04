@@ -243,6 +243,18 @@ const image = (name: string) => `${base}images/${name}.svg`;
             <img src={image("square")} alt="Two of two in a figure" />
             <figcaption>Shared by two images</figcaption>
           </figure>
+          <figure>
+            <img
+              src={image("landscape")}
+              alt="Zoomable next to an ignored one"
+            />
+            <img
+              src={image("portrait")}
+              alt="Ignored in the same figure"
+              data-image-zoom-ignore
+            />
+            <figcaption>Shared with an ignored image</figcaption>
+          </figure>
           <img
             src={image("wide")}
             alt="No caption on purpose"

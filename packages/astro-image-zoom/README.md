@@ -2,6 +2,8 @@
 
 [![npm version](https://img.shields.io/npm/v/astro-image-zoom/beta)](https://www.npmjs.com/package/astro-image-zoom)
 
+[![astro-image-zoom, Medium-style image zoom for Astro: an image grows from a page into an overlay](https://antoniohg.com/astro-image-zoom/og.png)](https://antoniohg.com/astro-image-zoom/)
+
 Medium-style image zoom for Astro: a click grows each image from its place on the page to fill the
 screen, and the images of a gallery become a carousel you can swipe.
 
@@ -519,8 +521,8 @@ astro-image-zoom-overlay::part(caption) {
 - Each image becomes a link, reachable with the keyboard. Its focus ring is the one of your site;
   see [Your page](#your-page) to draw it on the image.
 - Labelled buttons; the caption is announced when the image changes.
-- Reduced motion turns the animations off; forced colors (Windows high contrast) keep the controls
-  visible.
+- Reduced motion turns the animations off, and the loading spinner fades in and out instead of
+  spinning; forced colors (Windows high contrast) keep the controls visible.
 
 ### Keyboard
 

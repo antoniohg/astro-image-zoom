@@ -153,8 +153,21 @@ const isPageZoomed = (): boolean => (window.visualViewport?.scale ?? 1) > 1.01;
 const SCROLL_TARGET_TTL = 500;
 // Vertical wheel deltas below this many pixels do not close the overlay
 const WHEEL_CLOSE_DELTA = 4;
+// Pixels in a line, for the wheels that scroll by lines (deltaMode 1)
+const WHEEL_LINE_HEIGHT = 16;
 // After a horizontal wheel event (ms), vertical jitter of the same touchpad swipe is ignored
 const WHEEL_HORIZONTAL_GRACE = 250;
+
+// The vertical delta of a wheel in pixels, whether it scrolls by pixels, lines or pages. deltaY is
+// read before deltaMode: Firefox reports lines to the pages that read deltaMode first
+function wheelPixels(e: WheelEvent): number {
+  const { deltaY } = e;
+  if (e.deltaMode === WheelEvent.DOM_DELTA_LINE)
+    return deltaY * WHEEL_LINE_HEIGHT;
+  if (e.deltaMode === WheelEvent.DOM_DELTA_PAGE)
+    return deltaY * window.innerHeight;
+  return deltaY;
+}
 
 const OVERLAY_ID = "astro-image-zoom-global-overlay";
 
@@ -497,7 +510,7 @@ class Zoom {
   // The caption of a link: its data-image-zoom-caption (an empty one means no caption), then the
   // figcaption of the figure around it, then a title, the link's or the image's (Markdown's
   // ![alt](src "title")). A figcaption shared by several images describes the group, so it only
-  // counts when the figure holds this one image
+  // counts when the figure holds this one image, zoomable or not
   private captionOf(
     anchor: HTMLAnchorElement,
     img: HTMLImageElement | null,
@@ -507,13 +520,7 @@ class Zoom {
 
     const figure = anchor.closest("figure");
     const figcaption = figure?.querySelector(":scope > figcaption");
-    if (
-      figure &&
-      figcaption &&
-      figure.querySelectorAll(
-        "a[data-image-zoom-generated], a[data-image-zoom]",
-      ).length === 1
-    ) {
+    if (figure && figcaption && figure.querySelectorAll("img").length === 1) {
       const text = figcaption.textContent?.replace(/\s+/g, " ").trim();
       if (text) return text;
     }
@@ -559,8 +566,13 @@ class Zoom {
         )
           return;
 
+        // Most clicks in an article are not on a zoom link: no need to collect the images
+        const link = (e.target as Element).closest(
+          "a[data-image-zoom-generated], a[data-image-zoom]",
+        );
+        if (!link) return;
+
         this.collectImages();
-        const link = (e.target as Element).closest("a");
         const index = this.state.images.findIndex(
           ({ element }) => element === link,
         );
@@ -1130,7 +1142,7 @@ class Zoom {
       return;
     }
 
-    if (Math.abs(e.deltaY) < WHEEL_CLOSE_DELTA) return;
+    if (Math.abs(wheelPixels(e)) < WHEEL_CLOSE_DELTA) return;
     if (e.timeStamp - this.lastHorizontalWheel < WHEEL_HORIZONTAL_GRACE) return;
     this.close(true);
   };

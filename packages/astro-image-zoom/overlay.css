@@ -279,6 +279,12 @@
   }
 }
 
+@keyframes astro-image-zoom-pulse {
+  to {
+    opacity: 0.4;
+  }
+}
+
 @keyframes astro-image-zoom-spin {
   from {
     transform: translate(-50%, -50%) rotate(0deg);
@@ -662,6 +668,13 @@
   /* The arrows and keys change the image at once */
   .astro-image-zoom-track.is-sliding .astro-image-zoom-image {
     transition: none;
+  }
+
+  /* The spinner fades in and out instead of spinning */
+  .astro-image-zoom-slide.is-loading::after {
+    animation:
+      astro-image-zoom-pulse 1.5s ease-in-out infinite alternate,
+      astro-image-zoom-reveal 0s 200ms forwards;
   }
 }
 
