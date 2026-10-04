@@ -714,6 +714,30 @@ test.describe("gallery", () => {
     await expect(counter(page)).toHaveText("2 / 3");
   });
 
+  test("takes the caption from the figcaption or the title of the image", async ({
+    page,
+  }) => {
+    await openZoom(page, "caption-fallbacks");
+    const expected = [
+      "Title of the image",
+      "Caption of the figure",
+      "Explicit caption",
+      // A figcaption shared by several images describes the group, not each one
+      "",
+      "",
+      // Also when the other image is left out of the zoom
+      "",
+      // An empty data-image-zoom-caption leaves the image without a caption on purpose
+      "",
+    ];
+    for (const [index, text] of expected.entries()) {
+      await expect(counter(page)).toHaveText(`${index + 1} / 7`);
+      await expect(caption(page)).toHaveText(text);
+      if (!text) await expect(caption(page)).toBeHidden();
+      await page.keyboard.press("ArrowRight");
+    }
+  });
+
   test("tells the page when it opens, moves to another image and closes", async ({
     page,
   }) => {

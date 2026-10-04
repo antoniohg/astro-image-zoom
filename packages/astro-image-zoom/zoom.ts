@@ -500,11 +500,32 @@ class Zoom {
         return {
           src: anchor.href,
           alt: img?.alt || "",
-          caption: anchor.dataset.imageZoomCaption || anchor.title || "",
+          caption: this.captionOf(anchor, img),
           element: anchor,
         };
       })
       .filter(({ src }) => src);
+  }
+
+  // The caption of a link: its data-image-zoom-caption (an empty one means no caption), then the
+  // figcaption of the figure around it, then a title, the link's or the image's (Markdown's
+  // ![alt](src "title")). A figcaption shared by several images describes the group, so it only
+  // counts when the figure holds this one image, zoomable or not
+  private captionOf(
+    anchor: HTMLAnchorElement,
+    img: HTMLImageElement | null,
+  ): string {
+    const explicit = anchor.dataset.imageZoomCaption;
+    if (explicit !== undefined) return explicit;
+
+    const figure = anchor.closest("figure");
+    const figcaption = figure?.querySelector(":scope > figcaption");
+    if (figure && figcaption && figure.querySelectorAll("img").length === 1) {
+      const text = figcaption.textContent?.replace(/\s+/g, " ").trim();
+      if (text) return text;
+    }
+
+    return anchor.title || img?.title || "";
   }
 
   // data-image-zoom-ignore, or a selector of the ignore prop, on the image of a link or on an element

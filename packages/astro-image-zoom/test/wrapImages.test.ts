@@ -51,6 +51,15 @@ describe("wrapImages", () => {
     );
   });
 
+  it("copies an empty caption, which turns off the fallbacks", () => {
+    expect(
+      wrapImages('<img src="/a.jpg" alt="" data-image-zoom-caption="">'),
+    ).toContain('data-image-zoom-caption=""');
+    expect(wrapImages('<img src="/a.jpg" alt="">')).not.toContain(
+      "data-image-zoom-caption",
+    );
+  });
+
   it("keeps the entities of the original values", () => {
     const html = wrapImages(
       '<img src="/a.jpg?w=1&amp;h=2" alt="Salt &amp; pepper">',
