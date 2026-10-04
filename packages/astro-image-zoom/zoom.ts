@@ -497,7 +497,7 @@ class Zoom {
   // The caption of a link: its data-image-zoom-caption (an empty one means no caption), then the
   // figcaption of the figure around it, then a title, the link's or the image's (Markdown's
   // ![alt](src "title")). A figcaption shared by several images describes the group, so it only
-  // counts when the figure holds this one image
+  // counts when the figure holds this one image, zoomable or not
   private captionOf(
     anchor: HTMLAnchorElement,
     img: HTMLImageElement | null,
@@ -507,13 +507,7 @@ class Zoom {
 
     const figure = anchor.closest("figure");
     const figcaption = figure?.querySelector(":scope > figcaption");
-    if (
-      figure &&
-      figcaption &&
-      figure.querySelectorAll(
-        "a[data-image-zoom-generated], a[data-image-zoom]",
-      ).length === 1
-    ) {
+    if (figure && figcaption && figure.querySelectorAll("img").length === 1) {
       const text = figcaption.textContent?.replace(/\s+/g, " ").trim();
       if (text) return text;
     }
