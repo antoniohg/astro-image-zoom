@@ -433,8 +433,8 @@ astro-image-zoom-overlay::part(caption) {
 - Each image becomes a link, reachable with the keyboard. Its focus ring is the one of your site;
   see [Your page](#your-page) to draw it on the image.
 - Labelled buttons; the caption is announced when the image changes.
-- Reduced motion turns the animations off; forced colors (Windows high contrast) keep the controls
-  visible.
+- Reduced motion turns the animations off, and the loading spinner fades in and out instead of
+  spinning; forced colors (Windows high contrast) keep the controls visible.
 
 ### Keyboard
 

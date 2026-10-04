@@ -124,6 +124,9 @@ const variables = Object.entries({
   .map(([name, value]) => `${name}: ${value}`)
   .join("; ");
 
+// The link labels are used here, on the server; the overlay only needs the others
+const { enlarge, enlargeNamed, ...overlayLabels } = labels;
+
 // Wrap the slot's images in accessible links
 const slotContent = wrapImages(
   await Astro.slots.render("default"),
@@ -151,7 +154,9 @@ const shadowRoot =
   data-image-zoom-ignore-selector={ignore.trim() || undefined}
   style={variables || undefined}
   data-image-zoom-labels={
-    Object.keys(labels).length ? JSON.stringify(labels) : undefined
+    Object.keys(overlayLabels).length
+      ? JSON.stringify(overlayLabels)
+      : undefined
   }
 >
   <Fragment set:html={shadowRoot + slotContent} />
