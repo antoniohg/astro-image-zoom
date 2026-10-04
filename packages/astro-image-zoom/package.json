@@ -36,6 +36,7 @@
     ".": "./index.ts",
     "./ImageZoom.astro": "./ImageZoom.astro",
     "./starlight": "./starlight/index.ts",
+    "./starlight/ImageZoom.astro": "./starlight/ImageZoom.astro",
     "./starlight/MarkdownContent.astro": "./starlight/MarkdownContent.astro"
   },
   "files": [

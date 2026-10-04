@@ -1,0 +1,56 @@
+---
+/**
+ * <ImageZoom> for Starlight: the options of the plugin, the labels of the page's language and
+ * Starlight's colors. The plugin's MarkdownContent override uses it, and so can a site's own
+ * override, around Starlight's MarkdownContent
+ */
+import options from "virtual:astro-image-zoom/starlight-config";
+import ImageZoom from "../ImageZoom.astro";
+import { DEFAULT_LABELS, type ImageZoomLabels } from "../labels";
+
+// Starlight's translation function, typed here so the package does not rely on Starlight's
+// global types. The plugin injects every key in English, so none is missing
+const { t } = Astro.locals as unknown as {
+  t: (key: `astroImageZoom.${keyof ImageZoomLabels}`) => string;
+};
+const labels: ImageZoomLabels = { ...DEFAULT_LABELS };
+for (const key of Object.keys(labels) as (keyof ImageZoomLabels)[]) {
+  labels[key] = t(`astroImageZoom.${key}`);
+}
+---
+
+<ImageZoom {...options} labels={labels}>
+  <slot />
+</ImageZoom>
+
+<style is:global>
+  /* Starlight's palette as the default --zoom-* colors. :where() takes them to zero specificity, so
+     any rule of the site wins, and the theme option, inline on the element, wins over both. The
+     var()s resolve on :root, where Starlight switches its tokens with the theme */
+  :where(:root) {
+    --zoom-bg: var(--sl-color-black);
+    --zoom-close-color: var(--sl-color-white);
+    --zoom-close-bg: color-mix(
+      in srgb,
+      var(--sl-color-gray-6) 80%,
+      transparent
+    );
+    --zoom-nav-color: var(--sl-color-white);
+    --zoom-nav-bg: color-mix(in srgb, var(--sl-color-gray-6) 80%, transparent);
+    --zoom-caption-color: var(--sl-color-white);
+    --zoom-caption-bg: color-mix(
+      in srgb,
+      var(--sl-color-gray-6) 80%,
+      transparent
+    );
+  }
+
+  /* Starlight puts the theme on screen in data-theme, from its toggle or the OS. The overlay's own
+     light and dark details follow it, not the OS */
+  :where(:root[data-theme="light"]) {
+    --zoom-color-scheme: light;
+  }
+  :where(:root[data-theme="dark"]) {
+    --zoom-color-scheme: dark;
+  }
+</style>

@@ -143,6 +143,14 @@ for (const colorScheme of ["light", "dark"] as const) {
   });
 }
 
+test("the site's --zoom-* colors win over Starlight's", async ({ page }) => {
+  await page.goto("/");
+  await page.addStyleTag({ content: ":root { --zoom-bg: rgb(1, 2, 3); }" });
+  await zoomLinks(page).first().click();
+  await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+  expect(await backdropColor(page)).toBe("rgb(1, 2, 3)");
+});
+
 test("Starlight's theme toggle, not the OS, sets the overlay's scheme", async ({
   page,
 }) => {

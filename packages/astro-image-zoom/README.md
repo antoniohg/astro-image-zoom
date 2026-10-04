@@ -316,7 +316,8 @@ The options are the [props](#props) of `<ImageZoom>`, except `labels` and `class
 imageZoom({ showCounter: false, theme: { backgroundColor: "black" } });
 ```
 
-`theme` replaces Starlight's colors one by one; the [CSS variables](#css-variables) also work.
+Starlight's colors are only defaults: the [CSS variables](#css-variables) of your site replace
+them, and `theme` replaces both, color by color.
 
 ### Translations
 
@@ -329,16 +330,18 @@ in English and Spanish. For another language, or other words, add the keys to
 ### With your own MarkdownContent
 
 The plugin overrides Starlight's `MarkdownContent` component. If your site already overrides it, the
-plugin leaves yours and logs a warning; wrap the content in your override instead:
+plugin leaves yours and logs a warning. Keep the plugin in the config, and wrap Starlight's
+component in `astro-image-zoom/starlight/ImageZoom.astro` inside your override: it brings the
+options, the translations and the colors.
 
 ```astro
 ---
 // src/components/MarkdownContent.astro
 import Default from "@astrojs/starlight/components/MarkdownContent.astro";
-import ImageZoom from "astro-image-zoom/ImageZoom.astro";
+import ImageZoom from "astro-image-zoom/starlight/ImageZoom.astro";
 ---
 
-<ImageZoom theme={{ backgroundColor: "var(--sl-color-black)" }}>
+<ImageZoom>
   <Default><slot /></Default>
 </ImageZoom>
 ```

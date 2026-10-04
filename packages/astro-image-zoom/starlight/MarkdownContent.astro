@@ -1,43 +1,14 @@
 ---
 /**
- * Starlight's MarkdownContent, wrapped in <ImageZoom> from outside, so its spacing rules
+ * Starlight's MarkdownContent, wrapped in the zoom from outside, so its spacing rules
  * (.sl-markdown-content > * + *) still see the same children. One gallery per page
  */
 import StarlightMarkdownContent from "@astrojs/starlight/components/MarkdownContent.astro";
-import options from "virtual:astro-image-zoom/starlight-config";
-import ImageZoom from "../ImageZoom.astro";
-import { DEFAULT_LABELS, type ImageZoomLabels } from "../labels";
-import { STARLIGHT_THEME } from "./theme";
-
-// Starlight's translation function, typed here so the package does not rely on Starlight's
-// global types. The plugin injects every key in English, so none is missing
-const { t } = Astro.locals as unknown as {
-  t: (key: `astroImageZoom.${keyof ImageZoomLabels}`) => string;
-};
-const labels: ImageZoomLabels = { ...DEFAULT_LABELS };
-for (const key of Object.keys(labels) as (keyof ImageZoomLabels)[]) {
-  labels[key] = t(`astroImageZoom.${key}`);
-}
+import StarlightImageZoom from "./ImageZoom.astro";
 ---
 
-<ImageZoom
-  {...options}
-  theme={{ ...STARLIGHT_THEME, ...options.theme }}
-  labels={labels}
->
+<StarlightImageZoom>
   <StarlightMarkdownContent>
     <slot />
   </StarlightMarkdownContent>
-</ImageZoom>
-
-<style>
-  /* Starlight puts the theme on screen in data-theme, from its toggle or the OS. The overlay's own
-     light and dark details follow it through --zoom-color-scheme, which it copies when it opens.
-     Global: <astro-image-zoom> is rendered by ImageZoom.astro, out of reach of a scoped rule */
-  :global(:root[data-theme="light"] astro-image-zoom) {
-    --zoom-color-scheme: light;
-  }
-  :global(:root[data-theme="dark"] astro-image-zoom) {
-    --zoom-color-scheme: dark;
-  }
-</style>
+</StarlightImageZoom>

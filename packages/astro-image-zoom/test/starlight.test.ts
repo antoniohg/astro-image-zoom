@@ -52,9 +52,10 @@ describe("Starlight plugin", () => {
       { MarkdownContent: "./src/MarkdownContent.astro" },
     );
     expect(updateConfig).not.toHaveBeenCalled();
-    expect(addIntegration).not.toHaveBeenCalled();
+    // The options still reach the component the site's override can use
+    expect(addIntegration).toHaveBeenCalledOnce();
     expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("MarkdownContent"),
+      expect.stringContaining("astro-image-zoom/starlight/ImageZoom.astro"),
     );
   });
 

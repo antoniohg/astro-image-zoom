@@ -66,9 +66,12 @@ export default function imageZoom(
         // The same check as the prop: an unsupported selector fails the build, not the page
         parseIgnore(options.ignore);
 
+        // The options also serve the component a site's own override can use
+        addIntegration(configIntegration(options));
+
         if (config.components?.MarkdownContent) {
           logger.warn(
-            "MarkdownContent is already overridden, so astro-image-zoom does not replace it. Wrap the content in <ImageZoom> inside your override: see the Starlight section of the astro-image-zoom README.",
+            "MarkdownContent is already overridden, so astro-image-zoom does not replace it. Wrap Starlight's MarkdownContent in astro-image-zoom/starlight/ImageZoom.astro inside your override: see the Starlight section of the astro-image-zoom README.",
           );
           return;
         }
@@ -76,7 +79,6 @@ export default function imageZoom(
         updateConfig({
           components: { ...config.components, MarkdownContent: OVERRIDE },
         });
-        addIntegration(configIntegration(options));
       },
       "i18n:setup"({ injectTranslations }) {
         injectTranslations(translations);
