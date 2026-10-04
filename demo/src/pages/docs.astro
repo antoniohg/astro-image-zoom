@@ -163,6 +163,8 @@ const sunflowerFull = await getImage({
   format: "avif",
 });
 const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+const readme =
+  "https://github.com/antoniohg/astro-image-zoom/tree/main/packages/astro-image-zoom";
 
 // Public domain image from NASA, loaded from its own server
 const remote = {
@@ -183,6 +185,7 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
       { id: "thumbnails", title: "Your thumbnails" },
     ],
   },
+  { id: "starlight", title: "Starlight" },
   { id: "behavior", title: "Behavior" },
   {
     id: "layout",
@@ -413,6 +416,15 @@ const fullSize = await getImage({ src: photo, width: photo.width });
               </div>
             </article>
           </ImageZoom>
+          <p>
+            Framework components (React, Vue, Svelte…) render on the server too,
+            so their images zoom. Hydrated islands (<code>client:*</code>) are
+            the exception: the zoom leaves the images they render alone, so it
+            never breaks their hydration. The Astro children you pass to an
+            island zoom as usual, and an island can render its own{" "}
+            <code>{`<a data-image-zoom>`}</code> link:{" "}
+            <a href={`${readme}#framework-components-islands`}>see how</a>.
+          </p>
         </Section>
 
         <Section title="Leaving images out" id="ignore" level={3}>
@@ -471,6 +483,63 @@ a[data-image-zoom-generated] img {
 }`}
           />
         </Section>
+      </Section>
+
+      <Section title="Starlight" id="starlight">
+        <p>
+          In a <a href="https://starlight.astro.build/">Starlight</a> site, one
+          line in the config makes every image of the docs zoomable, with no
+          component in the pages. Each page is one gallery, and a Markdown
+          image's title becomes its caption:{" "}
+          <code>![A red car](./car.jpg "Our first car")</code>.
+        </p>
+        <CodeSample
+          open
+          lang="js"
+          code={`// astro.config.mjs
+import starlight from '@astrojs/starlight';
+import imageZoom from 'astro-image-zoom/starlight';
+import { defineConfig } from 'astro/config';
+
+export default defineConfig({
+  integrations: [starlight({ title: 'My docs', plugins: [imageZoom()] })],
+});`}
+        />
+        <p>
+          The options are the props of <code>{`<ImageZoom>`}</code>, except{" "}
+          <code>labels</code> and <code>class</code>. The zoom takes Starlight's
+          colors and follows its theme toggle; your CSS variables and the{" "}
+          <code>theme</code> option replace those colors.
+        </p>
+        <CodeSample
+          open
+          lang="js"
+          code={`imageZoom({ showCounter: false, theme: { backgroundColor: 'black' } });`}
+        />
+        <p>
+          The labels come from Starlight's UI translations, in English and
+          Spanish, in the language of each page. For another language, add the
+          keys to <code>src/content/i18n/&lt;lang&gt;.json</code>; any label
+          left out stays in English.
+        </p>
+        <CodeSample
+          lang="json"
+          code={`{
+  "astroImageZoom.overlay": "Zoom d'image",
+  "astroImageZoom.close": "Fermer le zoom",
+  "astroImageZoom.images": "Images",
+  "astroImageZoom.previous": "Image précédente",
+  "astroImageZoom.next": "Image suivante",
+  "astroImageZoom.enlarge": "Agrandir l'image",
+  "astroImageZoom.enlargeNamed": "Agrandir l'image : {alt}"
+}`}
+        />
+        <p>
+          If your site already overrides Starlight's{" "}
+          <code>MarkdownContent</code>, the plugin leaves yours, and you{" "}
+          <a href={`${readme}#with-your-own-markdowncontent`}>wrap it</a> in the
+          zoom yourself.
+        </p>
       </Section>
 
       <Section title="Behavior" id="behavior">
