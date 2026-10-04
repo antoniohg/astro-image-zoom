@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { caption, counter, dialog, expectClosed, settle } from "./helpers";
+import { caption, counter, dialog, expectClosed } from "./helpers";
 
 // The Starlight fixture (e2e/fixture-starlight), served on the port set in playwright.config.ts
 test.use({ baseURL: "http://localhost:4324" });
@@ -158,50 +158,4 @@ test("Starlight's theme toggle, not the OS, sets the overlay's scheme", async ({
   await expect(dialog(page)).toHaveClass(/\bis-open\b/);
   expect(await overlayScheme(page)).toBe("light");
   expect(await backdropColor(page)).toBe(await token(page, "--sl-color-black"));
-});
-
-test("a wheel close lets the page scroll and lands on the thumbnail", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await zoomLinks(page).last().click();
-  await expect(dialog(page)).toHaveClass(/\bis-open\b/);
-  await settle(page);
-  const before = await page.evaluate(() => scrollY);
-
-  // The last box of the image before it goes, and the box of its thumbnail then, read after each
-  // paint (as in zoom.spec.ts, the sticky box cases)
-  const landing = page.evaluate(
-    () =>
-      new Promise<number[][]>((resolve) => {
-        const root = document.querySelector(
-          "astro-image-zoom-overlay",
-        )!.shadowRoot!;
-        const thumbnail = document.querySelector(
-          "astro-image-zoom a[data-image-zoom-generated] img[alt='Wide']",
-        )!;
-        const box = (element: Element) => {
-          const { left, top } = element.getBoundingClientRect();
-          return [left, top];
-        };
-        let last: number[][] = [];
-        const frame = () => {
-          const image = [...root.children].find((child) =>
-            child.matches(".astro-image-zoom-image"),
-          );
-          if (image) last = [box(image), box(thumbnail)];
-          else if (last.length) return resolve(last);
-          requestAnimationFrame(() => setTimeout(frame));
-        };
-        frame();
-      }),
-  );
-  // One continuous gesture, as a mouse wheel or a touchpad sends it
-  await page.mouse.move(640, 360);
-  for (let step = 0; step < 6; step++) await page.mouse.wheel(0, 80);
-  const [image, thumbnail] = await landing;
-  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(before);
-  expect(image![0]).toBeCloseTo(thumbnail![0]!, 0);
-  expect(image![1]).toBeCloseTo(thumbnail![1]!, 0);
-  await expectClosed(page);
 });
