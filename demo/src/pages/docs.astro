@@ -416,6 +416,15 @@ const fullSize = await getImage({ src: photo, width: photo.width });
               </div>
             </article>
           </ImageZoom>
+          <p>
+            Framework components (React, Vue, Svelte…) render on the server too,
+            so their images zoom. Hydrated islands (<code>client:*</code>) are
+            the exception: the zoom leaves the images they render alone, so it
+            never breaks their hydration. The Astro children you pass to an
+            island zoom as usual, and an island can render its own{" "}
+            <code>{`<a data-image-zoom>`}</code> link:{" "}
+            <a href={`${readme}#framework-components-islands`}>see how</a>.
+          </p>
         </Section>
 
         <Section title="Leaving images out" id="ignore" level={3}>
