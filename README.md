@@ -68,6 +68,8 @@ With Playwright, against `e2e/fixture`: a small Astro site that installs the pac
 workspace, as any site would, with no styles of its own. Its home page has one `<ImageZoom>` per
 case, each in a section with a stable id, with SVG images; `/hostile/` adds aggressive CSS and an
 image optimized by Astro. The tests build the site and serve it with `astro preview` on port 4323.
+`e2e/fixture-starlight` is a Starlight site with the plugin, in English and Spanish, served on
+port 4324.
 
 - `zoom.spec.ts`: opening and closing (Escape, button, image, backdrop, wheel, while the image is
   still loading), the scale the animation starts and ends at over a cropped thumbnail, focus,
@@ -79,6 +81,9 @@ image optimized by Astro. The tests build the site and serve it with `astro prev
 - `i18n.spec.ts`: the `labels` prop translates a gallery (`/es/` in the fixture), in its links and
   in the overlay.
 - `no-js.spec.ts`: without JavaScript, each image links to its full-size version.
+- `starlight.spec.ts`: the Starlight plugin wraps the docs content (code blocks, linked and
+  ignored images left alone), takes the caption from the Markdown title, the labels from
+  Starlight's i18n and the colors from its theme, with no axe violations.
 
 A new option or behavior gets a case in the fixture site and a test.
 

@@ -1,0 +1,14 @@
+---
+/**
+ * Starlight's MarkdownContent, wrapped in the zoom from outside, so its spacing rules
+ * (.sl-markdown-content > * + *) still see the same children. One gallery per page
+ */
+import StarlightMarkdownContent from "@astrojs/starlight/components/MarkdownContent.astro";
+import StarlightImageZoom from "./ImageZoom.astro";
+---
+
+<StarlightImageZoom>
+  <StarlightMarkdownContent>
+    <slot />
+  </StarlightMarkdownContent>
+</StarlightImageZoom>

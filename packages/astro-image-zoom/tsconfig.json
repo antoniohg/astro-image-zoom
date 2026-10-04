@@ -9,6 +9,7 @@
     "env.d.ts",
     "*.ts",
     "ImageZoom.astro",
+    "starlight",
     "test"
   ],
   "exclude": ["**/node_modules", "vitest.config.ts", "e2e"]
