@@ -1,5 +1,6 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { caption, counter, dialog, expectClosed } from "./helpers";
+import { caption, counter, dialog, expectClosed, settle } from "./helpers";
 
 // The Starlight fixture (e2e/fixture-starlight), served on the port set in playwright.config.ts
 test.use({ baseURL: "http://localhost:4324" });
@@ -82,4 +83,125 @@ test.describe("Starlight plugin", () => {
       page.getByRole("button", { name: "Imagen siguiente" }),
     ).toBeAttached();
   });
+});
+
+// A Starlight color token as the browser resolves it on the page
+const token = (page: Page, name: string): Promise<string> =>
+  page.evaluate((name) => {
+    const probe = document.createElement("div");
+    probe.style.backgroundColor = `var(${name})`;
+    document.body.append(probe);
+    const color = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return color;
+  }, name);
+
+const backdropColor = (page: Page): Promise<string> =>
+  page.evaluate(
+    () =>
+      getComputedStyle(
+        document
+          .querySelector("astro-image-zoom-overlay")!
+          .shadowRoot!.querySelector(".astro-image-zoom-backdrop")!,
+      ).backgroundColor,
+  );
+
+const overlayScheme = (page: Page): Promise<string> =>
+  dialog(page).evaluate((element) => getComputedStyle(element).colorScheme);
+
+for (const colorScheme of ["light", "dark"] as const) {
+  test.describe(`Starlight plugin, ${colorScheme} theme`, () => {
+    test.use({ colorScheme });
+
+    test("the overlay takes the colors of the theme", async ({ page }) => {
+      await page.goto("/");
+      await zoomLinks(page).first().click();
+      await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+      expect(await backdropColor(page)).toBe(
+        await token(page, "--sl-color-black"),
+      );
+      expect(await overlayScheme(page)).toBe(colorScheme);
+    });
+
+    test("the open overlay has no axe violations", async ({ page }) => {
+      await page.goto("/");
+      await zoomLinks(page).first().click();
+      await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+      const { violations } = await new AxeBuilder({ page })
+        .include("astro-image-zoom-overlay")
+        .withTags([
+          "wcag2a",
+          "wcag2aa",
+          "wcag21a",
+          "wcag21aa",
+          "wcag22aa",
+          "best-practice",
+        ])
+        .analyze();
+      expect(violations.map(({ id }) => id)).toEqual([]);
+    });
+  });
+}
+
+test("Starlight's theme toggle, not the OS, sets the overlay's scheme", async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  // The theme Starlight's toggle stores
+  await page.addInitScript(() =>
+    localStorage.setItem("starlight-theme", "light"),
+  );
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+
+  await zoomLinks(page).first().click();
+  await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+  expect(await overlayScheme(page)).toBe("light");
+  expect(await backdropColor(page)).toBe(await token(page, "--sl-color-black"));
+});
+
+test("a wheel close lets the page scroll and lands on the thumbnail", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await zoomLinks(page).last().click();
+  await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+  await settle(page);
+  const before = await page.evaluate(() => scrollY);
+
+  // The last box of the image before it goes, and the box of its thumbnail then, read after each
+  // paint (as in zoom.spec.ts, the sticky box cases)
+  const landing = page.evaluate(
+    () =>
+      new Promise<number[][]>((resolve) => {
+        const root = document.querySelector(
+          "astro-image-zoom-overlay",
+        )!.shadowRoot!;
+        const thumbnail = document.querySelector(
+          "astro-image-zoom a[data-image-zoom-generated] img[alt='Wide']",
+        )!;
+        const box = (element: Element) => {
+          const { left, top } = element.getBoundingClientRect();
+          return [left, top];
+        };
+        let last: number[][] = [];
+        const frame = () => {
+          const image = [...root.children].find((child) =>
+            child.matches(".astro-image-zoom-image"),
+          );
+          if (image) last = [box(image), box(thumbnail)];
+          else if (last.length) return resolve(last);
+          requestAnimationFrame(() => setTimeout(frame));
+        };
+        frame();
+      }),
+  );
+  // One continuous gesture, as a mouse wheel or a touchpad sends it
+  await page.mouse.move(640, 360);
+  for (let step = 0; step < 6; step++) await page.mouse.wheel(0, 80);
+  const [image, thumbnail] = await landing;
+  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(before);
+  expect(image![0]).toBeCloseTo(thumbnail![0]!, 0);
+  expect(image![1]).toBeCloseTo(thumbnail![1]!, 0);
+  await expectClosed(page);
 });
