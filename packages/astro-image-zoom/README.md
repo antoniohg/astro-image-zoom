@@ -305,10 +305,15 @@ export default defineConfig({
 });
 ```
 
-Each page is one gallery. The caption comes from the title of the Markdown image,
-`![A red car](./car.jpg "Our first car")`, and an image in a link stays a link. To leave one out,
-write it in HTML with `data-image-zoom-ignore`, or pass the `ignore` option. The overlay takes
-Starlight's colors and follows its theme toggle.
+Everything the component does works in the docs. Each page is one gallery, with arrow keys, swipes
+and a counter, and the zoom can open a full-size file. A Markdown image's title becomes its caption:
+`![A red car](./car.jpg "Our first car")`. On phones, a swipe closes the zoom, and a wheel or
+touchpad scroll closes it without stopping the page. Without JavaScript, each image still links to
+its file.
+
+An image in a link stays a link. To leave one out, write it in HTML with `data-image-zoom-ignore`,
+or pass the `ignore` option. The overlay takes Starlight's colors, follows its theme toggle and reads
+its labels in the language of each page.
 
 The options are the [props](#props) of `<ImageZoom>`, except `labels` and `class`:
 
