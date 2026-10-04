@@ -272,6 +272,23 @@ describe("wrapImages", () => {
         `<template>${link("/a.jpg")}</template>`,
       );
     });
+
+    it("takes only the exact data-astro-template attribute for a slot template", () => {
+      const html =
+        '<astro-island uid="1"><template class="data-astro-template"><img src="/a.jpg" alt=""></template>' +
+        '<template data-astro-template-extra><img src="/b.jpg" alt=""></template></astro-island>';
+      expect(wrapImages(html)).toBe(html);
+    });
+
+    it("leaves alone the Astro children an island renders inside its own link", () => {
+      const html =
+        '<astro-island uid="1"><a href="/post"><astro-slot><img src="/child.jpg" alt=""></astro-slot></a>' +
+        '<button><astro-slot name="icon"><img src="/icon.jpg" alt=""></astro-slot></button>' +
+        '<astro-slot name="after"><img src="/after.jpg" alt=""></astro-slot></astro-island>';
+      expect(wrapImages(html)).toBe(
+        html.replace('<img src="/after.jpg" alt="">', link("/after.jpg")),
+      );
+    });
   });
 
   it("leaves a <picture> without an image alone", () => {

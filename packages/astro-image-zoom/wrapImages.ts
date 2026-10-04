@@ -304,12 +304,20 @@ export function wrapImages(
       continue;
     }
 
+    // SVG has links too: <a> inside it counts, unless it closes itself. Counted inside islands too:
+    // an Astro child the island renders inside its own link is in a link all the same
+    if (INTERACTIVE_ELEMENTS.has(name)) {
+      if (!selfClosing)
+        interactiveDepth = Math.max(0, interactiveDepth + (closing ? -1 : 1));
+      continue;
+    }
+
     if (ISLAND_SCOPES.has(name)) {
       if (closing) {
         if (scopes.at(-1) === name) scopes.pop();
       } else if (
         name !== "template" ||
-        /\bdata-astro-template\b/i.test(rawAttributes)
+        parseAttributes(rawAttributes).has("data-astro-template")
       ) {
         scopes.push(name);
       }
@@ -317,13 +325,6 @@ export function wrapImages(
     }
     // Inside an island, only its Astro children are wrapped
     if (ISLAND_SCOPES.get(scopes.at(-1) ?? "")) continue;
-
-    // SVG has links too: <a> inside it counts, unless it closes itself
-    if (INTERACTIVE_ELEMENTS.has(name)) {
-      if (!selfClosing)
-        interactiveDepth = Math.max(0, interactiveDepth + (closing ? -1 : 1));
-      continue;
-    }
     if (interactiveDepth > 0) continue;
 
     if (name === "picture") {
