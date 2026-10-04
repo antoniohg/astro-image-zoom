@@ -226,6 +226,54 @@ describe("wrapImages", () => {
     });
   });
 
+  // Markup as Astro renders islands, trimmed: the framework hydrates what the island renders, so a
+  // link it did not render there breaks the hydration
+  describe("hydrated islands", () => {
+    const link = (src: string) =>
+      `<a href="${src}" data-image-zoom-generated aria-label="Enlarge image"><img src="${src}" alt=""></a>`;
+
+    it("leaves alone the images an island renders, and wraps those around it", () => {
+      const html =
+        '<astro-island uid="1" component-url="/Card.js" client="load">' +
+        '<figure><img src="/island.jpg" alt=""><picture><img src="/picture.jpg" alt=""></picture></figure>' +
+        '</astro-island><img src="/after.jpg" alt="">';
+      expect(wrapImages(html)).toBe(
+        html.replace('<img src="/after.jpg" alt="">', link("/after.jpg")),
+      );
+    });
+
+    it("wraps the Astro children of an island, in <astro-slot> and in named slot templates", () => {
+      const html =
+        '<astro-island uid="1" client="load"><div><img src="/own.jpg" alt="">' +
+        '<astro-slot><img src="/child.jpg" alt=""></astro-slot>' +
+        '<astro-slot name="footer"><img src="/footer.jpg" alt=""></astro-slot></div>' +
+        '<template data-astro-template="footer"><img src="/footer.jpg" alt=""></template></astro-island>';
+      expect(wrapImages(html)).toBe(
+        html
+          .replace('<img src="/child.jpg" alt="">', link("/child.jpg"))
+          .replaceAll('<img src="/footer.jpg" alt="">', link("/footer.jpg")),
+      );
+    });
+
+    it("leaves alone an island nested in the Astro children of another", () => {
+      const html =
+        '<astro-island uid="1"><astro-slot><img src="/child.jpg" alt="">' +
+        '<astro-island uid="2"><img src="/inner.jpg" alt=""></astro-island>' +
+        '<img src="/next.jpg" alt=""></astro-slot><img src="/own.jpg" alt=""></astro-island>';
+      expect(wrapImages(html)).toBe(
+        html
+          .replace('<img src="/child.jpg" alt="">', link("/child.jpg"))
+          .replace('<img src="/next.jpg" alt="">', link("/next.jpg")),
+      );
+    });
+
+    it("treats a <template> of the page as any other element", () => {
+      expect(wrapImages('<template><img src="/a.jpg" alt=""></template>')).toBe(
+        `<template>${link("/a.jpg")}</template>`,
+      );
+    });
+  });
+
   it("leaves a <picture> without an image alone", () => {
     const picture = '<picture><source srcset="/a.avif"></picture>';
     expect(wrapImages(picture)).toBe(picture);

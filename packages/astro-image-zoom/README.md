@@ -291,6 +291,38 @@ itself:
 </style>
 ```
 
+### Framework Components (Islands)
+
+React, Vue, Svelte and other framework components render on the server like Astro components, so
+their images zoom. Hydrated islands (`client:*`) are the exception: the framework owns what they
+render, and a link it did not render would break the hydration, so their images are left as they
+are. Astro children passed to an island are rendered by Astro and zoom as usual:
+
+```astro
+<ImageZoom>
+  <Card client:load>
+    <!-- Zooms: rendered by Astro, passed as a child -->
+    <img src="/photo.jpg" alt="Harbor at dawn" />
+  </Card>
+</ImageZoom>
+```
+
+For an image the island renders itself, render the link in the component: links with `data-image-zoom`
+are collected on each click, so they also work when the component renders them after the page
+loads, as with `client:only`.
+
+```jsx
+export function Card({ full, thumbnail, alt }) {
+  return (
+    <a href={full} data-image-zoom>
+      <img src={thumbnail} alt={alt} />
+    </a>
+  );
+}
+```
+
+A bare `<img>` rendered only on the client never zooms: images are wrapped on the server.
+
 ## Starlight
 
 In a [Starlight](https://starlight.astro.build/) site, one line in the config makes every image of
