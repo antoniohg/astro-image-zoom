@@ -1,0 +1,26 @@
+---
+/**
+ * Starlight's MarkdownContent, wrapped in <ImageZoom> from outside, so its spacing rules
+ * (.sl-markdown-content > * + *) still see the same children. One gallery per page
+ */
+import StarlightMarkdownContent from "@astrojs/starlight/components/MarkdownContent.astro";
+import options from "virtual:astro-image-zoom/starlight-config";
+import ImageZoom from "../ImageZoom.astro";
+import { DEFAULT_LABELS, type ImageZoomLabels } from "../labels";
+
+// Starlight's translation function, typed here so the package does not rely on Starlight's
+// global types. The plugin injects every key in English, so none is missing
+const { t } = Astro.locals as unknown as {
+  t: (key: `astroImageZoom.${keyof ImageZoomLabels}`) => string;
+};
+const labels: ImageZoomLabels = { ...DEFAULT_LABELS };
+for (const key of Object.keys(labels) as (keyof ImageZoomLabels)[]) {
+  labels[key] = t(`astroImageZoom.${key}`);
+}
+---
+
+<ImageZoom {...options} labels={labels}>
+  <StarlightMarkdownContent>
+    <slot />
+  </StarlightMarkdownContent>
+</ImageZoom>
