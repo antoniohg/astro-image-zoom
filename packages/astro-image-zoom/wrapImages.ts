@@ -226,6 +226,16 @@ function matches(
 // valid inside <a> or <button>), so their images are left alone
 const INTERACTIVE_ELEMENTS = new Set(["a", "button", "label", "summary"]);
 
+// Hydrated islands: their framework owns what they render, and a link it did not render breaks the
+// hydration (React and Vue render the component again, without it). The Astro children passed to an
+// island are rendered by Astro, in <astro-slot> or <template data-astro-template> for named slots:
+// those are wrapped as usual. True when the framework owns the element's content
+const ISLAND_SCOPES = new Map([
+  ["astro-island", true],
+  ["astro-slot", false],
+  ["template", false],
+]);
+
 export function wrapImages(
   html: string,
   ignore: Selector[] = [],
@@ -244,6 +254,8 @@ export function wrapImages(
   let interactiveDepth = 0;
   // Inside <svg> or <math>, where "/>" closes an element; in HTML it does not, <div/> opens a div
   let foreignDepth = 0;
+  // The island scopes around the current tag, innermost last
+  const scopes: string[] = [];
   // Inside an ignored element: its name, and how deep elements of that name nest in it
   let ignored: { name: string; depth: number } | null = null;
   // A <picture> is wrapped as a whole: <a> is not valid inside it
@@ -292,12 +304,27 @@ export function wrapImages(
       continue;
     }
 
-    // SVG has links too: <a> inside it counts, unless it closes itself
+    // SVG has links too: <a> inside it counts, unless it closes itself. Counted inside islands too:
+    // an Astro child the island renders inside its own link is in a link all the same
     if (INTERACTIVE_ELEMENTS.has(name)) {
       if (!selfClosing)
         interactiveDepth = Math.max(0, interactiveDepth + (closing ? -1 : 1));
       continue;
     }
+
+    if (ISLAND_SCOPES.has(name)) {
+      if (closing) {
+        if (scopes.at(-1) === name) scopes.pop();
+      } else if (
+        name !== "template" ||
+        parseAttributes(rawAttributes).has("data-astro-template")
+      ) {
+        scopes.push(name);
+      }
+      continue;
+    }
+    // Inside an island, only its Astro children are wrapped
+    if (ISLAND_SCOPES.get(scopes.at(-1) ?? "")) continue;
     if (interactiveDepth > 0) continue;
 
     if (name === "picture") {
