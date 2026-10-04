@@ -847,6 +847,8 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
 
     .note {
       display: grid;
+      /* Not the implicit auto column: it would grow to the width of the code, which then cannot scroll */
+      grid-template-columns: minmax(0, 1fr);
       gap: 0.75rem;
       padding-inline-start: 1.25rem;
       color: var(--color-text-muted);

@@ -47,7 +47,31 @@ const { entries } = Astro.props;
     );
     return heading ? [{ link, heading }] : [];
   });
+  const toc = document.querySelector<HTMLElement>("[data-toc]");
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   let frame = 0;
+  let shown: HTMLAnchorElement | undefined;
+
+  // From 64rem the index scrolls on its own when it is taller than the screen: when the entry
+  // being read changes, scroll the index, not the page (as scrollIntoView would), to show it with
+  // some room around. Only then, so a reader scrolling the index by hand keeps their place
+  const reveal = (link: HTMLAnchorElement) => {
+    if (!toc || toc.scrollHeight <= toc.clientHeight) return;
+    const room = 48;
+    const box = toc.getBoundingClientRect();
+    const { top, bottom } = link.getBoundingClientRect();
+    const delta =
+      top < box.top + room
+        ? top - box.top - room
+        : bottom > box.bottom - room
+          ? bottom - box.bottom + room
+          : 0;
+    if (delta)
+      toc.scrollBy({
+        top: delta,
+        behavior: reducedMotion.matches ? "instant" : "smooth",
+      });
+  };
 
   const update = () => {
     frame = 0;
@@ -59,6 +83,10 @@ const { entries } = Astro.props;
     for (const { link } of entries) {
       if (link === current?.link) link.setAttribute("aria-current", "location");
       else link.removeAttribute("aria-current");
+    }
+    if (current && current.link !== shown) {
+      shown = current.link;
+      reveal(current.link);
     }
   };
 
@@ -93,10 +121,19 @@ const { entries } = Astro.props;
     .toc {
       font-size: 0.875rem;
 
+      /* Taller than the screen, it scrolls on its own: sticky, its end would never show */
       @media (width >= 64rem) {
         position: sticky;
         top: var(--sticky-top);
         align-self: start;
+        max-block-size: calc(100dvh - var(--sticky-top));
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        /* Room for the focus ring, which the scroll box would clip; the margin keeps the layout */
+        --ring-room: calc(var(--focus-offset) + 2px);
+        margin: calc(-1 * var(--ring-room));
+        padding: var(--ring-room);
       }
 
       summary {
