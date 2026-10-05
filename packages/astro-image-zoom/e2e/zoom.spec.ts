@@ -6,6 +6,8 @@ import {
   expectClosed,
   focusedLabel,
   focusRing,
+  holdScrollClose,
+  landScrollClose,
   links,
   openZoom,
   settle,
@@ -1077,15 +1079,11 @@ test.describe("theming", () => {
     });
     // The close starts where the opening was, give or take the few ms WebKit's clock moves on
     // between reads (a jump to full size would be hundreds of px), then only shrinks and fades
-    expect(seen[0].width).toBeLessThanOrEqual(before.width * 1.02);
-    expect(seen[0].opacity).toBeLessThanOrEqual(before.opacity + 0.02);
-    for (let frame = 1; frame < seen.length; frame++) {
-      expect(seen[frame].width).toBeLessThanOrEqual(
-        seen[frame - 1].width + 0.5,
-      );
-      expect(seen[frame].opacity).toBeLessThanOrEqual(
-        seen[frame - 1].opacity + 0.005,
-      );
+    let limit = { width: before.width * 1.02, opacity: before.opacity + 0.02 };
+    for (const state of seen) {
+      expect(state.width).toBeLessThanOrEqual(limit.width);
+      expect(state.opacity).toBeLessThanOrEqual(limit.opacity);
+      limit = { width: state.width + 0.5, opacity: state.opacity + 0.005 };
     }
     await expectClosed(page);
   });
@@ -1147,37 +1145,14 @@ test.describe("theming", () => {
       await expect(dialog(page)).toHaveClass(/\bis-open\b/);
       await settle(page);
 
-      // The last box of the image before it goes, and the box of the thumbnail then. Read after
-      // each paint: the image follows the thumbnail in a frame callback of its own
-      const landing = page.evaluate(
-        () =>
-          new Promise<number[][]>((resolve) => {
-            const root = document.querySelector(
-              "astro-image-zoom-overlay",
-            )!.shadowRoot!;
-            const thumbnail = document.querySelector("#single img")!;
-            const box = (element: Element) => {
-              const { left, top } = element.getBoundingClientRect();
-              return [left, top];
-            };
-            let last: number[][] = [];
-            const frame = () => {
-              const image = [...root.children].find((child) =>
-                child.matches(".astro-image-zoom-image"),
-              );
-              if (image) last = [box(image), box(thumbnail)];
-              else if (last.length) return resolve(last);
-              requestAnimationFrame(() => setTimeout(frame));
-            };
-            frame();
-          }),
-      );
+      const held = holdScrollClose(page);
       await page.mouse.move(640, 360);
       for (let step = 0; step < 6; step++) await page.mouse.wheel(0, 80);
-      const [image, thumbnail] = await landing;
+      await held;
+      const { image, thumbnail } = await landScrollClose(page, "#single img");
       expect(await page.evaluate(() => scrollY)).toBeGreaterThan(scrolled);
-      expect(image[0]).toBeCloseTo(thumbnail[0], 0);
-      expect(image[1]).toBeCloseTo(thumbnail[1], 0);
+      expect(image.left).toBeCloseTo(thumbnail.left, 0);
+      expect(image.top).toBeCloseTo(thumbnail.top, 0);
       await expectClosed(page);
     });
   }
@@ -1189,36 +1164,17 @@ test.describe("theming", () => {
     await expect(dialog(page)).toHaveClass(/is-opening/);
     await page.waitForTimeout(300);
 
-    // The last box of the image before it goes, and the box of the thumbnail then
-    const landing = page.evaluate(
-      () =>
-        new Promise<number[][]>((resolve) => {
-          const root = document.querySelector(
-            "astro-image-zoom-overlay",
-          )!.shadowRoot!;
-          const thumbnail = document.querySelector("#theme img")!;
-          const box = (element: Element) => {
-            const { left, top, height } = element.getBoundingClientRect();
-            return [left, top + height / 2];
-          };
-          let last: number[][] = [];
-          const frame = () => {
-            const image = [...root.children].find((child) =>
-              child.matches(".astro-image-zoom-image"),
-            );
-            if (image) last = [box(image), box(thumbnail)];
-            else if (last.length) return resolve(last);
-            requestAnimationFrame(frame);
-          };
-          frame();
-        }),
-    );
+    const held = holdScrollClose(page);
     await page.mouse.move(640, 360);
     for (let step = 0; step < 6; step++) await page.mouse.wheel(0, 80);
-    const [image, thumbnail] = await landing;
+    await held;
+    const { image, thumbnail } = await landScrollClose(page, "#theme img");
     expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
-    expect(image[0]).toBeCloseTo(thumbnail[0], 0);
-    expect(image[1]).toBeCloseTo(thumbnail[1], 0);
+    expect(image.left).toBeCloseTo(thumbnail.left, 0);
+    expect(image.top + image.height / 2).toBeCloseTo(
+      thumbnail.top + thumbnail.height / 2,
+      0,
+    );
     await expectClosed(page);
   });
 

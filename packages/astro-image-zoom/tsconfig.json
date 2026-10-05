@@ -10,7 +10,13 @@
     "*.ts",
     "ImageZoom.astro",
     "starlight",
-    "test"
+    "test",
+    "e2e"
   ],
-  "exclude": ["**/node_modules", "vitest.config.ts", "e2e"]
+  "exclude": [
+    "**/node_modules",
+    "vitest.config.ts",
+    "e2e/fixture",
+    "e2e/fixture-starlight"
+  ]
 }
