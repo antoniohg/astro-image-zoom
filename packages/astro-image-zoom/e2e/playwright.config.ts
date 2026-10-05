@@ -22,7 +22,8 @@ export default defineConfig({
   outputDir: "test-results",
   use: {
     baseURL: `http://localhost:${port}`,
-    trace: "on-first-retry",
+    // The first failure of each test, so a flaky one that passes on retry still leaves its trace
+    trace: process.env.CI ? "retain-on-first-failure" : "off",
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
