@@ -22,7 +22,7 @@ const { names } = Astro.props;
       </button>
     </div>
     <div class="log" role="log" aria-labelledby="events-log-title" tabindex="0">
-      <ol></ol>
+      <ol role="list"></ol>
     </div>
     <p class="empty">
       Open a photo and move through the gallery to see its events here.
@@ -151,8 +151,6 @@ const { names } = Astro.props;
      * photos set the height of the row and the log fills what the panel has left
      */
     .log {
-      display: grid;
-      align-content: start;
       max-block-size: 18rem;
       overflow-y: auto;
 
@@ -161,21 +159,16 @@ const { names } = Astro.props;
         contain: size;
       }
 
-      ol {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-      }
-
       :global(li) {
-        display: grid;
+        display: flex;
+        flex-direction: column;
         gap: 0.125rem;
         padding: 0.5rem 1rem;
         border-block-end: 1px solid var(--color-rule);
       }
 
       :global(.name) {
-        justify-self: start;
+        align-self: start;
         font-weight: 600;
       }
 

@@ -51,15 +51,10 @@ const Heading = `h${level}` as const;
 <style>
   @layer components {
     .example {
-      display: grid;
+      display: flex;
+      flex-direction: column;
       gap: 1rem;
-      align-content: start;
       min-inline-size: 0;
-
-      :global(pre) {
-        margin: 0;
-        margin-block-start: auto;
-      }
     }
 
     .head {
@@ -85,7 +80,8 @@ const Heading = `h${level}` as const;
     }
 
     .text {
-      display: grid;
+      display: flex;
+      flex-direction: column;
       gap: 0.25rem;
 
       :is(h3, h4) {

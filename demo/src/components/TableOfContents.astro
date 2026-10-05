@@ -16,12 +16,12 @@ const { entries } = Astro.props;
 <nav class="toc" aria-label="On this page" data-toc>
   <details>
     <summary>On this page</summary>
-    <ol>
+    <ol role="list">
       {entries.map(({ id, title, children = [] }) => (
         <li>
           <a href={`#${id}`}>{title}</a>
           {children.length > 0 && (
-            <ol>
+            <ol role="list">
               {children.map((child) => (
                 <li>
                   <a href={`#${child.id}`}>{child.title}</a>
@@ -165,14 +165,9 @@ const { entries } = Astro.props;
         }
       }
 
-      ol {
-        display: grid;
-        margin: 0;
-        padding: 0;
-        list-style: none;
-      }
-
       details > ol {
+        display: flex;
+        flex-direction: column;
         gap: 0.75rem;
       }
 

@@ -897,14 +897,9 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
     /* Above the index and the content, whatever the screen width */
     .intro {
       grid-column: 1 / -1;
-      display: grid;
+      display: flex;
+      flex-direction: column;
       gap: 1rem;
-
-      h1 {
-        font-size: clamp(2.5rem, 1.5rem + 3.5vw, 4rem);
-        line-height: 1;
-        letter-spacing: -0.035em;
-      }
     }
 
     /* One column for everything, so text, examples and tables share the same edges */
@@ -915,9 +910,8 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
     }
 
     .note {
-      display: grid;
-      /* Not the implicit auto column: it would grow to the width of the code, which then cannot scroll */
-      grid-template-columns: minmax(0, 1fr);
+      display: flex;
+      flex-direction: column;
       gap: 0.75rem;
       padding-inline-start: 1.25rem;
       color: var(--color-text-muted);
@@ -948,17 +942,15 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
     }
 
     .source {
-      display: grid;
+      display: flex;
+      flex-direction: column;
       gap: 0.5rem;
-      align-content: start;
     }
 
     /* Two examples per row at most, so every row is full and every card has room */
     .examples {
       display: grid;
       gap: 3rem 2rem;
-      margin: 0;
-      padding: 0;
 
       @media (width >= 40rem) {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -977,7 +969,8 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
     }
 
     .card-body {
-      display: grid;
+      display: flex;
+      flex-direction: column;
       gap: 0.5rem;
       padding: 1.25rem;
 
@@ -1011,20 +1004,21 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
       display: grid;
       gap: 1rem 2rem;
       align-items: center;
-      margin: 0;
 
       @media (width >= 40rem) {
         grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
       }
 
       figcaption {
-        display: grid;
+        display: flex;
+        flex-direction: column;
         gap: 0.5rem;
         font-size: 0.9375rem;
       }
 
       ul {
-        display: grid;
+        display: flex;
+        flex-direction: column;
         gap: 0.25rem;
         margin: 0;
         padding-inline-start: 1.25rem;
