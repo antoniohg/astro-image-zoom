@@ -61,6 +61,9 @@ With Vitest, for the code that runs without a browser:
   clip of a thumbnail, following its `object-fit` and `object-position`, even when its file is
   already cropped from the full image). A file stretched to another shape with `object-fit: fill`
   animates as with `cover`, since one uniform scale cannot follow it.
+- `placeholderBox.test.ts`: where the thumbnail stands in for the full-size image while it loads:
+  over all of it, or in its middle, with the rest clipped, when the thumbnail file is a crop of it,
+  and when it shows too little of the picture to stand in.
 
 ### End-to-end tests
 

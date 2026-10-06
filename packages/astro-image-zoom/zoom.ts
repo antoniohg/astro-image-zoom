@@ -53,6 +53,8 @@ interface ZoomSlide {
   src: string;
   // Resolves when the image can be shown: see loadSlide()
   ready?: Promise<void>;
+  // Whether the full-size file has decoded, so the placeholder can go
+  decoded?: boolean;
 }
 
 // Resolves once the browser knows the size of the image, from its first bytes, long before a large
@@ -394,6 +396,48 @@ export function flipTransform(
   const clipPath = `inset(${insetTop}px ${insetRight}px ${insetBottom}px ${insetLeft}px)`;
 
   return { x, y, scale, clipPath };
+}
+
+// A thumbnail cropped from the full image stands in for it only if it shows at least this part of it
+const MIN_PLACEHOLDER_COVERAGE = 0.5;
+
+/**
+ * Where the thumbnail, already loaded, stands in for the full-size image until it decodes, in % of
+ * the image: `size` for its background-size, and `clip` for a clip-path that hides the rest of the
+ * image, which has nothing to show yet. All of it for a file of the whole picture, the middle for a
+ * file cropped from it, taken as a centered crop like flipTransform() does. Null when it would show
+ * too little of the picture, or a file has no size yet.
+ */
+export function placeholderBox(
+  thumbnail: Pick<HTMLImageElement, "naturalWidth" | "naturalHeight">,
+  image: Pick<HTMLImageElement, "naturalWidth" | "naturalHeight">,
+): { size: string; clip: string } | null {
+  if (
+    !thumbnail.naturalWidth ||
+    !thumbnail.naturalHeight ||
+    !image.naturalWidth ||
+    !image.naturalHeight
+  )
+    return null;
+
+  // How much wider the thumbnail is than the image, in shape
+  const ratio =
+    thumbnail.naturalWidth /
+    thumbnail.naturalHeight /
+    (image.naturalWidth / image.naturalHeight);
+  if (Math.abs(ratio - 1) <= 0.02)
+    return { size: "100% 100%", clip: "inset(0%)" };
+
+  // A wider crop keeps the whole width and loses height, a narrower one the other way around
+  const [width, height] = ratio > 1 ? [1, 1 / ratio] : [ratio, 1];
+  if (width * height < MIN_PLACEHOLDER_COVERAGE) return null;
+  const percent = (part: number) => `${Number((part * 100).toFixed(4))}%`;
+  const insetY = percent((1 - height) / 2);
+  const insetX = percent((1 - width) / 2);
+  return {
+    size: `${percent(width)} ${percent(height)}`,
+    clip: `inset(${insetY} ${insetX} ${insetY} ${insetX})`,
+  };
 }
 
 class Zoom {
@@ -758,6 +802,8 @@ class Zoom {
       this.phase = "open";
       this.overlay.classList.remove("is-opening");
       this.overlay.classList.add("is-open");
+      // The images that decoded during the opening unfold now
+      for (const slide of this.slides) if (slide.decoded) this.unfold(slide);
     });
 
     this.bindOpenListeners(signal);
@@ -961,9 +1007,21 @@ class Zoom {
     slide.ready = sizeKnown(img, decoded)
       .then(() => (this.showPlaceholder(index, img) ? undefined : decoded))
       .then(() => figure.classList.remove("is-loading"));
-    void decoded.then(() => img.style.removeProperty("background-image"));
+    void decoded.then(() => {
+      img.style.removeProperty("background-image");
+      img.style.removeProperty("background-size");
+      slide.decoded = true;
+      if (this.phase === "open") this.unfold(slide);
+    });
 
     return slide.ready;
+  }
+
+  // The rest of the picture unfolds from the crop of a thumbnail that stood in for it (a transition
+  // in overlay.css). Not during the zoom animations: they end on the crop, and a transition started
+  // under them would show once they end, as a jump
+  private unfold({ img }: ZoomSlide): void {
+    img.style.removeProperty("--astro-image-zoom-crop");
   }
 
   // A full-size image that fails to load (a wrong data-image-zoom-src, a 404) shows the file of its
@@ -980,23 +1038,19 @@ class Zoom {
     });
   }
 
-  // Stretches the thumbnail, already loaded, behind the full-size image until it decodes. Only for
-  // the same picture: a thumbnail cropped by the site would show distorted
+  // Shows the thumbnail, already loaded, behind the full-size image until it decodes: stretched
+  // over it, or in its middle when the thumbnail file is a crop of the picture, with the image
+  // clipped to it (placeholderBox())
   private showPlaceholder(index: number, img: HTMLImageElement): boolean {
     const thumbnail = this.getThumbnail(index);
-    if (
-      img.complete ||
-      !img.naturalWidth ||
-      !thumbnail?.complete ||
-      !thumbnail.naturalWidth
-    )
-      return false;
+    if (img.complete || !thumbnail?.complete) return false;
 
-    const ratio = ({ naturalWidth, naturalHeight }: HTMLImageElement) =>
-      naturalWidth / naturalHeight;
-    if (Math.abs(ratio(thumbnail) / ratio(img) - 1) > 0.02) return false;
+    const box = placeholderBox(thumbnail, img);
+    if (!box) return false;
 
     img.style.backgroundImage = `url(${JSON.stringify(thumbnail.currentSrc)})`;
+    img.style.backgroundSize = box.size;
+    img.style.setProperty("--astro-image-zoom-crop", box.clip);
     return true;
   }
 

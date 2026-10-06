@@ -200,6 +200,7 @@
 .astro-image-zoom-track.is-sliding .astro-image-zoom-image {
   transition:
     opacity 0.15s ease,
+    clip-path var(--astro-image-zoom-duration) cubic-bezier(0.2, 0, 0.2, 1),
     translate var(--zoom-slide-duration, 400ms)
       var(--zoom-slide-easing, cubic-bezier(0.2, 0, 0, 1));
 }
@@ -217,12 +218,19 @@
   -webkit-user-select: none;
   -webkit-user-drag: none;
   cursor: zoom-out;
-  transition: opacity 0.15s ease;
+  /* While a cropped thumbnail stands in for the image, only its part shows; the rest unfolds once the
+     file has decoded (zoom.ts) */
+  clip-path: var(--astro-image-zoom-crop, inset(0));
+  transition:
+    opacity 0.15s ease,
+    clip-path var(--astro-image-zoom-duration) cubic-bezier(0.2, 0, 0.2, 1);
   /* No will-change: a layer per slide, kept while the overlay is open, takes so much memory that iOS
      Safari drops the decoded images off screen, and a slide swiped back flashes blank. The animations
      promote the image while they run */
-  /* The thumbnail, stretched to the image, shows until the full-size file has decoded (zoom.ts) */
+  /* The thumbnail shows until the full-size file has decoded: stretched to the image, or in its
+     middle when it is a crop of it (zoom.ts sets background-size then) */
   background-size: 100% 100%;
+  background-position: center;
   background-repeat: no-repeat;
 }
 
@@ -351,7 +359,7 @@
 
   to {
     transform: translate(0, 0) scale(1);
-    clip-path: inset(0);
+    clip-path: var(--astro-image-zoom-crop, inset(0));
   }
 }
 
@@ -359,7 +367,7 @@
   /* --transform-now and --clip-now: where the image was when the zoom closed during the opening */
   from {
     transform: var(--transform-now, translate(0, 0) scale(1));
-    clip-path: var(--clip-now, inset(0));
+    clip-path: var(--clip-now, var(--astro-image-zoom-crop, inset(0)));
   }
 
   to {
