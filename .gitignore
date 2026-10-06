@@ -30,3 +30,6 @@ AGENTS.md
 .claude/
 .claude-tmp/
 GEMINI.md
+
+# Internal notes (kept local, never committed): prefix them with an underscore, e.g. _TODO.md
+_*.md
