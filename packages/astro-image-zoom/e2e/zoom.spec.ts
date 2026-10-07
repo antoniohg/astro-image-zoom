@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   caption,
   counter,
@@ -740,14 +740,14 @@ test.describe("gallery", () => {
     }
   });
 
-  test("tells the page when it opens, moves to another image and closes", async ({
+  test("tells the page when it opens, moves to another image, closes and has closed", async ({
     page,
   }) => {
     // One listener on the document hears the events of every gallery: they bubble
     await page.evaluate(() => {
       const log: unknown[] = [];
       (window as unknown as { zoomEvents: unknown[] }).zoomEvents = log;
-      for (const type of ["open", "change", "close"] as const) {
+      for (const type of ["open", "change", "close", "closed"] as const) {
         document.addEventListener(
           `astro-image-zoom:${type}`,
           ({ detail, target }) => {
@@ -804,8 +804,70 @@ test.describe("gallery", () => {
         caption: "Second",
         ...common,
       },
+      {
+        type: "closed",
+        index: 1,
+        src: "square.svg",
+        alt: "Green square",
+        caption: "Second",
+        ...common,
+      },
     ]);
   });
+
+  for (const [how, closeZoom] of [
+    ["Escape", (page: Page) => page.keyboard.press("Escape")],
+    [
+      "a wheel",
+      async (page: Page) => {
+        await page.mouse.move(640, 360);
+        await page.mouse.wheel(0, 400);
+      },
+    ],
+  ] as const) {
+    test(`tells the page it has closed once the image is back on the page, after ${how}`, async ({
+      page,
+    }) => {
+      // What the page sees when each close event arrives: closed comes after the animation
+      await page.evaluate(() => {
+        const log: unknown[] = [];
+        (window as unknown as { zoomEvents: unknown[] }).zoomEvents = log;
+        for (const type of ["close", "closed"] as const) {
+          document.addEventListener(`astro-image-zoom:${type}`, () => {
+            const root = document.querySelector(
+              "astro-image-zoom-overlay",
+            )?.shadowRoot;
+            log.push({
+              type,
+              open: root?.querySelector("dialog")?.open,
+              thumbnailHidden:
+                document.querySelector<HTMLImageElement>("#single img")?.style
+                  .opacity === "0",
+              detached: root?.querySelectorAll(":scope > img").length,
+            });
+          });
+        }
+      });
+
+      await openZoom(page, "single");
+      await closeZoom(page);
+      await expectClosed(page);
+
+      expect(
+        await page.evaluate(
+          () => (window as unknown as { zoomEvents: unknown[] }).zoomEvents,
+        ),
+      ).toEqual([
+        {
+          type: "close",
+          open: true,
+          thumbnailHidden: true,
+          detached: 0,
+        },
+        { type: "closed", open: false, thumbnailHidden: false, detached: 0 },
+      ]);
+    });
+  }
 
   test("clicks on the caption and the controls do not close the zoom", async ({
     page,

@@ -265,6 +265,46 @@ a[data-image-zoom-generated] img {
 }
 ```
 
+With a sticky or fixed header, tell the browser how tall it is. On close, the page scrolls to bring
+the thumbnail into view, but the browser counts the area under the header as visible: the image
+would fly over the header and land under it. `scroll-padding-top` keeps the thumbnail below it, and
+also keeps anchor targets and focused elements from hiding under the header:
+
+```css
+html {
+  scroll-padding-top: 80px; /* the height of your header */
+}
+```
+
+A closing wheel scrolls the page with the image, so the thumbnail can still pass under the header.
+To keep the header out of the way, hide it while the zoom is open and bring it back once the image
+has landed ([events](#events)): `astro-image-zoom:closed` comes when the closing animation has
+ended. Here the header slides up as the zoom opens, behind the backdrop, and slides back down after
+the close:
+
+```astro
+<script>
+  const root = document.documentElement;
+  document.addEventListener('astro-image-zoom:open', () => root.classList.add('is-zooming'));
+  document.addEventListener('astro-image-zoom:closed', () => root.classList.remove('is-zooming'));
+</script>
+
+<style is:global>
+  @media (prefers-reduced-motion: no-preference) {
+    .site-header {
+      transition:
+        translate 300ms cubic-bezier(0.2, 0, 0, 1),
+        opacity 300ms ease-out;
+    }
+  }
+
+  .is-zooming .site-header {
+    translate: 0 -100%;
+    opacity: 0;
+  }
+</style>
+```
+
 The component adds no stylesheet to your page. `<astro-image-zoom>` groups the images without
 adding a box of its own (`display: contents`), from its own
 [declarative shadow root](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM#declaratively_with_html),
@@ -590,14 +630,15 @@ astro-image-zoom-overlay::part(caption) {
 
 ### Events
 
-Each `<astro-image-zoom>` dispatches three events, which bubble, so one listener on the document
+Each `<astro-image-zoom>` dispatches four events, which bubble, so one listener on the document
 hears every gallery on the page:
 
 | Event                     | When                                                       |
 | ------------------------- | ---------------------------------------------------------- |
 | `astro-image-zoom:open`   | A zoom opens (a click, Enter on a link)                    |
 | `astro-image-zoom:change` | The gallery moves to another image (arrows, keys, a swipe) |
-| `astro-image-zoom:close`  | The zoom closes, however it closes                         |
+| `astro-image-zoom:close`  | The zoom starts to close, however it closes                |
+| `astro-image-zoom:closed` | The zoom has closed: the image is back on the page         |
 
 Their `detail` describes the image on screen:
 
@@ -637,7 +678,9 @@ document.addEventListener('astro-image-zoom:change', sync);
 
 The events report, they do not decide: `preventDefault()` does not stop an opening or a close.
 `open` comes when the zoom starts to open, before the image has loaded, and every `open` gets its
-`close`, also when the zoom closes while the image is still loading.
+`close` and then its `closed`, also when the zoom closes while the image is still loading. `close`
+comes when the closing animation starts, `closed` when it has ended and the thumbnail is back: the
+moment to bring back what you hid while the zoom was open.
 
 In TypeScript, the events are typed on elements, the document and the window once the package's
 types are in the project. Using `<ImageZoom>` is not enough: add one line to a declaration file,
