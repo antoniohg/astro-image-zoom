@@ -128,8 +128,8 @@ const meta = [photo.mission, photo.year].filter(Boolean).join(" · ");
 
     /* A page can round the corners differently with --photo-radius */
     .photo {
-      display: grid;
-      align-content: start;
+      display: flex;
+      flex-direction: column;
       gap: 0.5rem;
 
       :global(img) {
@@ -138,7 +138,7 @@ const meta = [photo.mission, photo.year].filter(Boolean).join(" · ");
       }
     }
 
-    /* A block, not a grid: its height passes down to the zoom link and the image */
+    /* A block, not a flex column: its height passes down to the zoom link and the image */
     .fill {
       display: block;
       block-size: 100%;
