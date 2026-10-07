@@ -482,6 +482,56 @@ a[data-image-zoom-generated] img {
   cursor: zoom-in;
 }`}
           />
+          <p>
+            With a sticky or fixed header, tell the browser how tall it is. On
+            close, the page scrolls to bring the thumbnail into view, but the
+            browser counts the area under the header as visible: the image would
+            fly over the header and land under it. This page sets
+            <code>scroll-padding-top</code>, which keeps the thumbnail below the
+            header, and anchor targets and focused elements too.
+          </p>
+          <CodeSample
+            open
+            lang="css"
+            code={`html {
+  scroll-padding-top: 80px; /* the height of your header */
+}`}
+          />
+          <p>
+            A closing wheel scrolls the page with the image, so the thumbnail
+            can still pass under the header. To keep it out of the way, hide it
+            while the zoom is open and bring it back once the image has landed,
+            as this page does: the
+            <a href="#events">
+              <code>astro-image-zoom:closed</code>
+            </a>{" "}
+            event comes when the closing animation has ended. The header slides
+            up as the zoom opens, behind the backdrop, and slides back down
+            after the close.
+          </p>
+          <CodeSample
+            open
+            code={`<script>
+  const root = document.documentElement;
+  document.addEventListener('astro-image-zoom:open', () => root.classList.add('is-zooming'));
+  document.addEventListener('astro-image-zoom:closed', () => root.classList.remove('is-zooming'));
+</script>
+
+<style is:global>
+  @media (prefers-reduced-motion: no-preference) {
+    .site-header {
+      transition:
+        translate 300ms cubic-bezier(0.2, 0, 0, 1),
+        opacity 300ms ease-out;
+    }
+  }
+
+  .is-zooming .site-header {
+    translate: 0 -100%;
+    opacity: 0;
+  }
+</style>`}
+          />
         </Section>
       </Section>
 
@@ -804,9 +854,10 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
       <Section title="Events" id="events">
         <p>
           Each <code>{`<astro-image-zoom>`}</code> dispatches an event when the
-          zoom opens, moves to another image and closes, for analytics or to
-          sync something else on the page. They bubble, so one listener on the
-          document hears every gallery. Open a photo and watch the log.
+          zoom opens, moves to another image, starts to close and has closed,
+          for analytics or to sync something else on the page. They bubble, so
+          one listener on the document hears every gallery. Open a photo and
+          watch the log.
         </p>
         <EventsConsole names={["saturnShadow", "saturn", "pluto"]} />
         <CodeSample
