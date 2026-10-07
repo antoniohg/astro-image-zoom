@@ -35,6 +35,82 @@ export async function settle(page: Page): Promise<void> {
   });
 }
 
+// On a scroll close, holds the shrinking animation of the image as soon as it leaves the dialog.
+// Call it before the gesture; landScrollClose() reads where the image lands and lets it go
+export function holdScrollClose(page: Page): Promise<void> {
+  return page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        const root = document.querySelector(
+          "astro-image-zoom-overlay",
+        )!.shadowRoot!;
+        const observer = new MutationObserver(() => {
+          // A child of the shadow root: :scope matches no element there
+          const shrink = [...root.children]
+            .find((child) => child.matches(".astro-image-zoom-image"))
+            ?.getAnimations()
+            .find(
+              (animation) =>
+                animation instanceof CSSAnimation &&
+                animation.animationName === "astro-image-zoom-out",
+            );
+          if (!shrink) return;
+          observer.disconnect();
+          shrink.pause();
+          resolve();
+        });
+        observer.observe(root, { childList: true });
+      }),
+  );
+}
+
+interface Box {
+  left: number;
+  top: number;
+  height: number;
+}
+
+// Once the page stops scrolling, moves the held animation to 1ms before its end and reads the
+// boxes of the image and the thumbnail there, then lets the close finish. The last frame painted
+// before the image goes can be short of the end on a slow machine, so it is not read
+export function landScrollClose(
+  page: Page,
+  thumbnail: string,
+): Promise<{ image: Box; thumbnail: Box }> {
+  return page.evaluate(async (selector) => {
+    const frame = () => new Promise(requestAnimationFrame);
+    for (let still = 0, y = scrollY; still < 5; y = scrollY) {
+      await frame();
+      still = scrollY === y ? still + 1 : 0;
+    }
+    const image = [
+      ...document.querySelector("astro-image-zoom-overlay")!.shadowRoot!
+        .children,
+    ].find((child) => child.matches(".astro-image-zoom-image"))!;
+    const shrink = image
+      .getAnimations()
+      .find(
+        (animation) =>
+          animation instanceof CSSAnimation &&
+          animation.animationName === "astro-image-zoom-out",
+      )!;
+    shrink.currentTime = Number(shrink.effect!.getComputedTiming().endTime) - 1;
+    // The image follows the thumbnail in a frame callback of its own
+    await frame();
+    await frame();
+    const box = (element: Element): Box => {
+      const { left, top, height } = element.getBoundingClientRect();
+      return { left, top, height };
+    };
+    const boxes = {
+      image: box(image),
+      thumbnail: box(document.querySelector(selector)!),
+    };
+    shrink.play();
+    return boxes;
+  }, thumbnail);
+}
+
 // Waits until the overlay is closed and every trace of it is gone from the page
 export async function expectClosed(page: Page): Promise<void> {
   await expect(dialog(page)).not.toHaveAttribute("open");

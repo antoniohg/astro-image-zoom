@@ -63,6 +63,7 @@
     "@astrojs/starlight": "0.42.5",
     "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.63.0",
+    "@types/node": "24.19.0",
     "astro": "^7.3.5",
     "vitest": "5.0.2"
   }
