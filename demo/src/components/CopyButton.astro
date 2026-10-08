@@ -22,7 +22,7 @@ const { label = "Copy code", class: className } = Astro.props;
     <CopyIcon class="icon copy" width={18} height={18} aria-hidden="true" />
     <CheckIcon class="icon done" width={18} height={18} aria-hidden="true" />
   </button>
-  <span class="status" role="status"></span>
+  <span class="visually-hidden" role="status"></span>
 </copy-button>
 
 <script>
@@ -60,7 +60,7 @@ const { label = "Copy code", class: className } = Astro.props;
     };
 
     private show(copied: boolean, message: string) {
-      const status = this.querySelector(".status")!;
+      const status = this.querySelector("[role=status]")!;
       this.toggleAttribute("data-copied", copied);
       status.textContent = message;
       clearTimeout(this.timer);
@@ -131,16 +131,6 @@ const { label = "Copy code", class: className } = Astro.props;
     [data-copied] .done {
       visibility: visible;
       color: #e6edf3;
-    }
-
-    /* Read by screen readers, not shown: the check says it already */
-    .status {
-      position: absolute;
-      inline-size: 1px;
-      block-size: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
     }
 
     @media (prefers-reduced-motion: reduce) {

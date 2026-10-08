@@ -1,6 +1,6 @@
 /*
- * Global styles: reset, tokens, base styles and the grid of the pages. Everything else is scoped to
- * its component or page.
+ * Global styles: reset, tokens, base styles, the classes the pages share and the grid of the pages.
+ * Everything else is scoped to its component or page.
  *
  * Layer order: reset, tokens, base, layout, components. Later layers win. Component and page
  * <style> blocks use @layer components.
@@ -31,6 +31,25 @@
 
   :where(input, button, select) {
     font: inherit;
+  }
+
+  /* Lists drawn as rows, grids or menus; role="list" keeps their semantics in Safari */
+  :where(ul, ol)[role="list"] {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Fieldsets group controls without a box of their own */
+  :where(fieldset) {
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  :where(legend) {
+    padding: 0;
   }
 }
 
@@ -133,6 +152,13 @@
     text-wrap: balance;
   }
 
+  /* The title of a page; the home hero sets its own */
+  h1 {
+    font-size: clamp(2.5rem, 1.5rem + 3.5vw, 4rem);
+    line-height: 1;
+    letter-spacing: -0.035em;
+  }
+
   /* Below h3, never bigger than it */
   h4 {
     font-size: 1.0625rem;
@@ -221,6 +247,43 @@
     line-height: 1.5;
     color: var(--color-text-muted);
   }
+
+  /* Read by screen readers, not shown */
+  .visually-hidden {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* The links that lead to the next page: the overview and the 404 */
+  .button {
+    padding: 0.75rem 1.25rem;
+    font-weight: 700;
+    font-family: var(--font-heading);
+    text-decoration: none;
+    color: var(--color-bg);
+    background: var(--color-text);
+    border-radius: var(--radius);
+
+    &:hover {
+      background: var(--color-accent);
+    }
+
+    &.secondary {
+      color: var(--color-text);
+      background: transparent;
+      box-shadow: inset 0 0 0 1px var(--color-rule);
+
+      &:hover {
+        color: var(--color-bg);
+        background: var(--color-accent);
+        box-shadow: none;
+      }
+    }
+  }
 }
 
 /* ─── Layout: header, main, footer ───────────────────────────────────────── */
@@ -296,9 +359,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem 1.25rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
 
     a {
       color: var(--color-text-muted);
