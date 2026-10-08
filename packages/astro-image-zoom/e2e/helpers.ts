@@ -111,6 +111,63 @@ export function landScrollClose(
   }, thumbnail);
 }
 
+type HeldWindow = Window & { decodeHeld?: "held" | "decoded" | "failed" };
+
+// Holds the decoding of every image whose src ends with ?held, which looks still loading (not
+// complete) though its size is known, until releaseDecode(). With `size`, its size is unknown too,
+// as when its first bytes have not arrived
+export function holdDecode(page: Page, { size = false } = {}): Promise<void> {
+  return page.evaluate((size) => {
+    const w = window as unknown as HeldWindow;
+    w.decodeHeld = "held";
+    const held = (image: HTMLImageElement) =>
+      image.src.endsWith("?held") && w.decodeHeld === "held";
+    const complete = Object.getOwnPropertyDescriptor(
+      HTMLImageElement.prototype,
+      "complete",
+    )!;
+    Object.defineProperty(HTMLImageElement.prototype, "complete", {
+      get(this: HTMLImageElement) {
+        return !held(this) && complete.get!.call(this);
+      },
+    });
+    if (size) {
+      for (const name of ["naturalWidth", "naturalHeight"] as const) {
+        const natural = Object.getOwnPropertyDescriptor(
+          HTMLImageElement.prototype,
+          name,
+        )!;
+        Object.defineProperty(HTMLImageElement.prototype, name, {
+          get(this: HTMLImageElement) {
+            return held(this) ? 0 : (natural.get!.call(this) as number);
+          },
+        });
+      }
+    }
+    const decode = HTMLImageElement.prototype.decode;
+    HTMLImageElement.prototype.decode = function (this: HTMLImageElement) {
+      if (!this.src.endsWith("?held")) return decode.call(this);
+      return new Promise<void>((resolve, reject) => {
+        const wait = () => {
+          if (held(this)) requestAnimationFrame(wait);
+          else if (w.decodeHeld === "failed") reject(new Error("Held"));
+          else resolve();
+        };
+        wait();
+      });
+    };
+  }, size);
+}
+
+// Lets the held images decode, or fail as a broken file would after its size is known
+export function releaseDecode(page: Page, failed = false): Promise<void> {
+  return page.evaluate((failed) => {
+    (window as unknown as HeldWindow).decodeHeld = failed
+      ? "failed"
+      : "decoded";
+  }, failed);
+}
+
 // Waits until the overlay is closed and every trace of it is gone from the page
 export async function expectClosed(page: Page): Promise<void> {
   await expect(dialog(page)).not.toHaveAttribute("open");

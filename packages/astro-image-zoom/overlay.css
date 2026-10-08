@@ -219,8 +219,11 @@
   -webkit-user-drag: none;
   cursor: zoom-out;
   /* While a cropped thumbnail stands in for the image, only its part shows; the rest unfolds once the
-     file has decoded (zoom.ts) */
-  clip-path: var(--astro-image-zoom-crop, inset(0));
+     file has decoded (zoom.ts sets --astro-image-zoom-crop, the insets). Rounded like the image */
+  --astro-image-zoom-clip: inset(
+    var(--astro-image-zoom-crop, 0) round var(--zoom-image-radius, 0)
+  );
+  clip-path: var(--astro-image-zoom-clip);
   transition:
     opacity 0.15s ease,
     clip-path var(--astro-image-zoom-duration) cubic-bezier(0.2, 0, 0.2, 1);
@@ -327,6 +330,13 @@
     cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+/* The image leaves the shape of its thumbnail for its own (reshape() in zoom.ts): the part the
+   thumbnail shows moves and scales from where it was */
+.astro-image-zoom-overlay.is-open .astro-image-zoom-image.is-reshaping {
+  animation: astro-image-zoom-reshape var(--astro-image-zoom-duration)
+    cubic-bezier(0.2, 0, 0.2, 1);
+}
+
 /*
  * Closed by a scroll: the image and the backdrop leave the dialog for the page (the shadow root,
  * out of the top layer). The image, positioned on the page (zoom.ts sets its box), scrolls away
@@ -359,15 +369,23 @@
 
   to {
     transform: translate(0, 0) scale(1);
-    clip-path: var(--astro-image-zoom-crop, inset(0));
+    clip-path: var(--astro-image-zoom-clip);
+  }
+}
+
+@keyframes astro-image-zoom-reshape {
+  from {
+    transform: translate(var(--reshape-x, 0), var(--reshape-y, 0))
+      scale(var(--reshape-scale, 1));
   }
 }
 
 @keyframes astro-image-zoom-out {
-  /* --transform-now and --clip-now: where the image was when the zoom closed during the opening */
+  /* --transform-now and --clip-now: where the image was when the zoom closed, during the opening,
+     while it took its shape or unfolded */
   from {
     transform: var(--transform-now, translate(0, 0) scale(1));
-    clip-path: var(--clip-now, var(--astro-image-zoom-crop, inset(0)));
+    clip-path: var(--clip-now, var(--astro-image-zoom-clip));
   }
 
   to {

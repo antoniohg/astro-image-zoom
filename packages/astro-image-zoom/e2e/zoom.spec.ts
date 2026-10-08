@@ -6,10 +6,12 @@ import {
   expectClosed,
   focusedLabel,
   focusRing,
+  holdDecode,
   holdScrollClose,
   landScrollClose,
   links,
   openZoom,
+  releaseDecode,
   settle,
   zoomedImage,
 } from "./helpers";
@@ -475,6 +477,14 @@ test.describe("open and close", () => {
       await held;
       await route.continue();
     });
+    // A thumbnail still loading its file cannot stand in for the image: the zoom waits for it
+    await page.route("**/landscape.svg?pending", () => {});
+    await links(page, "single")
+      .first()
+      .locator("img")
+      .evaluate((image: HTMLImageElement) => {
+        image.src = "/images/landscape.svg?pending";
+      });
     await page.evaluate(() => {
       const log: string[] = [];
       (window as unknown as { zoomEvents: string[] }).zoomEvents = log;
@@ -1034,6 +1044,235 @@ test.describe("gallery", () => {
     expect(await widthOnThumbnail()).toBeCloseTo(320, 0);
   });
 
+  test("crops the image to a cropped thumbnail at once, and unfolds it once it decodes", async ({
+    page,
+  }) => {
+    // The second image becomes a landscape file under a square thumbnail, whose decoding waits, so
+    // the thumbnail stands in for it in its middle: 62.5% of its width
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?held";
+      });
+    await holdDecode(page);
+
+    // The clip of the second image on each frame while the thumbnail stands in for it
+    await page.evaluate(() => {
+      const clips: string[] = [];
+      (window as unknown as { clips: string[] }).clips = clips;
+      const record = () => {
+        const image = document
+          .querySelector("astro-image-zoom-overlay")
+          ?.shadowRoot?.querySelectorAll("img")[1];
+        if (image?.style.backgroundSize)
+          clips.push(getComputedStyle(image).clipPath);
+        requestAnimationFrame(record);
+      };
+      record();
+    });
+
+    await openZoom(page, "gallery");
+    const neighbor = page.locator(".astro-image-zoom-image").nth(1);
+    await expect(neighbor).toHaveCSS("background-size", "62.5% 100%");
+    await page.waitForTimeout(500);
+    // Cropped at once: a transition would clip it in from the whole image, a blink on screen
+    const clips = await page.evaluate(
+      () => (window as unknown as { clips: string[] }).clips,
+    );
+    expect(new Set(clips)).toEqual(new Set(["inset(0% 18.75%)"]));
+
+    // Once it decodes, the rest of the picture unfolds and the thumbnail goes
+    await page.keyboard.press("ArrowRight");
+    await expect(counter(page)).toHaveText("2 / 3");
+    await releaseDecode(page);
+    await expect(neighbor).toHaveCSS("clip-path", "inset(0px)");
+    await expect(neighbor).toHaveCSS("background-image", "none");
+  });
+
+  test("opens at once with the shape of the thumbnail, and takes the shape of the image once its size is known", async ({
+    page,
+  }) => {
+    // A square thumbnail of a landscape file whose size and decoding wait
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?held";
+      });
+    await holdDecode(page, { size: true });
+
+    // No spinner: the thumbnail, enlarged, stands in for the image with its own shape
+    await openZoom(page, "gallery", 1);
+    const image = zoomedImage(page);
+    const square = (await image.boundingBox())!;
+    expect(square.width).toBeCloseTo(square.height, 0);
+    await expect(image).toHaveCSS("background-image", /square\.svg/);
+    await expect(
+      page.locator(".astro-image-zoom-slide.is-active"),
+    ).not.toHaveClass(/is-loading/);
+
+    // The size is known: the image takes its shape, with the thumbnail in its middle
+    await releaseDecode(page);
+    await expect(image).toHaveClass(/is-reshaping/);
+    await expect(image).not.toHaveClass(/is-reshaping/);
+    const landscape = (await image.boundingBox())!;
+    expect(landscape.width / landscape.height).toBeCloseTo(1.6, 1);
+    await expect(image).toHaveCSS("clip-path", "inset(0px)");
+    await expect(image).toHaveCSS("background-image", "none");
+  });
+
+  test("closes from where the image is while it takes its shape", async ({
+    page,
+  }) => {
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?held";
+      });
+    await holdDecode(page, { size: true });
+    await openZoom(page, "gallery", 1);
+
+    // Held halfway through the reshape
+    await releaseDecode(page);
+    const image = zoomedImage(page);
+    await expect(image).toHaveClass(/is-reshaping/);
+    const reshaping = await image.evaluate((image: HTMLImageElement) => {
+      for (const animation of image.getAnimations()) {
+        animation.pause();
+        animation.currentTime = 100;
+      }
+      return getComputedStyle(image).transform;
+    });
+    expect(reshaping).not.toBe("none");
+
+    // The transform of the first frame of the close
+    const closing = image.evaluate(
+      (image: HTMLImageElement) =>
+        new Promise<string>((resolve) => {
+          const wait = () => {
+            const shrink = image
+              .getAnimations()
+              .some(
+                (animation) =>
+                  animation instanceof CSSAnimation &&
+                  animation.animationName === "astro-image-zoom-out",
+              );
+            if (shrink) resolve(getComputedStyle(image).transform);
+            else requestAnimationFrame(wait);
+          };
+          wait();
+        }),
+    );
+    await page.keyboard.press("Escape");
+    expect(await closing).toBe(reshaping);
+  });
+
+  test("rounds the crop of a cropped thumbnail like the image", async ({
+    page,
+  }) => {
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?held";
+        link
+          .closest<HTMLElement>("astro-image-zoom")!
+          .style.setProperty("--zoom-image-radius", "40px");
+      });
+    await holdDecode(page);
+
+    await openZoom(page, "gallery", 1);
+    await expect(zoomedImage(page)).toHaveCSS(
+      "clip-path",
+      "inset(0% 18.75% round 40px)",
+    );
+  });
+
+  test("shows a thumbnail that stands in for a broken file whole, not cropped", async ({
+    page,
+  }) => {
+    // A landscape file under a square thumbnail, that fails once its size is known (a corrupt or
+    // cut file): the thumbnail file takes its place
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?held";
+      });
+    await holdDecode(page);
+    await openZoom(page, "gallery", 1);
+    await expect(zoomedImage(page)).toHaveCSS("clip-path", /18\.75%/);
+
+    // The clip on each frame that shows the thumbnail file
+    await zoomedImage(page).evaluate((image: HTMLImageElement) => {
+      const clips: string[] = [];
+      (window as unknown as { clips: string[] }).clips = clips;
+      const record = () => {
+        if (image.src.endsWith("square.svg"))
+          clips.push(getComputedStyle(image).clipPath);
+        requestAnimationFrame(record);
+      };
+      record();
+    });
+    await releaseDecode(page, true);
+    await expect(zoomedImage(page)).toHaveAttribute("src", /square\.svg$/);
+    await expect(zoomedImage(page)).toHaveCSS("background-image", "none");
+    await page.waitForTimeout(500);
+    const clips = await page.evaluate(
+      () => (window as unknown as { clips: string[] }).clips,
+    );
+    expect(new Set(clips)).toEqual(new Set(["inset(0px)"]));
+  });
+
+  test("closes from the clip on screen while the image unfolds", async ({
+    page,
+  }) => {
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?held";
+      });
+    await holdDecode(page);
+    await openZoom(page, "gallery", 1);
+
+    // Held halfway through the unfolding
+    await releaseDecode(page);
+    const image = zoomedImage(page);
+    const unfolding = await image.evaluate(
+      (image: HTMLImageElement) =>
+        new Promise<string>((resolve) => {
+          const wait = () => {
+            const clip = getComputedStyle(image).clipPath;
+            if (clip === "inset(0% 18.75%)") requestAnimationFrame(wait);
+            else {
+              for (const animation of image.getAnimations()) animation.pause();
+              resolve(getComputedStyle(image).clipPath);
+            }
+          };
+          wait();
+        }),
+    );
+    expect(unfolding).not.toBe("inset(0px)");
+
+    // The clip of the first frame of the close
+    const closing = image.evaluate(
+      (image: HTMLImageElement) =>
+        new Promise<string>((resolve) => {
+          const wait = () => {
+            const shrink = image
+              .getAnimations()
+              .some(
+                (animation) =>
+                  animation instanceof CSSAnimation &&
+                  animation.animationName === "astro-image-zoom-out",
+              );
+            if (shrink) resolve(getComputedStyle(image).clipPath);
+            else requestAnimationFrame(wait);
+          };
+          wait();
+        }),
+    );
+    await page.keyboard.press("Escape");
+    expect(await closing).toBe(unfolding);
+  });
+
   test("honors showCaption and showCounter", async ({ page }) => {
     await openZoom(page, "hidden");
     await expect(counter(page)).toBeHidden();
@@ -1321,6 +1560,14 @@ test.describe("reduced motion", () => {
       await held;
       await route.continue();
     });
+    // A thumbnail still loading its file cannot stand in for the image: the zoom waits for it
+    await page.route("**/landscape.svg?pending", () => {});
+    await links(page, "single")
+      .first()
+      .locator("img")
+      .evaluate((image: HTMLImageElement) => {
+        image.src = "/images/landscape.svg?pending";
+      });
 
     await links(page, "single").first().click();
     const spinner = page.locator(".astro-image-zoom-slide.is-active");

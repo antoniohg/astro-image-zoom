@@ -57,6 +57,10 @@ interface ZoomSlide {
   ready?: Promise<void>;
   // Whether the full-size file has decoded, so the placeholder can go
   decoded?: boolean;
+  // Laid out with the shape of its thumbnail, until the size of the file is known: see loadSlide()
+  provisional?: boolean;
+  // Whether the size of the file is known
+  sized?: boolean;
 }
 
 // Resolves once the browser knows the size of the image, from its first bytes, long before a large
@@ -279,12 +283,13 @@ function overlayPart<T extends HTMLElement>(
 type Box = Pick<DOMRect, "left" | "top" | "width" | "height">;
 
 // How a thumbnail draws its file inside its box: the computed object-fit and object-position of the
-// <img>, and the size of the file
+// <img>, and the size of the file. `corners`: its computed corner radii, top-left first, clockwise
 export interface ThumbnailFit {
   objectFit: string;
   objectPosition: string;
   naturalWidth: number;
   naturalHeight: number;
+  corners?: string[];
 }
 
 interface FlipTransform {
@@ -295,13 +300,42 @@ interface FlipTransform {
 }
 
 function thumbnailFit(img: HTMLImageElement): ThumbnailFit {
-  const { objectFit, objectPosition } = getComputedStyle(img);
+  const style = getComputedStyle(img);
   return {
-    objectFit,
-    objectPosition,
+    objectFit: style.objectFit,
+    objectPosition: style.objectPosition,
     naturalWidth: img.naturalWidth,
     naturalHeight: img.naturalHeight,
+    corners: [
+      style.borderTopLeftRadius,
+      style.borderTopRightRadius,
+      style.borderBottomRightRadius,
+      style.borderBottomLeftRadius,
+    ],
   };
+}
+
+// The round part of an inset() with the corners of a thumbnail, in the image's own pixels: each
+// computed radius is one length, or a horizontal and a vertical one, in px or % of the box. Empty
+// when the corners are square
+function roundCorners(
+  corners: string[] | undefined,
+  source: Box,
+  scale: number,
+): string {
+  const length = (value: string | undefined, size: number) => {
+    const number = Number.parseFloat(value ?? "");
+    if (!Number.isFinite(number)) return 0;
+    return (value?.endsWith("%") ? (size * number) / 100 : number) / scale;
+  };
+  const radii = (corners ?? []).map((radius) => {
+    const [x, y = x] = radius.split(" ");
+    return [length(x, source.width), length(y, source.height)];
+  });
+  if (radii.length !== 4 || radii.every(([x, y]) => !x && !y)) return "";
+  const xs = radii.map(([x]) => `${x}px`).join(" ");
+  const ys = radii.map(([, y]) => `${y}px`).join(" ");
+  return ` round ${xs} / ${ys}`;
 }
 
 // Where object-position puts the drawn file along one axis, given the free space of the box
@@ -353,7 +387,8 @@ function drawnBox(source: Box, fit?: ThumbnailFit): Box {
 /**
  * The FLIP transform that lays the zoomed image, with the `final` box, over its thumbnail, with the
  * `source` box: the translation between their centers, the scale, and the clip-path (in the
- * image's own, unscaled pixels) that trims what the thumbnail does not show.
+ * image's own, unscaled pixels) that trims what the thumbnail does not show, and rounds its corners
+ * like the thumbnail's.
  *
  * `fit` tells how the thumbnail draws its file (object-fit, object-position). That file may also be
  * cropped from the full image already, as Astro's <Image> does with a width and a height of another
@@ -395,25 +430,61 @@ export function flipTransform(
   const insetRight = (left + width - visibleRight) / scale;
   const insetBottom = (top + height - visibleBottom) / scale;
   const insetLeft = (visibleLeft - left) / scale;
-  const clipPath = `inset(${insetTop}px ${insetRight}px ${insetBottom}px ${insetLeft}px)`;
+  // Rounded like the corners of the thumbnail, so the image takes its shape back as it lands
+  const round = roundCorners(fit?.corners, source, scale);
+  const clipPath = `inset(${insetTop}px ${insetRight}px ${insetBottom}px ${insetLeft}px${round})`;
 
   return { x, y, scale, clipPath };
 }
 
-// A thumbnail cropped from the full image stands in for it only if it shows at least this part of it
-const MIN_PLACEHOLDER_COVERAGE = 0.5;
+// Whether the file of a thumbnail can paint at once somewhere else, as the background of the zoomed
+// image: the browser keeps it in memory. Not with the cache disabled (DevTools), where it would load
+// again and leave the image empty meanwhile
+function paintsAtOnce(
+  thumbnail: HTMLImageElement | null,
+): thumbnail is HTMLImageElement {
+  if (!thumbnail?.complete || !thumbnail.naturalWidth) return false;
+  const probe = new Image();
+  probe.src = thumbnail.currentSrc;
+  return probe.complete;
+}
+
+// Crops the image at once, or uncrops it (null): the transition is for the unfolding, and would
+// clip it in or out, a blink when the slide is on screen
+function setCrop(img: HTMLImageElement, inset: string | null): void {
+  withoutTransition(img, () => {
+    if (inset) img.style.setProperty("--astro-image-zoom-crop", inset);
+    else img.style.removeProperty("--astro-image-zoom-crop");
+  });
+}
+
+// Applies a change of style at once, without its transition
+function withoutTransition(element: HTMLElement, change: () => void): void {
+  element.style.transition = "none";
+  change();
+  void element.offsetWidth;
+  element.style.transition = "";
+}
+
+// Resolves after a number of frames
+function frames(count: number): Promise<void> {
+  return new Promise((resolve) => {
+    const tick = () => (--count > 0 ? requestAnimationFrame(tick) : resolve());
+    requestAnimationFrame(tick);
+  });
+}
 
 /**
  * Where the thumbnail, already loaded, stands in for the full-size image until it decodes, in % of
- * the image: `size` for its background-size, and `clip` for a clip-path that hides the rest of the
- * image, which has nothing to show yet. All of it for a file of the whole picture, the middle for a
- * file cropped from it, taken as a centered crop like flipTransform() does. Null when it would show
- * too little of the picture, or a file has no size yet.
+ * the image: `size` for its background-size, and `inset` for the insets of a clip-path that hides
+ * the rest of the image, which has nothing to show yet (overlay.css rounds it). All of it for a file
+ * of the whole picture, the middle for a file cropped from it, taken as a centered crop like
+ * flipTransform() does, however little of the picture it shows. Null when a file has no size yet.
  */
 export function placeholderBox(
   thumbnail: Pick<HTMLImageElement, "naturalWidth" | "naturalHeight">,
   image: Pick<HTMLImageElement, "naturalWidth" | "naturalHeight">,
-): { size: string; clip: string } | null {
+): { size: string; inset: string } | null {
   if (
     !thumbnail.naturalWidth ||
     !thumbnail.naturalHeight ||
@@ -427,18 +498,16 @@ export function placeholderBox(
     thumbnail.naturalWidth /
     thumbnail.naturalHeight /
     (image.naturalWidth / image.naturalHeight);
-  if (Math.abs(ratio - 1) <= 0.02)
-    return { size: "100% 100%", clip: "inset(0%)" };
+  if (Math.abs(ratio - 1) <= 0.02) return { size: "100% 100%", inset: "0%" };
 
   // A wider crop keeps the whole width and loses height, a narrower one the other way around
   const [width, height] = ratio > 1 ? [1, 1 / ratio] : [ratio, 1];
-  if (width * height < MIN_PLACEHOLDER_COVERAGE) return null;
   const percent = (part: number) => `${Number((part * 100).toFixed(4))}%`;
   const insetY = percent((1 - height) / 2);
   const insetX = percent((1 - width) / 2);
   return {
     size: `${percent(width)} ${percent(height)}`,
-    clip: `inset(${insetY} ${insetX} ${insetY} ${insetX})`,
+    inset: `${insetY} ${insetX} ${insetY} ${insetX}`,
   };
 }
 
@@ -782,10 +851,9 @@ class Zoom {
     this.track.style.overflowX = "";
     // Shown at once, in the frame the thumbnail hides: its opacity transition would fade it in over
     // an empty spot, a blink. The transition comes back for later changes
-    this.imageElement.style.transition = "none";
-    this.imageElement.style.opacity = "1";
-    void this.imageElement.offsetWidth;
-    this.imageElement.style.transition = "";
+    withoutTransition(this.imageElement, () => {
+      this.imageElement.style.opacity = "1";
+    });
     this.preloadNeighbors(index);
 
     const finalRect = this.imageElement.getBoundingClientRect();
@@ -804,8 +872,9 @@ class Zoom {
       this.phase = "open";
       this.overlay.classList.remove("is-opening");
       this.overlay.classList.add("is-open");
-      // The images that decoded during the opening unfold now
-      for (const slide of this.slides) if (slide.decoded) this.unfold(slide);
+      // The images whose size became known during the opening take their shape now, and the ones
+      // that decoded unfold
+      this.slides.forEach((slide, i) => this.settle(i, slide));
     });
 
     this.bindOpenListeners(signal);
@@ -856,12 +925,15 @@ class Zoom {
     this.setSlideOffset(0, false);
     this.jumpToSlide(this.state.currentIndex);
 
-    // Closed during the opening: the close starts from where the image and the backdrop are, read
-    // before the opening stops, not from the end of it
+    // The close starts from where the image is, read before the classes change: it may be moving
+    // during the opening, or taking its shape (reshape()), or unfolding from the crop of its
+    // placeholder, which the close stops
+    const image = getComputedStyle(this.imageElement);
+    this.imageElement.style.setProperty("--transform-now", image.transform);
+    this.imageElement.style.setProperty("--clip-now", image.clipPath);
+
+    // Closed during the opening: the backdrop too, read before the opening stops
     if (closedFrom === "opening") {
-      const image = getComputedStyle(this.imageElement);
-      this.imageElement.style.setProperty("--transform-now", image.transform);
-      this.imageElement.style.setProperty("--clip-now", image.clipPath);
       this.backdrop.style.setProperty(
         "--backdrop-now",
         getComputedStyle(this.backdrop).opacity,
@@ -991,8 +1063,8 @@ class Zoom {
       slide.remove();
   }
 
-  // Starts loading the full-size image of a slide. It is ready as soon as its size is known when the
-  // thumbnail can stand in for it until it decodes, or once it decodes otherwise
+  // Starts loading the full-size image of a slide, and resolves when it can be shown: see
+  // whenShowable()
   private loadSlide(index: number): Promise<void> {
     const slide = this.slides[index];
     if (!slide) return Promise.resolve();
@@ -1006,24 +1078,120 @@ class Zoom {
     const decoded = img
       .decode()
       .catch(() => this.showThumbnailInstead(index, img));
-    slide.ready = sizeKnown(img, decoded)
-      .then(() => (this.showPlaceholder(index, img) ? undefined : decoded))
-      .then(() => figure.classList.remove("is-loading"));
+    slide.ready = this.whenShowable(index, slide, decoded).then(() =>
+      figure.classList.remove("is-loading"),
+    );
     void decoded.then(() => {
       img.style.removeProperty("background-image");
       img.style.removeProperty("background-size");
       slide.decoded = true;
-      if (this.phase === "open") this.unfold(slide);
+      this.settle(index, slide);
     });
 
     return slide.ready;
   }
 
-  // The rest of the picture unfolds from the crop of a thumbnail that stood in for it (a transition
-  // in overlay.css). Not during the zoom animations: they end on the crop, and a transition started
-  // under them would show once they end, as a jump
-  private unfold({ img }: ZoomSlide): void {
-    img.style.removeProperty("--astro-image-zoom-crop");
+  // The thumbnail, already loaded, stands in for the full-size image until it decodes. At once, with
+  // the shape of the thumbnail, when the size of the file takes longer than a few frames (it is not
+  // in the cache): the image takes its real shape once the size is known (reshape()). Once the size
+  // is known otherwise. Without a thumbnail that can paint at once, the image waits for its file
+  private async whenShowable(
+    index: number,
+    slide: ZoomSlide,
+    decoded: Promise<void>,
+  ): Promise<void> {
+    const size = sizeKnown(slide.img, decoded);
+    const known = await Promise.race([
+      size.then(() => true),
+      frames(3).then(() => false),
+    ]);
+    if (!known && this.showProvisional(index, slide)) {
+      void size.then(() => {
+        slide.sized = true;
+        this.settle(index, slide);
+      });
+      return;
+    }
+    await size;
+    if (!this.showPlaceholder(index, slide.img)) await decoded;
+  }
+
+  // Lays the image out with the shape of its thumbnail, as big as the slide lets it, with the
+  // thumbnail over all of it. object-fit: cover, so the file, if it decodes before its shape is
+  // taken, shows the same centered crop
+  private showProvisional(index: number, slide: ZoomSlide): boolean {
+    const thumbnail = this.getThumbnail(index);
+    if (!paintsAtOnce(thumbnail)) return false;
+
+    const { figure, img } = slide;
+    const style = getComputedStyle(figure);
+    const width =
+      figure.clientWidth -
+      Number.parseFloat(style.paddingLeft) -
+      Number.parseFloat(style.paddingRight);
+    const height =
+      figure.clientHeight -
+      Number.parseFloat(style.paddingTop) -
+      Number.parseFloat(style.paddingBottom);
+    const ratio = thumbnail.naturalWidth / thumbnail.naturalHeight;
+    if (!(width > 0 && height > 0)) return false;
+    const boxWidth = Math.min(width, height * ratio);
+
+    img.style.width = `${boxWidth}px`;
+    img.style.height = `${boxWidth / ratio}px`;
+    img.style.objectFit = "cover";
+    img.style.backgroundImage = `url(${JSON.stringify(thumbnail.currentSrc)})`;
+    slide.provisional = true;
+    return true;
+  }
+
+  // Once the zoom animations end, which move the image from its box and end on its crop: an image
+  // with the shape of its thumbnail takes its own once its size is known (reshape()), and the rest of
+  // the picture unfolds from the crop of the thumbnail that stood in for it once the file decodes (a
+  // transition in overlay.css; started under the animations, it would show once they end, as a jump)
+  private settle(index: number, slide: ZoomSlide): void {
+    if (this.phase !== "open") return;
+    if (slide.provisional) {
+      if (!slide.sized) return;
+      this.reshape(index, slide);
+    }
+    if (slide.decoded)
+      slide.img.style.removeProperty("--astro-image-zoom-crop");
+  }
+
+  // The image leaves the shape of its thumbnail for its own, with the thumbnail as its placeholder
+  // (showPlaceholder()). On screen, the part the thumbnail shows moves and scales from where it was
+  // (a FLIP, astro-image-zoom-reshape in overlay.css)
+  private reshape(index: number, slide: ZoomSlide): void {
+    const { img } = slide;
+    const first = img.getBoundingClientRect();
+    img.style.removeProperty("width");
+    img.style.removeProperty("height");
+    img.style.removeProperty("object-fit");
+    slide.provisional = false;
+    // The file failed and the thumbnail took its place: nothing stands in for it any more
+    if (!img.style.backgroundImage && !slide.decoded) return;
+
+    const thumbnail = this.getThumbnail(index);
+    const box = thumbnail && placeholderBox(thumbnail, img);
+    if (!box) return;
+    if (!slide.decoded) img.style.backgroundSize = box.size;
+    setCrop(img, box.inset);
+    if (index !== this.state.currentIndex) return;
+
+    // The part the thumbnail shows is centered (placeholderBox()), so its center is the image's
+    const last = img.getBoundingClientRect();
+    const scale =
+      first.width / ((last.width * Number.parseFloat(box.size)) / 100);
+    const x = first.left + first.width / 2 - (last.left + last.width / 2);
+    const y = first.top + first.height / 2 - (last.top + last.height / 2);
+    img.style.setProperty("--reshape-x", `${x}px`);
+    img.style.setProperty("--reshape-y", `${y}px`);
+    img.style.setProperty("--reshape-scale", String(scale));
+    img.classList.add("is-reshaping");
+    void animationsFinished(img, ["astro-image-zoom-reshape"]).then(() =>
+      img.classList.remove("is-reshaping"),
+    );
   }
 
   // A full-size image that fails to load (a wrong data-image-zoom-src, a 404) shows the file of its
@@ -1034,6 +1202,10 @@ class Zoom {
   ): Promise<void> {
     const source = this.getThumbnail(index)?.currentSrc;
     if (!source || img.src === source) return Promise.resolve();
+    // The thumbnail is the whole image now: no placeholder behind it, nor its crop
+    img.style.removeProperty("background-image");
+    img.style.removeProperty("background-size");
+    setCrop(img, null);
     img.src = source;
     return img.decode().catch(() => {
       // The thumbnail failed too: nothing to show
@@ -1045,14 +1217,14 @@ class Zoom {
   // clipped to it (placeholderBox())
   private showPlaceholder(index: number, img: HTMLImageElement): boolean {
     const thumbnail = this.getThumbnail(index);
-    if (img.complete || !thumbnail?.complete) return false;
+    if (img.complete || !paintsAtOnce(thumbnail)) return false;
 
     const box = placeholderBox(thumbnail, img);
     if (!box) return false;
 
     img.style.backgroundImage = `url(${JSON.stringify(thumbnail.currentSrc)})`;
     img.style.backgroundSize = box.size;
-    img.style.setProperty("--astro-image-zoom-crop", box.clip);
+    setCrop(img, box.inset);
     return true;
   }
 
