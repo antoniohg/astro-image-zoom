@@ -107,32 +107,8 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 </ImageZoom>
 ```
 
-With Astro's `<Image>` or `<Picture>`, build the full-size version with `getImage()`:
-
-```astro
----
-import { Image, getImage } from 'astro:assets';
-import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
-
-import myImage from '../assets/my-image.jpg';
-
-// Optimize the full-resolution image for the zoom overlay
-const optimizedImage = await getImage({
-  src: myImage,
-  format: 'webp',
-  width: 1920 // Optional: limit width for better performance
-});
----
-
-<ImageZoom>
-  <Image
-    src={myImage}
-    alt="A beautiful optimized image"
-    width={600}
-    data-image-zoom-src={optimizedImage.src}
-  />
-</ImageZoom>
-```
+With Astro's `<Image>` or `<Picture>`, build the full-size version with `getImage()`, as in
+[Usage](#usage).
 
 > **Note:** Do not pass the `Image` component directly to `data-image-zoom-src` or call it as a function. The zoom script expects a string URL for the `data-image-zoom-src` attribute.
 
@@ -254,14 +230,6 @@ a[data-image-zoom-generated]:focus-visible {
 a[data-image-zoom-generated]:focus-visible img {
   outline: 2px solid green; /* your focus ring */
   outline-offset: 3px; /* negative if a parent with overflow: hidden clips it */
-}
-```
-
-A zoom cursor, if you want one, is also yours to add:
-
-```css
-a[data-image-zoom-generated] img {
-  cursor: zoom-in;
 }
 ```
 
@@ -594,14 +562,15 @@ astro-image-zoom-overlay::part(caption) {
 
 ### Events
 
-Each `<astro-image-zoom>` dispatches three events, which bubble, so one listener on the document
+Each `<astro-image-zoom>` dispatches four events, which bubble, so one listener on the document
 hears every gallery on the page:
 
 | Event                     | When                                                       |
 | ------------------------- | ---------------------------------------------------------- |
 | `astro-image-zoom:open`   | A zoom opens (a click, Enter on a link)                    |
 | `astro-image-zoom:change` | The gallery moves to another image (arrows, keys, a swipe) |
-| `astro-image-zoom:close`  | The zoom closes, however it closes                         |
+| `astro-image-zoom:close`  | The zoom starts to close, however it closes                |
+| `astro-image-zoom:closed` | The zoom has closed: the image is back on the page         |
 
 Their `detail` describes the image on screen:
 
@@ -641,7 +610,9 @@ document.addEventListener('astro-image-zoom:change', sync);
 
 The events report, they do not decide: `preventDefault()` does not stop an opening or a close.
 `open` comes when the zoom starts to open, before the image has loaded, and every `open` gets its
-`close`, also when the zoom closes while the image is still loading.
+`close` and then its `closed`, also when the zoom closes while the image is still loading. `close`
+comes when the closing animation starts, `closed` when it has ended and the thumbnail is back: the
+moment to bring back what you hid while the zoom was open, such as a sticky header.
 
 In TypeScript, the events are typed on elements, the document and the window once the package's
 types are in the project. Using `<ImageZoom>` is not enough: add one line to a declaration file,

@@ -105,5 +105,16 @@ const shareImageAlt =
         <a href={`${repository}/blob/main/demo/PHOTOS.md`}>PHOTOS.md</a>
       </p>
     </footer>
+
+    <script>
+      // Hides the sticky header while a zoom is open; it slides back once the image has landed
+      const root = document.documentElement;
+      document.addEventListener("astro-image-zoom:open", () =>
+        root.classList.add("is-zooming"),
+      );
+      document.addEventListener("astro-image-zoom:closed", () =>
+        root.classList.remove("is-zooming"),
+      );
+    </script>
   </body>
 </html>

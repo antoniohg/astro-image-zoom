@@ -464,7 +464,7 @@ const fullSize = await getImage({ src: photo, width: photo.width });
             <code>{`<a data-image-zoom-generated>`}</code> with your link
             styles, and if your images are <code>display: block</code>, the
             outline of that link doesn't wrap them. Draw your focus ring on the
-            image instead, as this page does, and add a zoom cursor if you like.
+            image instead, as this page does.
           </p>
           <CodeSample
             open
@@ -476,10 +476,6 @@ const fullSize = await getImage({ src: photo, width: photo.width });
 a[data-image-zoom-generated]:focus-visible img {
   outline: 2px solid green; /* your focus ring */
   outline-offset: 3px; /* negative if a parent with overflow: hidden clips it */
-}
-
-a[data-image-zoom-generated] img {
-  cursor: zoom-in;
 }`}
           />
         </Section>
@@ -804,9 +800,10 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
       <Section title="Events" id="events">
         <p>
           Each <code>{`<astro-image-zoom>`}</code> dispatches an event when the
-          zoom opens, moves to another image and closes, for analytics or to
-          sync something else on the page. They bubble, so one listener on the
-          document hears every gallery. Open a photo and watch the log.
+          zoom opens, moves to another image, starts to close and has closed,
+          for analytics or to sync something else on the page. They bubble, so
+          one listener on the document hears every gallery. Open a photo and
+          watch the log.
         </p>
         <EventsConsole names={["saturnShadow", "saturn", "pluto"]} />
         <CodeSample

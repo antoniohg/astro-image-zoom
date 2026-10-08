@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   caption,
   counter,
@@ -475,6 +475,19 @@ test.describe("open and close", () => {
       await held;
       await route.continue();
     });
+    await page.evaluate(() => {
+      const log: string[] = [];
+      (window as unknown as { zoomEvents: string[] }).zoomEvents = log;
+      for (const type of ["open", "close", "closed"] as const) {
+        document.addEventListener(`astro-image-zoom:${type}`, () =>
+          log.push(type),
+        );
+      }
+    });
+    const zoomEvents = () =>
+      page.evaluate(
+        () => (window as unknown as { zoomEvents: string[] }).zoomEvents,
+      );
 
     await links(page, "single").first().click();
     await expect(dialog(page)).toHaveAttribute("open");
@@ -508,11 +521,14 @@ test.describe("open and close", () => {
 
     await page.keyboard.press("Escape");
     await expectClosed(page);
+    // Every open gets its close and closed, also before the image has loaded
+    expect(await zoomEvents()).toEqual(["open", "close", "closed"]);
 
     // The image arrives after the close: the overlay must not come back
     release();
     await page.waitForTimeout(500);
     await expectClosed(page);
+    expect(await zoomEvents()).toEqual(["open", "close", "closed"]);
   });
 });
 
@@ -740,14 +756,14 @@ test.describe("gallery", () => {
     }
   });
 
-  test("tells the page when it opens, moves to another image and closes", async ({
+  test("tells the page when it opens, moves to another image, closes and has closed", async ({
     page,
   }) => {
     // One listener on the document hears the events of every gallery: they bubble
     await page.evaluate(() => {
       const log: unknown[] = [];
       (window as unknown as { zoomEvents: unknown[] }).zoomEvents = log;
-      for (const type of ["open", "change", "close"] as const) {
+      for (const type of ["open", "change", "close", "closed"] as const) {
         document.addEventListener(
           `astro-image-zoom:${type}`,
           ({ detail, target }) => {
@@ -804,8 +820,79 @@ test.describe("gallery", () => {
         caption: "Second",
         ...common,
       },
+      {
+        type: "closed",
+        index: 1,
+        src: "square.svg",
+        alt: "Green square",
+        caption: "Second",
+        ...common,
+      },
     ]);
   });
+
+  for (const [how, closeZoom, detaches] of [
+    ["Escape", (page: Page) => page.keyboard.press("Escape"), false],
+    [
+      "a wheel",
+      async (page: Page) => {
+        await page.mouse.move(640, 360);
+        await page.mouse.wheel(0, 400);
+      },
+      true,
+    ],
+  ] as const) {
+    test(`tells the page it has closed once the image is back on the page, after ${how}`, async ({
+      page,
+    }) => {
+      // What the page sees when each close event arrives: closed comes after the animation
+      await page.evaluate(() => {
+        const log: unknown[] = [];
+        (window as unknown as { zoomEvents: unknown[] }).zoomEvents = log;
+        const root = () =>
+          document.querySelector("astro-image-zoom-overlay")?.shadowRoot;
+        // A scroll close moves the image out of the dialog, straight into the shadow root
+        const detached = () =>
+          [...(root()?.children ?? [])].some((el) => el.localName === "img");
+        for (const type of ["close", "closed"] as const) {
+          document.addEventListener(`astro-image-zoom:${type}`, () => {
+            log.push({
+              type,
+              open: root()?.querySelector("dialog")?.open,
+              thumbnailHidden:
+                document.querySelector<HTMLImageElement>("#single img")?.style
+                  .opacity === "0",
+              detached: detached(),
+            });
+            // close() goes on after the event: once it returns, the closing animation has started
+            if (type === "close")
+              queueMicrotask(() =>
+                log.push({ type: "closing", detached: detached() }),
+              );
+          });
+        }
+      });
+
+      await openZoom(page, "single");
+      await closeZoom(page);
+      await expectClosed(page);
+
+      expect(
+        await page.evaluate(
+          () => (window as unknown as { zoomEvents: unknown[] }).zoomEvents,
+        ),
+      ).toEqual([
+        { type: "close", open: true, thumbnailHidden: true, detached: false },
+        { type: "closing", detached: detaches },
+        {
+          type: "closed",
+          open: false,
+          thumbnailHidden: false,
+          detached: false,
+        },
+      ]);
+    });
+  }
 
   test("clicks on the caption and the controls do not close the zoom", async ({
     page,
