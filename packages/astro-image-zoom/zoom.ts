@@ -15,8 +15,9 @@ interface ZoomState {
 
 /**
  * The detail of the events an <astro-image-zoom> dispatches: astro-image-zoom:open when a zoom
- * opens, astro-image-zoom:change when the gallery moves to another image and astro-image-zoom:close
- * when it closes. They bubble, so one listener on the document hears every gallery.
+ * opens, astro-image-zoom:change when the gallery moves to another image, astro-image-zoom:close
+ * when it starts to close and astro-image-zoom:closed once the image is back on the page. They
+ * bubble, so one listener on the document hears every gallery.
  */
 export interface ZoomEventDetail {
   /** Position of the image in its gallery, from 0 */
@@ -35,6 +36,7 @@ type ZoomEvents = {
   "astro-image-zoom:open": CustomEvent<ZoomEventDetail>;
   "astro-image-zoom:change": CustomEvent<ZoomEventDetail>;
   "astro-image-zoom:close": CustomEvent<ZoomEventDetail>;
+  "astro-image-zoom:closed": CustomEvent<ZoomEventDetail>;
 };
 
 // Typed addEventListener for the events, on any element (HTMLElementEventMap extends this one), and
@@ -1046,7 +1048,7 @@ class Zoom {
   };
 
   // Tells the page what the zoom shows now; see ZoomEventDetail
-  private emit(type: "open" | "change" | "close"): void {
+  private emit(type: "open" | "change" | "close" | "closed"): void {
     const { images, currentIndex } = this.state;
     const image = images[currentIndex];
     if (!image) return;
@@ -1356,6 +1358,7 @@ class Zoom {
     }
 
     this.phase = "closed";
+    this.emit("closed");
   }
 }
 

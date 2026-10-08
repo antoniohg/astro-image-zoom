@@ -800,9 +800,10 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
       <Section title="Events" id="events">
         <p>
           Each <code>{`<astro-image-zoom>`}</code> dispatches an event when the
-          zoom opens, moves to another image and closes, for analytics or to
-          sync something else on the page. They bubble, so one listener on the
-          document hears every gallery. Open a photo and watch the log.
+          zoom opens, moves to another image, starts to close and has closed,
+          for analytics or to sync something else on the page. They bubble, so
+          one listener on the document hears every gallery. Open a photo and
+          watch the log.
         </p>
         <EventsConsole names={["saturnShadow", "saturn", "pluto"]} />
         <CodeSample

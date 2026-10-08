@@ -290,7 +290,12 @@ export const events: ReferenceRow[] = [
   },
   {
     name: "astro-image-zoom:close",
-    description: "The zoom closes, however it closes",
+    description: "The zoom starts to close, however it closes",
+  },
+  {
+    name: "astro-image-zoom:closed",
+    description:
+      "The zoom has closed: the closing animation has ended and the image is back on the page",
   },
 ];
 
