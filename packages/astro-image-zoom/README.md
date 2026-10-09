@@ -546,8 +546,9 @@ astro-image-zoom-overlay::part(caption) {
 - The page loads the images you give it; the full-size version loads only when the zoom opens, and
   the neighbors of a gallery are preloaded.
 - The zoom does not wait for the full-size file: it opens at once with the thumbnail enlarged, and
-  sharpens when the file has loaded. Until the browser knows the size of the file, the image takes
-  the shape of the thumbnail, then moves to its own. Thumbnails cropped with CSS
+  sharpens when the file has loaded. It waits a moment (150 ms) for the size of the file, so it
+  opens with its real shape. When the size takes longer (a slow network), the image takes the
+  shape of the thumbnail, a little smaller than the screen allows, then grows into its own. Thumbnails cropped with CSS
   (`object-fit: cover`) are the whole picture, so they cover all of it. A thumbnail file cropped to
   another shape when the site was built, as Astro's `<Image width height>` does, or by art
   direction (`<source media>`), is taken as a centered crop: the zoom shows that part, and unfolds

@@ -466,13 +466,16 @@ function withoutTransition(element: HTMLElement, change: () => void): void {
   element.style.transition = "";
 }
 
-// Resolves after a number of frames
-function frames(count: number): Promise<void> {
-  return new Promise((resolve) => {
-    const tick = () => (--count > 0 ? requestAnimationFrame(tick) : resolve());
-    requestAnimationFrame(tick);
-  });
-}
+// How long the opening waits for the size of the full-size file before it shows the thumbnail in
+// its place (whenShowable()). Its first bytes often arrive by then, and the image opens with its
+// real shape. Under the 200ms after which the spinner shows (overlay.css)
+const SIZE_WAIT = 150;
+
+// How much smaller than the slide lets it the thumbnail stands in for the image (fitProvisional()):
+// the full-size file may show more of the picture than its thumbnail (a crop), so the image is
+// bigger than the thumbnail on screen. Up to this many times wider or taller than the thumbnail, the
+// part the thumbnail shows only grows when the image takes its shape, never shrinks
+const PROVISIONAL_SCALE = 1.5;
 
 /**
  * Where the thumbnail, already loaded, stands in for the full-size image until it decodes, in % of
@@ -1094,10 +1097,10 @@ class Zoom {
     return slide.ready;
   }
 
-  // The thumbnail, already loaded, stands in for the full-size image until it decodes. At once, with
-  // the shape of the thumbnail, when the size of the file takes longer than a few frames (it is not
-  // in the cache): the image takes its real shape once the size is known (reshape()). Once the size
-  // is known otherwise. Without a thumbnail that can paint at once, the image waits for its file
+  // The thumbnail, already loaded, stands in for the full-size image until it decodes. With the
+  // shape of the thumbnail, when the size of the file takes longer than SIZE_WAIT (a slow network):
+  // the image takes its real shape once the size is known (reshape()). Once the size is known
+  // otherwise. Without a thumbnail that can paint at once, the image waits for its file
   private async whenShowable(
     index: number,
     slide: ZoomSlide,
@@ -1106,7 +1109,9 @@ class Zoom {
     const size = sizeKnown(slide.img, decoded);
     const known = await Promise.race([
       size.then(() => true),
-      frames(3).then(() => false),
+      new Promise<false>((resolve) =>
+        setTimeout(() => resolve(false), SIZE_WAIT),
+      ),
     ]);
     if (!known && this.showProvisional(index, slide)) {
       void size.then(() => {
@@ -1119,8 +1124,8 @@ class Zoom {
     if (!this.showPlaceholder(index, slide.img)) await decoded;
   }
 
-  // Lays the image out with the shape of its thumbnail, as big as the slide lets it, with the
-  // thumbnail over all of it. object-fit: cover, so the file, if it decodes before its shape is
+  // Lays the image out with the shape of its thumbnail, smaller than the slide lets it
+  // (PROVISIONAL_SCALE), with the thumbnail over all of it. object-fit: cover, so the file, if it decodes before its shape is
   // taken, shows the same centered crop
   private showProvisional(index: number, slide: ZoomSlide): boolean {
     const thumbnail = this.getThumbnail(index);
@@ -1152,7 +1157,7 @@ class Zoom {
       Number.parseFloat(style.paddingBottom);
     const ratio = thumbnail.naturalWidth / thumbnail.naturalHeight;
     if (!(width > 0 && height > 0)) return false;
-    const boxWidth = Math.min(width, height * ratio);
+    const boxWidth = Math.min(width, height * ratio) / PROVISIONAL_SCALE;
 
     img.style.width = `${boxWidth}px`;
     img.style.height = `${boxWidth / ratio}px`;
