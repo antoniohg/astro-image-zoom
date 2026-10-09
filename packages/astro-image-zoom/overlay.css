@@ -270,11 +270,9 @@
   border-left-color: currentColor;
   border-radius: 50%;
   visibility: hidden;
-  /* It fades in, so a wait that ends just after it shows does not blink */
   animation:
     astro-image-zoom-spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite,
-    astro-image-zoom-reveal 0s 200ms forwards,
-    astro-image-zoom-fade-in 300ms 200ms ease-in;
+    astro-image-zoom-reveal 0s 200ms forwards;
 }
 
 /* Fixed, not for every slide: a neighbor loading off screen would show its spinner in the middle */
@@ -289,12 +287,6 @@
 @keyframes astro-image-zoom-reveal {
   to {
     visibility: visible;
-  }
-}
-
-@keyframes astro-image-zoom-fade-in {
-  from {
-    opacity: 0;
   }
 }
 
