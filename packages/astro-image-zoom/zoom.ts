@@ -1143,28 +1143,23 @@ class Zoom {
   }
 
   // Sizes an image with the shape of its thumbnail to its slide: on show, and again when the slide
-  // changes size (a phone rotated) before the image takes its own shape
+  // changes size (a phone rotated) before the image takes its own shape. The room it has is the box
+  // its max-width and max-height (overlay.css) leave to an image too big for it
   private fitProvisional(index: number, slide: ZoomSlide): boolean {
     const thumbnail = this.getThumbnail(index);
     if (!thumbnail) return false;
 
-    const { figure, img } = slide;
-    const style = getComputedStyle(figure);
-    const width =
-      figure.clientWidth -
-      Number.parseFloat(style.paddingLeft) -
-      Number.parseFloat(style.paddingRight);
-    const height =
-      figure.clientHeight -
-      Number.parseFloat(style.paddingTop) -
-      Number.parseFloat(style.paddingBottom);
+    const { img } = slide;
+    img.style.width = img.style.height = "100vmax";
     const ratio = thumbnail.naturalWidth / thumbnail.naturalHeight;
-    if (!(width > 0 && height > 0)) return false;
-    const boxWidth = Math.min(width, height * ratio) / PROVISIONAL_SCALE;
+    const boxWidth =
+      Math.min(img.offsetWidth, img.offsetHeight * ratio) / PROVISIONAL_SCALE;
 
     img.style.width = `${boxWidth}px`;
     img.style.height = `${boxWidth / ratio}px`;
-    return true;
+    if (boxWidth > 0) return true;
+    img.style.width = img.style.height = "";
+    return false;
   }
 
   // Once the zoom animations end, which move the image from its box and end on its crop: an image
