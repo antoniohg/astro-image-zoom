@@ -167,7 +167,7 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
 
     {/* The first thing to try: one gallery with a photo of every shape, above the fold */}
     <ImageZoom>
-      <div class="wall wide">
+      <div class="wall wide photo-grid">
         {wall.map(({ name, tile, phone, wide, priority }) => (
           <div class:list={["tile", tile]}>
             <Photo
@@ -219,7 +219,7 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
             keys or a swipe.
           </p>
           <ImageZoom>
-            <div class="deep-sky">
+            <div class="deep-sky photo-grid">
               {deepSky.map((name) => (
                 <Photo
                   name={name}
@@ -243,7 +243,7 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
               <div class="group">
                 <p class="group-title">{title}</p>
                 <ImageZoom>
-                  <div class="group-photos">
+                  <div class="group-photos photo-grid">
                     {names.map((name, index) => (
                       <Photo
                         name={name}
@@ -486,7 +486,8 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
       gap: 0.75rem;
       padding: 0.75rem;
       background: var(--color-surface);
-      border-radius: var(--radius);
+      /* Its corners follow those of the photos inside, one padding further out */
+      border-radius: calc(var(--photo-radius) + 0.75rem);
     }
 
     .group-title {

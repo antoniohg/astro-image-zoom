@@ -96,8 +96,9 @@
     --focus-ring: 2px solid var(--color-focus);
     --focus-offset: 3px;
 
-    /* Shape */
-    --radius: 2px;
+    /* Shape: the interface, and the photos */
+    --radius: 6px;
+    --photo-radius: 6px;
 
     /* Layout: a column of text, and a wider one for images that break out of it */
     --width-text: 40rem;
@@ -230,7 +231,8 @@
     font-size: 0.85em;
     background: var(--color-surface);
     border: 1px solid var(--color-rule);
-    border-radius: var(--radius);
+    /* Half the radius: small pieces of text, which a full one turns into pills */
+    border-radius: calc(var(--radius) / 2);
   }
 
   pre {
@@ -266,6 +268,20 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+
+  /*
+   * A gallery rounds only its outer corners: it clips its photos, square inside. Their focus ring
+   * goes inside them, where the clip does not cut it at the edges
+   */
+  .photo-grid {
+    overflow: hidden;
+    border-radius: var(--photo-radius);
+
+    * {
+      --photo-radius: 0;
+      --focus-offset: -4px;
+    }
   }
 
   /* The links that lead to the next page: the overview and the 404 */
