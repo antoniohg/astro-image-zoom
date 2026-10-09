@@ -1120,6 +1120,29 @@ test.describe("gallery", () => {
     await expect(image).toHaveCSS("background-image", "none");
   });
 
+  test("preloads the neighbors once the image on screen has loaded", async ({
+    page,
+  }) => {
+    // The middle image of the gallery, whose file waits: it opens with the thumbnail in its place
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?held";
+      });
+    await holdDecode(page, { size: true });
+    await openZoom(page, "gallery", 1);
+    const images = page.locator(".astro-image-zoom-image");
+
+    // Their files would share the bandwidth with it on a slow network
+    await page.waitForTimeout(300);
+    await expect(images.nth(0)).not.toHaveAttribute("src");
+    await expect(images.nth(2)).not.toHaveAttribute("src");
+
+    await releaseDecode(page);
+    await expect(images.nth(0)).toHaveAttribute("src", /.+/);
+    await expect(images.nth(2)).toHaveAttribute("src", /.+/);
+  });
+
   test("keeps the shape of the thumbnail, sized to the slide, when the viewport changes", async ({
     page,
   }) => {

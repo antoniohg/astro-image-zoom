@@ -57,6 +57,8 @@ interface ZoomSlide {
   ready?: Promise<void>;
   // Whether the full-size file has decoded, so the placeholder can go
   decoded?: boolean;
+  // Resolves when the full-size file has decoded, or failed
+  loaded?: Promise<void>;
   // Laid out with the shape of its thumbnail, until the size of the file is known: see loadSlide()
   provisional?: boolean;
   // Whether the size of the file is known
@@ -1084,6 +1086,7 @@ class Zoom {
     const decoded = img
       .decode()
       .catch(() => this.showThumbnailInstead(index, img));
+    slide.loaded = decoded;
     slide.ready = this.whenShowable(index, slide, decoded).then(() =>
       figure.classList.remove("is-loading"),
     );
@@ -1268,10 +1271,17 @@ class Zoom {
     );
   }
 
+  // Once the file of the image on screen has loaded: the image opens before it, and on a slow
+  // network the files of its neighbors would share the bandwidth with it
   private preloadNeighbors(index: number): void {
-    for (const neighbor of [index - 1, index + 1]) {
-      if (this.slides[neighbor]) void this.loadSlide(neighbor);
-    }
+    const { slides } = this;
+    void slides[index]?.loaded?.then(() => {
+      // Closed meanwhile: the slides are gone
+      if (this.slides !== slides) return;
+      for (const neighbor of [index - 1, index + 1]) {
+        if (slides[neighbor]) void this.loadSlide(neighbor);
+      }
+    });
   }
 
   // The scroll moved another slide to the center of the overlay
