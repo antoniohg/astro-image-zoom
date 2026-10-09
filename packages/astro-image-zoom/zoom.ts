@@ -770,6 +770,9 @@ class Zoom {
     });
     this.handlePageZoom();
 
+    // An image with the shape of its thumbnail is sized in px: it follows its slide
+    window.addEventListener("resize", this.handleResize, { signal });
+
     // Smooth close on vertical scroll/wheel (like Medium - non-blocking)
     if (this.options.closeOnScroll) {
       this.overlay.addEventListener("touchstart", this.handleTouchStart, {
@@ -1121,7 +1124,21 @@ class Zoom {
   // taken, shows the same centered crop
   private showProvisional(index: number, slide: ZoomSlide): boolean {
     const thumbnail = this.getThumbnail(index);
-    if (!paintsAtOnce(thumbnail)) return false;
+    if (!paintsAtOnce(thumbnail) || !this.fitProvisional(index, slide))
+      return false;
+
+    const { img } = slide;
+    img.style.objectFit = "cover";
+    img.style.backgroundImage = `url(${JSON.stringify(thumbnail.currentSrc)})`;
+    slide.provisional = true;
+    return true;
+  }
+
+  // Sizes an image with the shape of its thumbnail to its slide: on show, and again when the slide
+  // changes size (a phone rotated) before the image takes its own shape
+  private fitProvisional(index: number, slide: ZoomSlide): boolean {
+    const thumbnail = this.getThumbnail(index);
+    if (!thumbnail) return false;
 
     const { figure, img } = slide;
     const style = getComputedStyle(figure);
@@ -1139,9 +1156,6 @@ class Zoom {
 
     img.style.width = `${boxWidth}px`;
     img.style.height = `${boxWidth / ratio}px`;
-    img.style.objectFit = "cover";
-    img.style.backgroundImage = `url(${JSON.stringify(thumbnail.currentSrc)})`;
-    slide.provisional = true;
     return true;
   }
 
@@ -1341,6 +1355,12 @@ class Zoom {
 
   private handlePageZoom = (): void => {
     this.overlay.classList.toggle("is-page-zoomed", isPageZoomed());
+  };
+
+  private handleResize = (): void => {
+    this.slides.forEach((slide, i) => {
+      if (slide.provisional) this.fitProvisional(i, slide);
+    });
   };
 
   private handleTouchStart = (e: TouchEvent): void => {

@@ -1120,6 +1120,29 @@ test.describe("gallery", () => {
     await expect(image).toHaveCSS("background-image", "none");
   });
 
+  test("keeps the shape of the thumbnail as big as the slide lets it when the viewport changes", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 400, height: 300 });
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?held";
+      });
+    await holdDecode(page, { size: true });
+    await openZoom(page, "gallery", 1);
+    const image = zoomedImage(page);
+    expect((await image.boundingBox())!.height).toBeCloseTo(300, 0);
+
+    // A bigger viewport (a phone rotated, a window resized): the square grows with the slide
+    await page.setViewportSize({ width: 800, height: 600 });
+    await expect
+      .poll(async () => (await image.boundingBox())!.height)
+      .toBeCloseTo(600, 0);
+    const box = (await image.boundingBox())!;
+    expect(box.width).toBeCloseTo(box.height, 0);
+  });
+
   test("closes from where the image is while it takes its shape", async ({
     page,
   }) => {
