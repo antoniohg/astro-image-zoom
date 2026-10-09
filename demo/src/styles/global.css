@@ -104,9 +104,18 @@
     --width-wide: 80rem;
     --gutter: 1.25rem;
 
-    /* Sticky header height, so anchors are not hidden under it, and where sticky boxes stop */
-    --header-offset: 5rem;
-    --sticky-top: calc(var(--header-offset) + 1rem);
+    /* The height of the sticky header: its padding (2 × 0.875rem), the line of the logo
+       (1.18rem × 1.6) and its border. Sticky boxes stop a little lower */
+    --header-offset: calc(3.6375rem + 1px);
+    --sticky-top: calc(var(--header-offset) + 0.5rem);
+  }
+
+  /* Narrow screens: the header wraps onto two lines, a gap (0.5rem) and the line of the nav
+     (0.9375rem × 1.6) more */
+  @media (width < 27rem) {
+    :root {
+      --header-offset: calc(5.6375rem + 1px);
+    }
   }
 
   @media (prefers-color-scheme: dark) {
@@ -126,7 +135,8 @@
 
 @layer base {
   html {
-    scroll-padding-top: var(--header-offset);
+    /* 2px less: the rule over a section hides behind the header, just above its own border */
+    scroll-padding-top: calc(var(--header-offset) - 2px);
     -webkit-text-size-adjust: 100%;
 
     @media (prefers-reduced-motion: no-preference) {
