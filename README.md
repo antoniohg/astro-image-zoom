@@ -96,8 +96,8 @@ gestures, and a screen reader.
 ### Continuous integration
 
 GitHub Actions checks the formatting, type-checks and runs both suites on every push to `main` and
-every pull request ([`.github/workflows/test.yml`](./.github/workflows/test.yml)). When the
-end-to-end tests fail, the Playwright report is attached to the run.
+every pull request ([`.github/workflows/test.yml`](./.github/workflows/test.yml)), the end-to-end
+tests in one job per browser. Each of those jobs attaches its Playwright report to the run.
 
 ## License
 

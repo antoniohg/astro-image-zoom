@@ -13,9 +13,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
@@ -38,7 +38,28 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
-      # The browsers are cached by Playwright version; their system packages (apt) install on each run
+  # One job per browser, in parallel: each installs only its own browser and system packages
+  e2e:
+    name: e2e (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The browser is cached by Playwright version; its system packages (apt) install on each run
       - name: Playwright version
         id: playwright
         run: echo "version=$(node -p "require('./packages/astro-image-zoom/node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
@@ -47,23 +68,35 @@ jobs:
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ matrix.browser }}
 
-      - name: Install Playwright browsers
+      - name: Install Playwright browser
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm --filter astro-image-zoom exec playwright install --with-deps chromium firefox webkit
+        run: pnpm --filter astro-image-zoom exec playwright install --with-deps ${{ matrix.browser }}
 
       - name: Install Playwright system dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: pnpm --filter astro-image-zoom exec playwright install-deps chromium firefox webkit
+        run: pnpm --filter astro-image-zoom exec playwright install-deps ${{ matrix.browser }}
 
       - name: End-to-end tests
-        run: pnpm test:e2e
+        run: pnpm test:e2e --project ${{ matrix.browser }}
 
       # Also when a flaky test passed on retry: the report keeps the trace of its first failure
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.browser }}
           path: packages/astro-image-zoom/e2e/playwright-report/
           retention-days: 7
+
+  # The one check the ruleset of main requires: green only when every job above is
+  test:
+    needs: [checks, e2e]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed
+        run: |
+          [ "${{ needs.checks.result }}" = "success" ]
+          [ "${{ needs.e2e.result }}" = "success" ]
