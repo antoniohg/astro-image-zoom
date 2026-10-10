@@ -173,6 +173,41 @@ describe("flipTransform", () => {
     );
   });
 
+  it("rounds the clip like the corners of the thumbnail, in the image's own pixels", () => {
+    // A 200×100 thumbnail with 12px corners, from an 800×400 image: four times bigger
+    const transform = flipTransform(
+      { left: 0, top: 0, width: 200, height: 100 },
+      { left: 0, top: 0, width: 800, height: 400 },
+      { ...fit("cover", 800, 400), corners: ["12px", "12px", "12px", "12px"] },
+    );
+
+    expect(transform.clipPath).toBe(
+      "inset(0px 0px 0px 0px round 48px 48px 48px 48px / 48px 48px 48px 48px)",
+    );
+  });
+
+  it("reads elliptical and percentage corners against the box of the thumbnail", () => {
+    const transform = flipTransform(
+      { left: 0, top: 0, width: 200, height: 100 },
+      { left: 0, top: 0, width: 800, height: 400 },
+      { ...fit("cover", 800, 400), corners: ["50%", "8px 4px", "0px", "0px"] },
+    );
+
+    expect(transform.clipPath).toBe(
+      "inset(0px 0px 0px 0px round 400px 32px 0px 0px / 200px 16px 0px 0px)",
+    );
+  });
+
+  it("leaves the clip square for square corners", () => {
+    const transform = flipTransform(
+      { left: 0, top: 0, width: 200, height: 100 },
+      { left: 0, top: 0, width: 800, height: 400 },
+      { ...fit("cover", 800, 400), corners: ["0px", "0px", "0px", "0px"] },
+    );
+
+    expect(transform.clipPath).toBe("inset(0px 0px 0px 0px)");
+  });
+
   it("fills the box when the file size is unknown", () => {
     // An image that has not loaded, or an SVG without a size: as without a fit
     const source = { left: 0, top: 0, width: 100, height: 100 };
