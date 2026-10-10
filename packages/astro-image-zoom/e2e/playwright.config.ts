@@ -27,7 +27,17 @@ export default defineConfig({
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+    {
+      name: "firefox",
+      use: {
+        ...devices["Desktop Firefox"],
+        // Firefox remembers the page zoom per site, for the whole browser: the Ctrl + wheel of the
+        // pinch test left the next test of its worker at 90%, where its click missed
+        launchOptions: {
+          firefoxUserPrefs: { "browser.zoom.siteSpecific": false },
+        },
+      },
+    },
     { name: "webkit", use: { ...devices["Desktop Safari"] } },
   ],
   webServer: [
