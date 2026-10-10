@@ -1177,17 +1177,37 @@ test.describe("gallery", () => {
     await holdDecode(page, { size: true });
     await openZoom(page, "gallery", 1);
 
-    // Held halfway through the reshape
-    await releaseDecode(page);
+    // Slow animations, so that a long frame on a busy machine cannot skip one whole
+    await page
+      .locator("astro-image-zoom-overlay")
+      .evaluate((host: HTMLElement) =>
+        host.style.setProperty("--zoom-animation-duration", "10s"),
+      );
+
+    // Held partway through the reshape, by a watcher set before the image decodes: on a slow
+    // machine the reshape is over before a later call reaches the page
     const image = zoomedImage(page);
-    await expect(image).toHaveClass(/is-reshaping/);
-    const reshaping = await image.evaluate((image: HTMLImageElement) => {
-      for (const animation of image.getAnimations()) {
-        animation.pause();
-        animation.currentTime = 100;
-      }
-      return getComputedStyle(image).transform;
-    });
+    const held = image.evaluate(
+      (image: HTMLImageElement) =>
+        new Promise<string>((resolve) => {
+          const wait = () => {
+            const reshape = image
+              .getAnimations()
+              .find(
+                (animation) =>
+                  animation instanceof CSSAnimation &&
+                  animation.animationName === "astro-image-zoom-reshape",
+              );
+            if (!reshape) return requestAnimationFrame(wait);
+            reshape.pause();
+            reshape.currentTime = 3000;
+            resolve(getComputedStyle(image).transform);
+          };
+          wait();
+        }),
+    );
+    await releaseDecode(page);
+    const reshaping = await held;
     expect(reshaping).not.toBe("none");
 
     // The transform of the first frame of the close
@@ -1197,13 +1217,16 @@ test.describe("gallery", () => {
           const wait = () => {
             const shrink = image
               .getAnimations()
-              .some(
+              .find(
                 (animation) =>
                   animation instanceof CSSAnimation &&
                   animation.animationName === "astro-image-zoom-out",
               );
-            if (shrink) resolve(getComputedStyle(image).transform);
-            else requestAnimationFrame(wait);
+            if (!shrink) return requestAnimationFrame(wait);
+            // Rewound: by the time a frame callback sees it, the close has already advanced
+            shrink.pause();
+            shrink.currentTime = 0;
+            resolve(getComputedStyle(image).transform);
           };
           wait();
         }),
@@ -1278,23 +1301,38 @@ test.describe("gallery", () => {
     await holdDecode(page);
     await openZoom(page, "gallery", 1);
 
-    // Held halfway through the unfolding
-    await releaseDecode(page);
+    // Slow animations, so that a long frame on a busy machine cannot skip one whole
+    await page
+      .locator("astro-image-zoom-overlay")
+      .evaluate((host: HTMLElement) =>
+        host.style.setProperty("--zoom-animation-duration", "10s"),
+      );
+
+    // Held partway through the unfolding, by a watcher set before the image decodes: on a slow
+    // machine the unfolding is over before a later call reaches the page
     const image = zoomedImage(page);
-    const unfolding = await image.evaluate(
+    const held = image.evaluate(
       (image: HTMLImageElement) =>
         new Promise<string>((resolve) => {
           const wait = () => {
-            const clip = getComputedStyle(image).clipPath;
-            if (clip === "inset(0% 18.75%)") requestAnimationFrame(wait);
-            else {
-              for (const animation of image.getAnimations()) animation.pause();
-              resolve(getComputedStyle(image).clipPath);
-            }
+            const unfold = image
+              .getAnimations()
+              .find(
+                (animation) =>
+                  animation instanceof CSSTransition &&
+                  animation.transitionProperty === "clip-path",
+              );
+            if (!unfold) return requestAnimationFrame(wait);
+            // Set to a time: a pause alone takes effect later, past the clip read here
+            unfold.pause();
+            unfold.currentTime = 3000;
+            resolve(getComputedStyle(image).clipPath);
           };
           wait();
         }),
     );
+    await releaseDecode(page);
+    const unfolding = await held;
     expect(unfolding).not.toBe("inset(0px)");
 
     // The clip of the first frame of the close
@@ -1304,13 +1342,16 @@ test.describe("gallery", () => {
           const wait = () => {
             const shrink = image
               .getAnimations()
-              .some(
+              .find(
                 (animation) =>
                   animation instanceof CSSAnimation &&
                   animation.animationName === "astro-image-zoom-out",
               );
-            if (shrink) resolve(getComputedStyle(image).clipPath);
-            else requestAnimationFrame(wait);
+            if (!shrink) return requestAnimationFrame(wait);
+            // Rewound: by the time a frame callback sees it, the close has already advanced
+            shrink.pause();
+            shrink.currentTime = 0;
+            resolve(getComputedStyle(image).clipPath);
           };
           wait();
         }),
