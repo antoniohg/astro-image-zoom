@@ -400,7 +400,7 @@ const fullSize = await getImage({ src: photo, width: photo.width });
                   From Mercury capsules to the Space Shuttle: how the early
                   crews got to space and back.
                 </p>
-                <div class="card-thumbs photo-grid">
+                <div class="card-thumbs">
                   {(
                     ["glenn", "shepardRescue", "challengerLaunch"] as const
                   ).map((name) => (
@@ -957,8 +957,6 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
     /* The card clips its corners, rounded like the photos: a square cover photo, and the focus ring
        inside it */
     .card {
-      --focus-offset: -4px;
-
       overflow: hidden;
       background: var(--color-surface);
       border: 1px solid var(--color-rule);
@@ -966,6 +964,7 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
 
       > :global(.photo) {
         --photo-radius: 0;
+        --focus-offset: -4px;
       }
     }
 

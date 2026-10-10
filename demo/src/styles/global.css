@@ -270,20 +270,6 @@
     white-space: nowrap;
   }
 
-  /*
-   * A gallery rounds only its outer corners: it clips its photos, square inside. Their focus ring
-   * goes inside them, where the clip does not cut it at the edges
-   */
-  .photo-grid {
-    overflow: hidden;
-    border-radius: var(--photo-radius);
-
-    * {
-      --photo-radius: 0;
-      --focus-offset: -4px;
-    }
-  }
-
   /* The links that lead to the next page: the overview and the 404 */
   .button {
     padding: 0.75rem 1.25rem;
