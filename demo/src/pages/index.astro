@@ -486,7 +486,8 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
       gap: 0.75rem;
       padding: 0.75rem;
       background: var(--color-surface);
-      border-radius: var(--radius);
+      /* Its corners follow those of the photos inside, one padding further out */
+      border-radius: calc(var(--photo-radius) + 0.75rem);
     }
 
     .group-title {

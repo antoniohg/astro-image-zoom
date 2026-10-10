@@ -89,29 +89,41 @@
 
     /*
      * Focus ring, the same on every element, the zoom controls included. A plain color, set per
-     * scheme below, not light-dark(): code blocks are color-scheme: dark, where the accent would
-     * resolve to its dark value against the light page
+     * scheme below, not light-dark(): code blocks are color-scheme: dark, where it would resolve
+     * to its dark value against the light page. Blue, the hue of the grays of the page, so it
+     * stands out from the red of the links without leaving the palette (5.3:1 on the light page,
+     * 8:1 on the dark one)
      */
-    --color-focus: #e0452f;
-    --focus-ring: 2px solid var(--color-focus);
+    --color-focus: #2f56d6;
+    --focus-ring: 3px solid var(--color-focus);
     --focus-offset: 3px;
 
-    /* Shape */
-    --radius: 2px;
+    /* Shape: the interface, and the photos */
+    --radius: 6px;
+    --photo-radius: 6px;
 
     /* Layout: a column of text, and a wider one for images that break out of it */
     --width-text: 40rem;
     --width-wide: 80rem;
     --gutter: 1.25rem;
 
-    /* Sticky header height, so anchors are not hidden under it, and where sticky boxes stop */
-    --header-offset: 5rem;
-    --sticky-top: calc(var(--header-offset) + 1rem);
+    /* The height of the sticky header: its padding (2 × 0.875rem), the line of the logo
+       (1.18rem × 1.6) and its border. Sticky boxes stop a little lower */
+    --header-offset: calc(3.6375rem + 1px);
+    --sticky-top: calc(var(--header-offset) + 0.5rem);
+  }
+
+  /* Narrow screens: the header wraps onto two lines, a gap (0.5rem) and the line of the nav
+     (0.9375rem × 1.6) more */
+  @media (width < 27rem) {
+    :root {
+      --header-offset: calc(5.6375rem + 1px);
+    }
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --color-focus: #ff7a66;
+      --color-focus: #8ea6ff;
     }
   }
 
@@ -126,7 +138,8 @@
 
 @layer base {
   html {
-    scroll-padding-top: var(--header-offset);
+    /* 2px less: the rule over a section hides behind the header, just above its own border */
+    scroll-padding-top: calc(var(--header-offset) - 2px);
     -webkit-text-size-adjust: 100%;
 
     @media (prefers-reduced-motion: no-preference) {
@@ -168,14 +181,22 @@
     text-wrap: pretty;
   }
 
+  /* Links in the accent for text, with a softer underline that fills in and thickens on hover.
+     The header, the table of contents and the buttons set their own color */
   a {
-    color: inherit;
+    color: var(--color-accent-text);
     text-decoration-color: color-mix(in oklab, currentColor 45%, transparent);
-    text-decoration-thickness: 1px;
+    text-decoration-thickness: max(1.5px, 0.08em);
     text-underline-offset: 0.2em;
 
     &:hover {
-      text-decoration-color: var(--color-accent);
+      text-decoration-color: currentColor;
+      text-decoration-thickness: max(2.5px, 0.14em);
+    }
+
+    /* The ring rounded like the inline code */
+    &:focus-visible {
+      border-radius: calc(var(--radius) / 2);
     }
   }
 
@@ -220,7 +241,8 @@
     font-size: 0.85em;
     background: var(--color-surface);
     border: 1px solid var(--color-rule);
-    border-radius: var(--radius);
+    /* Half the radius: small pieces of text, which a full one turns into pills */
+    border-radius: calc(var(--radius) / 2);
   }
 
   pre {
@@ -353,6 +375,7 @@
 
   /* 1rem, so "zoom" (1.18em, bold) is large text: 3:1 is enough for the accent */
   .logo {
+    color: var(--color-text);
     font-size: 1rem;
     font-weight: 700;
     font-family: var(--font-heading);
