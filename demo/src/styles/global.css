@@ -89,11 +89,13 @@
 
     /*
      * Focus ring, the same on every element, the zoom controls included. A plain color, set per
-     * scheme below, not light-dark(): code blocks are color-scheme: dark, where the accent would
-     * resolve to its dark value against the light page
+     * scheme below, not light-dark(): code blocks are color-scheme: dark, where it would resolve
+     * to its dark value against the light page. Blue, the hue of the grays of the page, so it
+     * stands out from the red of the links without leaving the palette (5.3:1 on the light page,
+     * 8:1 on the dark one)
      */
-    --color-focus: #e0452f;
-    --focus-ring: 2px solid var(--color-focus);
+    --color-focus: #2f56d6;
+    --focus-ring: 3px solid var(--color-focus);
     --focus-offset: 3px;
 
     /* Shape: the interface, and the photos */
@@ -121,7 +123,7 @@
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --color-focus: #ff7a66;
+      --color-focus: #8ea6ff;
     }
   }
 
