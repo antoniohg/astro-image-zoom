@@ -190,6 +190,22 @@ const image = (name: string) => `${base}images/${name}.svg`;
         </ImageZoom>
       </section>
 
+      <section id="no-arrows">
+        <h2>No arrows, the counter stays</h2>
+        <ImageZoom showNavigation={false}>
+          <img src={image("wide")} alt="Wide arrows one" />
+          <img src={image("portrait")} alt="Portrait arrows two" />
+        </ImageZoom>
+      </section>
+
+      <section id="no-bar">
+        <h2>No arrows, no counter</h2>
+        <ImageZoom showNavigation={false} showCounter={false}>
+          <img src={image("wide")} alt="Wide bar one" />
+          <img src={image("portrait")} alt="Portrait bar two" />
+        </ImageZoom>
+      </section>
+
       <section id="ignore">
         <h2>Images left out with the ignore prop and data-image-zoom-ignore</h2>
         <ImageZoom ignore=".logo, [alt='']">

@@ -620,6 +620,11 @@
   display: none;
 }
 
+/* Without the arrows (showNavigation), the counter may stay alone */
+.astro-image-zoom-overlay[data-show-nav="false"] .astro-image-zoom-nav {
+  display: none;
+}
+
 /* "sides" layout: the arrows move to the screen edges, the counter stays at the bottom */
 .astro-image-zoom-overlay[data-navigation-layout="sides"]
   .astro-image-zoom-toolbar {

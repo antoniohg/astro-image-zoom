@@ -752,6 +752,7 @@ class Zoom {
       closeImage: String(options.closeOnImage),
       captionPosition: options.captionPosition,
       showCaption: String(options.showCaption),
+      showNav: String(options.showNavigation),
       showCounter: String(options.showCounter),
       navigationLayout: options.navigationLayout,
     });
@@ -1350,10 +1351,11 @@ class Zoom {
     this.updateNavigationButtons();
   }
 
-  // The navigation bar: arrows and counter, only for galleries
+  // The navigation bar: arrows and counter, each one on its own, only for galleries
   private updateNavigationButtons(): void {
     const total = this.state.images.length;
-    this.toolbar.hidden = !this.options.showNavigation || total < 2;
+    const { showNavigation, showCounter } = this.options;
+    this.toolbar.hidden = !(showNavigation || showCounter) || total < 2;
     if (this.toolbar.hidden) return;
 
     const index = this.state.currentIndex;
