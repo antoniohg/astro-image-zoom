@@ -323,8 +323,12 @@
 }
 
 /* The image leaves the shape of its thumbnail for its own (reshape() in zoom.ts): the part the
-   thumbnail shows moves and scales from where it was */
-.astro-image-zoom-overlay.is-open .astro-image-zoom-image.is-reshaping {
+   thumbnail shows moves and scales from where it was. Also during the opening, where it replaces
+   the zoom animation: more specific than its rule, the animation goes on when the overlay opens */
+.astro-image-zoom-overlay.is-open .astro-image-zoom-image.is-reshaping,
+.astro-image-zoom-overlay.is-opening
+  .astro-image-zoom-slide.is-active
+  .astro-image-zoom-image.is-reshaping {
   animation: astro-image-zoom-reshape var(--astro-image-zoom-duration)
     cubic-bezier(0.2, 0, 0.2, 1);
 }

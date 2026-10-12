@@ -1120,6 +1120,40 @@ test.describe("gallery", () => {
     await expect(image).toHaveCSS("background-image", "none");
   });
 
+  test("takes the shape of the image during the opening, from where the zoom has taken it", async ({
+    page,
+  }) => {
+    // A slow opening, so the size arrives while the zoom animation runs
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?held";
+        link
+          .closest("astro-image-zoom")!
+          .style.setProperty("--zoom-animation-duration", "2s");
+      });
+    await holdDecode(page, { size: true });
+    await links(page, "gallery").nth(1).click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+
+    // The size is known: no wait for the zoom to end, its animation gives way to the reshape
+    await releaseDecode(page);
+    const image = zoomedImage(page);
+    await expect(image).toHaveClass(/is-reshaping/);
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+    const animations = await image.evaluate((image: HTMLImageElement) =>
+      image
+        .getAnimations()
+        .map((animation) => (animation as CSSAnimation).animationName),
+    );
+    expect(animations).toEqual(["astro-image-zoom-reshape"]);
+
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    await expect(image).not.toHaveClass(/is-reshaping/);
+    const landscape = (await image.boundingBox())!;
+    expect(landscape.width / landscape.height).toBeCloseTo(1.6, 1);
+  });
+
   test("preloads the neighbors once the image on screen has loaded", async ({
     page,
   }) => {
@@ -1155,13 +1189,13 @@ test.describe("gallery", () => {
     await holdDecode(page, { size: true });
     await openZoom(page, "gallery", 1);
     const image = zoomedImage(page);
-    expect((await image.boundingBox())!.height).toBeCloseTo(200, 0);
+    expect((await image.boundingBox())!.height).toBeCloseTo(240, 0);
 
     // A bigger viewport (a phone rotated, a window resized): the square grows with the slide
     await page.setViewportSize({ width: 800, height: 600 });
     await expect
       .poll(async () => (await image.boundingBox())!.height)
-      .toBeCloseTo(400, 0);
+      .toBeCloseTo(480, 0);
     const box = (await image.boundingBox())!;
     expect(box.width).toBeCloseTo(box.height, 0);
   });
