@@ -1400,6 +1400,29 @@ test.describe("gallery", () => {
     await expect(caption(page)).toBeHidden();
   });
 
+  test("hides the arrows and the counter on their own", async ({ page }) => {
+    const previous = page.getByRole("button", { name: "Previous image" });
+    const next = page.getByRole("button", { name: "Next image" });
+
+    // showNavigation={false}: the counter alone, and the keys still move
+    await openZoom(page, "no-arrows");
+    await expect(counter(page)).toHaveText("1 / 2");
+    await expect(previous).toBeHidden();
+    await expect(next).toBeHidden();
+    await page.keyboard.press("ArrowRight");
+    await expect(counter(page)).toHaveText("2 / 2");
+    await expect(zoomedImage(page)).toHaveAttribute("src", /portrait\.svg$/);
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+
+    // With showCounter={false} too, no bar at all
+    await openZoom(page, "no-bar");
+    await expect(counter(page)).toBeHidden();
+    await expect(previous).toBeHidden();
+    await expect(next).toBeHidden();
+    await expect(page.locator(".astro-image-zoom-toolbar")).toBeHidden();
+  });
+
   test("leaves out the images of the ignore prop and those with data-image-zoom-ignore", async ({
     page,
   }) => {

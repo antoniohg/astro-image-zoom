@@ -74,6 +74,14 @@ describe("<ImageZoom>", () => {
     });
   });
 
+  it("keeps the counter on its own, not tied to showNavigation", async () => {
+    const counterOf = async (props: Record<string, unknown>) =>
+      (await render(props)).attributes.get("data-image-zoom-show-counter");
+    expect(await counterOf({})).toBe("true");
+    expect(await counterOf({ showNavigation: false })).toBe("true");
+    expect(await counterOf({ showCounter: false })).toBe("false");
+  });
+
   it("turns the theme and the duration into --zoom-* variables", async () => {
     const { attributes } = await render({
       theme: {
