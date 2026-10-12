@@ -1129,7 +1129,7 @@ test.describe("gallery", () => {
       .evaluate((link: HTMLAnchorElement) => {
         link.href = "/images/landscape.svg?held";
         link
-          .closest("astro-image-zoom")!
+          .closest<HTMLElement>("astro-image-zoom")!
           .style.setProperty("--zoom-animation-duration", "2s");
       });
     await holdDecode(page, { size: true });
