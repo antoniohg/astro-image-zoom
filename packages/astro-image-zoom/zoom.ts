@@ -477,7 +477,7 @@ const SIZE_WAIT = 150;
 // the full-size file may show more of the picture than its thumbnail (a crop), so the image is
 // bigger than the thumbnail on screen. Up to this many times wider or taller than the thumbnail, the
 // part the thumbnail shows only grows when the image takes its shape, never shrinks
-const PROVISIONAL_SCALE = 1.5;
+const PROVISIONAL_SCALE = 1.25;
 
 /**
  * Where the thumbnail, already loaded, stands in for the full-size image until it decodes, in % of
@@ -1162,26 +1162,46 @@ class Zoom {
     return false;
   }
 
-  // Once the zoom animations end, which move the image from its box and end on its crop: an image
-  // with the shape of its thumbnail takes its own once its size is known (reshape()), and the rest of
-  // the picture unfolds from the crop of the thumbnail that stood in for it once the file decodes (a
-  // transition in overlay.css; started under the animations, it would show once they end, as a jump)
+  // An image with the shape of its thumbnail takes its own as soon as its size is known (reshape()),
+  // also while the zoom animation runs: it goes on from where the image is, in one movement. The rest
+  // of the picture unfolds from the crop of the thumbnail that stood in for it once the file decodes
+  // and the zoom animations end (a transition in overlay.css; started under them, it would show once
+  // they end, as a jump)
   private settle(index: number, slide: ZoomSlide): void {
-    if (this.phase !== "open") return;
+    if (this.phase !== "open" && this.phase !== "opening") return;
     if (slide.provisional) {
       if (!slide.sized) return;
       this.reshape(index, slide);
     }
-    if (slide.decoded)
+    if (this.phase === "open" && slide.decoded)
       slide.img.style.removeProperty("--astro-image-zoom-crop");
   }
 
   // The image leaves the shape of its thumbnail for its own, with the thumbnail as its placeholder
   // (showPlaceholder()). On screen, the part the thumbnail shows moves and scales from where it was
-  // (a FLIP, astro-image-zoom-reshape in overlay.css)
+  // (a FLIP, astro-image-zoom-reshape in overlay.css). During the opening, from where the zoom
+  // animation has taken it, which stops: it only goes on when there is a placeholder part to follow,
+  // else it waits for the animation to end (settle() runs again)
   private reshape(index: number, slide: ZoomSlide): void {
     const { img } = slide;
+    if (this.phase === "opening") {
+      const thumbnail = this.getThumbnail(index);
+      const hasPart =
+        (img.style.backgroundImage || slide.decoded) &&
+        thumbnail &&
+        placeholderBox(thumbnail, img);
+      if (!hasPart) return;
+    }
     const first = img.getBoundingClientRect();
+    if (this.phase === "opening") {
+      for (const animation of img.getAnimations()) {
+        if (
+          animation instanceof CSSAnimation &&
+          animation.animationName === "astro-image-zoom-in"
+        )
+          animation.cancel();
+      }
+    }
     img.style.removeProperty("width");
     img.style.removeProperty("height");
     img.style.removeProperty("object-fit");
