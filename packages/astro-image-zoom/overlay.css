@@ -237,6 +237,13 @@
   background-repeat: no-repeat;
 }
 
+/* The file that loads while the zoom animation runs waits out of the box, clipped away, and the
+   thumbnail stands in for it: painting a large image for the first time mid-animation drops frames.
+   zoom.ts takes the class off when the animations end */
+.astro-image-zoom-image.is-holding {
+  object-position: -200vmax 0;
+}
+
 /* Loading state, until the image can be shown (loadSlide() in zoom.ts): after 200ms, the image is
    hidden and the spinner shows */
 .astro-image-zoom-slide.is-loading .astro-image-zoom-image {

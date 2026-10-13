@@ -108,6 +108,8 @@ const meta = [photo.mission, photo.year].filter(Boolean).join(" · ");
       loading={loading}
       fetchpriority={fetchpriority}
       data-image-zoom-src={full.src}
+      data-image-zoom-width={full.attributes.width}
+      data-image-zoom-height={full.attributes.height}
       data-image-zoom-caption={`${photo.caption} — ${meta}`}
     />
   </picture>

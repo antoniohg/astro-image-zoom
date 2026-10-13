@@ -1154,6 +1154,86 @@ test.describe("gallery", () => {
     expect(landscape.width / landscape.height).toBeCloseTo(1.6, 1);
   });
 
+  test("keeps the file that loads during the opening out of the box until it ends", async ({
+    page,
+  }) => {
+    // A slow opening, and a file whose decoding waits
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?held";
+        link
+          .closest<HTMLElement>("astro-image-zoom")!
+          .style.setProperty("--zoom-animation-duration", "2s");
+      });
+    await holdDecode(page);
+    await links(page, "gallery").nth(1).click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+
+    // It decodes mid-animation: the thumbnail stays and the file waits, no first paint of it
+    await releaseDecode(page);
+    const image = zoomedImage(page);
+    await expect(image).toHaveClass(/is-holding/);
+    await expect(image).toHaveCSS("background-image", /square\.svg/);
+
+    // The animations end: the file comes in
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    await expect(image).not.toHaveClass(/is-holding/);
+    await expect(image).toHaveCSS("background-image", "none");
+  });
+
+  test("opens with the final shape when the page says the size of the file", async ({
+    page,
+  }) => {
+    // The same square thumbnail of a landscape file whose size and decoding wait, but the page
+    // said it is 1600 × 1000: no wait for the first bytes, and no reshape
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?held";
+        const img = link.querySelector("img")!;
+        img.dataset.imageZoomWidth = "1600";
+        img.dataset.imageZoomHeight = "1000";
+      });
+    await holdDecode(page, { size: true });
+
+    await openZoom(page, "gallery", 1);
+    const image = zoomedImage(page);
+    const box = (await image.boundingBox())!;
+    expect(box.width / box.height).toBeCloseTo(1.6, 1);
+    await expect(image).not.toHaveClass(/is-reshaping/);
+    await expect(image).toHaveCSS("background-image", /square\.svg/);
+
+    // The file decodes: the placeholder goes, the size is the file's own
+    await releaseDecode(page);
+    await expect(image).toHaveCSS("background-image", "none");
+    await expect(image).not.toHaveAttribute("style", /width/);
+    const decoded = (await image.boundingBox())!;
+    expect(decoded.width / decoded.height).toBeCloseTo(1.6, 1);
+  });
+
+  test("preloads the neighbors once the opening animation ends", async ({
+    page,
+  }) => {
+    // A slow opening and a file that decodes at once: its neighbors would decode under the animation
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link
+          .closest<HTMLElement>("astro-image-zoom")!
+          .style.setProperty("--zoom-animation-duration", "2s");
+      });
+    await links(page, "gallery").nth(1).click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+    const images = page.locator(".astro-image-zoom-image");
+    await expect(images.nth(0)).not.toHaveAttribute("src");
+    await expect(images.nth(2)).not.toHaveAttribute("src");
+
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    await expect(images.nth(0)).toHaveAttribute("src", /.+/);
+    await expect(images.nth(2)).toHaveAttribute("src", /.+/);
+  });
+
   test("preloads the neighbors once the image on screen has loaded", async ({
     page,
   }) => {

@@ -1,11 +1,18 @@
 import overlayStyles from "./overlay.css?inline";
 import { DEFAULT_LABELS, type ImageZoomLabels } from "./labels";
 
+// The size of a full-size file, from data-image-zoom-width and data-image-zoom-height
+interface ZoomDimensions {
+  width: number;
+  height: number;
+}
+
 interface ZoomImage {
   src: string;
   alt: string;
   caption?: string;
   element: HTMLElement;
+  dimensions?: ZoomDimensions | undefined;
 }
 
 interface ZoomState {
@@ -59,6 +66,10 @@ interface ZoomSlide {
   decoded?: boolean;
   // Resolves when the full-size file has decoded, or failed
   loaded?: Promise<void>;
+  // The size of the file, when the page said it: the image opens with its final shape
+  dimensions?: ZoomDimensions | undefined;
+  // Laid out at the size in `dimensions`, until the file decodes
+  fixedSize?: boolean;
   // Laid out with the shape of its thumbnail, until the size of the file is known: see loadSlide()
   provisional?: boolean;
   // Whether the size of the file is known
@@ -473,6 +484,9 @@ function withoutTransition(element: HTMLElement, change: () => void): void {
 // real shape. Under the 200ms after which the spinner shows (overlay.css)
 const SIZE_WAIT = 150;
 
+// How long the opening waits for a file to decode before the thumbnail stands in for it (whenShowable())
+const DECODE_GRACE = 60;
+
 // How much smaller than the slide lets it the thumbnail stands in for the image (fitProvisional()):
 // the full-size file may show more of the picture than its thumbnail (a crop), so the image is
 // bigger than the thumbnail on screen. Up to this many times wider or taller than the thumbnail, the
@@ -617,11 +631,21 @@ class Zoom {
       )
       .map((anchor) => {
         const img = anchor.querySelector("img");
+        // On the image, or on the link of a site's own markup
+        const data = (name: "Width" | "Height") =>
+          img?.dataset[`imageZoom${name}`] ??
+          anchor.dataset[`imageZoom${name}`];
+        const width = Number.parseFloat(data("Width") ?? "");
+        const height = Number.parseFloat(data("Height") ?? "");
         return {
           src: anchor.href,
           alt: img?.alt || "",
           caption: this.captionOf(anchor, img),
           element: anchor,
+          dimensions:
+            width > 0 && height > 0 && Number.isFinite(width + height)
+              ? { width, height }
+              : undefined,
         };
       })
       .filter(({ src }) => src);
@@ -863,7 +887,6 @@ class Zoom {
     withoutTransition(this.imageElement, () => {
       this.imageElement.style.opacity = "1";
     });
-    this.preloadNeighbors(index);
 
     const finalRect = this.imageElement.getBoundingClientRect();
     const transform = flipTransform(sourceRect, finalRect, sourceFit);
@@ -881,6 +904,8 @@ class Zoom {
       this.phase = "open";
       this.overlay.classList.remove("is-opening");
       this.overlay.classList.add("is-open");
+      // Their files would decode under the animation: the neighbors wait for its end
+      this.preloadNeighbors(index);
       // The images whose size became known during the opening take their shape now, and the ones
       // that decoded unfold
       this.slides.forEach((slide, i) => this.settle(i, slide));
@@ -1050,7 +1075,7 @@ class Zoom {
   }
 
   private buildSlides(): void {
-    this.slides = this.state.images.map(({ src, alt }) => {
+    this.slides = this.state.images.map(({ src, alt, dimensions }) => {
       const figure = document.createElement("figure");
       figure.className = "astro-image-zoom-slide";
       figure.part.add("slide");
@@ -1059,7 +1084,7 @@ class Zoom {
       img.part.add("image");
       img.alt = alt;
       figure.append(img);
-      return { figure, img, src };
+      return { figure, img, src, dimensions };
     });
 
     // Before the caption and the controls, which stay in the track
@@ -1092,13 +1117,30 @@ class Zoom {
       figure.classList.remove("is-loading"),
     );
     void decoded.then(() => {
-      img.style.removeProperty("background-image");
-      img.style.removeProperty("background-size");
       slide.decoded = true;
+      // During the opening the thumbnail stays and the file stays out of the box: see release()
+      if (this.phase !== "opening") this.release(slide);
       this.settle(index, slide);
     });
 
     return slide.ready;
+  }
+
+  // The decoded file takes the place of the thumbnail that stood in for it. Not while the zoom
+  // animation runs: a large image that paints for the first time mid-animation drops frames (a
+  // retina screen, 2000 px and more), so the file waits out of the box (is-holding, overlay.css)
+  // and comes in when the animations end
+  private release(slide: ZoomSlide): void {
+    const { img } = slide;
+    img.classList.remove("is-holding");
+    img.style.removeProperty("background-image");
+    img.style.removeProperty("background-size");
+    // The file has its own size now, the one the page said
+    if (slide.fixedSize) {
+      img.style.removeProperty("width");
+      img.style.removeProperty("height");
+      slide.fixedSize = false;
+    }
   }
 
   // The thumbnail, already loaded, stands in for the full-size image until it decodes. With the
@@ -1110,6 +1152,29 @@ class Zoom {
     slide: ZoomSlide,
     decoded: Promise<void>,
   ): Promise<void> {
+    // A file that decodes at once (a fast network, a cached or prefetched file) opens as the image
+    // itself: painting it for the first time costs a few frames, and in the first frame of the
+    // animation they only delay its start, where under the animation they would be a stutter
+    const quick = await Promise.race([
+      decoded.then(() => true),
+      new Promise<false>((resolve) =>
+        setTimeout(() => resolve(false), DECODE_GRACE),
+      ),
+    ]);
+    if (quick) return;
+
+    // The page said the size: the final shape at once, with no wait for the first bytes
+    if (slide.dimensions && this.fitKnown(slide)) {
+      const { width, height } = slide.dimensions;
+      const naturalSize = { naturalWidth: width, naturalHeight: height };
+      if (this.showPlaceholder(index, slide.img, naturalSize)) {
+        slide.fixedSize = true;
+        return;
+      }
+      slide.img.style.removeProperty("width");
+      slide.img.style.removeProperty("height");
+    }
+
     const size = sizeKnown(slide.img, decoded);
     const known = await Promise.race([
       size.then(() => true),
@@ -1128,6 +1193,28 @@ class Zoom {
     if (!this.showPlaceholder(index, slide.img)) await decoded;
   }
 
+  // Sizes the image to the size the page said for its file, as the slide lets it: no bigger than
+  // the file, nor than the room its max-width and max-height (overlay.css) leave
+  private fitKnown(slide: ZoomSlide): boolean {
+    const { img, dimensions } = slide;
+    if (!dimensions) return false;
+
+    img.style.width = img.style.height = "100vmax";
+    const scale = Math.min(
+      1,
+      img.offsetWidth / dimensions.width,
+      img.offsetHeight / dimensions.height,
+    );
+    if (!(scale > 0)) {
+      img.style.removeProperty("width");
+      img.style.removeProperty("height");
+      return false;
+    }
+    img.style.width = `${dimensions.width * scale}px`;
+    img.style.height = `${dimensions.height * scale}px`;
+    return true;
+  }
+
   // Lays the image out with the shape of its thumbnail, smaller than the slide lets it
   // (PROVISIONAL_SCALE), with the thumbnail over all of it. object-fit: cover, so the file, if it decodes before its shape is
   // taken, shows the same centered crop
@@ -1139,6 +1226,7 @@ class Zoom {
     const { img } = slide;
     img.style.objectFit = "cover";
     img.style.backgroundImage = `url(${JSON.stringify(thumbnail.currentSrc)})`;
+    img.classList.add("is-holding");
     slide.provisional = true;
     return true;
   }
@@ -1174,8 +1262,10 @@ class Zoom {
       if (!slide.sized) return;
       this.reshape(index, slide);
     }
-    if (this.phase === "open" && slide.decoded)
+    if (this.phase === "open" && slide.decoded) {
+      this.release(slide);
       slide.img.style.removeProperty("--astro-image-zoom-crop");
+    }
   }
 
   // The image leaves the shape of its thumbnail for its own, with the thumbnail as its placeholder
@@ -1241,6 +1331,7 @@ class Zoom {
     const source = this.getThumbnail(index)?.currentSrc;
     if (!source || img.src === source) return Promise.resolve();
     // The thumbnail is the whole image now: no placeholder behind it, nor its crop
+    img.classList.remove("is-holding");
     img.style.removeProperty("background-image");
     img.style.removeProperty("background-size");
     setCrop(img, null);
@@ -1253,15 +1344,20 @@ class Zoom {
   // Shows the thumbnail, already loaded, behind the full-size image until it decodes: stretched
   // over it, or in its middle when the thumbnail file is a crop of the picture, with the image
   // clipped to it (placeholderBox())
-  private showPlaceholder(index: number, img: HTMLImageElement): boolean {
+  private showPlaceholder(
+    index: number,
+    img: HTMLImageElement,
+    size: Pick<HTMLImageElement, "naturalWidth" | "naturalHeight"> = img,
+  ): boolean {
     const thumbnail = this.getThumbnail(index);
     if (img.complete || !paintsAtOnce(thumbnail)) return false;
 
-    const box = placeholderBox(thumbnail, img);
+    const box = placeholderBox(thumbnail, size);
     if (!box) return false;
 
     img.style.backgroundImage = `url(${JSON.stringify(thumbnail.currentSrc)})`;
     img.style.backgroundSize = box.size;
+    img.classList.add("is-holding");
     setCrop(img, box.inset);
     return true;
   }
@@ -1392,6 +1488,7 @@ class Zoom {
   private handleResize = (): void => {
     this.slides.forEach((slide, i) => {
       if (slide.provisional) this.fitProvisional(i, slide);
+      else if (slide.fixedSize) this.fitKnown(slide);
     });
   };
 
