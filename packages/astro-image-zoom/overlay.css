@@ -55,6 +55,13 @@
     rgba(0, 0, 0, 0.08),
     rgba(255, 255, 255, 0.12)
   );
+  /* The surfaces blur what is behind them, but only once the zoom is open: a blur over an image
+     that moves is computed again on every frame of the animation */
+  --astro-image-zoom-blur: none;
+}
+
+.astro-image-zoom-overlay.is-open {
+  --astro-image-zoom-blur: blur(16px) saturate(1.6);
 }
 
 .astro-image-zoom-overlay[open] {
@@ -468,8 +475,9 @@
   background-color: var(--zoom-caption-bg, var(--astro-image-zoom-surface));
   border: 1px solid var(--astro-image-zoom-hairline);
   border-radius: var(--zoom-caption-radius, 10px);
-  -webkit-backdrop-filter: blur(16px) saturate(1.6);
-  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: var(--astro-image-zoom-blur);
+  backdrop-filter: var(--astro-image-zoom-blur);
+  transition: backdrop-filter 0.15s ease;
 }
 
 .astro-image-zoom-caption:empty,
@@ -545,7 +553,8 @@
   transition:
     opacity calc(var(--astro-image-zoom-duration) * 0.4) ease-out
       calc(var(--astro-image-zoom-duration) * 0.6),
-    background-color 0.15s ease;
+    background-color 0.15s ease,
+    backdrop-filter 0.15s ease;
 }
 
 .astro-image-zoom-overlay.is-closing
@@ -572,7 +581,9 @@
   border: 0;
   border-radius: var(--zoom-button-radius, 999px);
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    backdrop-filter 0.15s ease;
 }
 
 .astro-image-zoom-close svg,
@@ -594,8 +605,8 @@
 .astro-image-zoom-overlay[data-navigation-layout="sides"]
   :is(.astro-image-zoom-nav, .astro-image-zoom-counter) {
   border: 1px solid var(--astro-image-zoom-hairline);
-  -webkit-backdrop-filter: blur(16px) saturate(1.6);
-  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: var(--astro-image-zoom-blur);
+  backdrop-filter: var(--astro-image-zoom-blur);
 }
 
 .astro-image-zoom-close {
@@ -619,6 +630,7 @@
   display: flex;
   align-items: center;
   padding: 2px;
+  transition: backdrop-filter 0.15s ease;
   border-radius: calc(var(--zoom-button-radius, 999px) + 2px);
 }
 
