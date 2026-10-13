@@ -1224,6 +1224,33 @@ test.describe("gallery", () => {
     expect(decoded.height).toBeCloseTo(box.height, 0);
   });
 
+  test("asks for the full-size file when its link is pointed at", async ({
+    page,
+  }) => {
+    const requested: string[] = [];
+    page.on("request", (request) => requested.push(request.url()));
+    const asked = () =>
+      requested.filter((url) => url.endsWith("?by-the-zoom")).length;
+    await links(page, "gallery")
+      .nth(0)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/portrait.svg?by-the-zoom";
+      });
+
+    // Passing by is no intent
+    await links(page, "gallery").nth(0).hover();
+    await links(page, "gallery").nth(1).hover();
+    await page.waitForTimeout(400);
+    expect(asked()).toBe(0);
+
+    // Staying is: the file is asked for once, and the click finds it
+    await links(page, "gallery").nth(0).hover();
+    await expect.poll(asked).toBe(1);
+    await links(page, "gallery").nth(0).click();
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    expect(asked()).toBe(1);
+  });
+
   test("animates the clip-path only when the thumbnail crops or rounds the image", async ({
     page,
   }) => {

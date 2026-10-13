@@ -567,6 +567,12 @@ export function isFlatClip(clipPath: string): boolean {
   return numbers.every((number) => Math.abs(Number(number)) < 0.5);
 }
 
+// How many files asked for ahead of a click are kept (a hover is rarely followed by another)
+const PRELOAD_LIMIT = 3;
+// How long (ms) a pointer or the focus stays on a link before its file is asked for: less than
+// that is passing by, and Astro's prefetch has had its turn by then
+const PRELOAD_WAIT = 200;
+
 class Zoom {
   private wrapper: HTMLElement;
   // The element that holds the overlay's shadow root, and its --zoom-* variables
@@ -613,6 +619,9 @@ class Zoom {
   private scrollTarget = 0;
   private scrollTargetUntil = 0;
   private openId = 0;
+  // The files asked for when a link was pointed at or focused, by what they are: see preload()
+  private preloaded = new Map<string, HTMLImageElement>();
+  private preloadTimer: number | undefined;
 
   // Listeners on the page's links live as long as the instance
   private controller = new AbortController();
@@ -663,29 +672,71 @@ class Zoom {
     );
 
     this.state.images = Array.from(links)
-      .filter(
-        (anchor) => anchor.querySelector("img") && !this.isIgnored(anchor),
-      )
-      .map((anchor) => {
-        const img = anchor.querySelector("img");
-        // On the image, or on the link of a site's own markup
-        const data = (name: "Width" | "Height") =>
-          img?.dataset[`imageZoom${name}`] ??
-          anchor.dataset[`imageZoom${name}`];
-        const width = Number.parseFloat(data("Width") ?? "");
-        const height = Number.parseFloat(data("Height") ?? "");
-        return {
-          src: anchor.href,
-          alt: img?.alt || "",
-          caption: this.captionOf(anchor, img),
-          element: anchor,
-          dimensions:
-            width > 0 && height > 0 && Number.isFinite(width + height)
-              ? { width, height }
-              : undefined,
-        };
-      })
-      .filter(({ src }) => src);
+      .map((anchor) => this.describe(anchor))
+      .filter((image): image is ZoomImage => image !== null && !!image.src);
+  }
+
+  // What the zoom needs to know of a link, or null when it is no image to zoom: a link without an
+  // image, or one the page leaves out
+  private describe(anchor: HTMLAnchorElement): ZoomImage | null {
+    const img = anchor.querySelector("img");
+    if (!img || this.isIgnored(anchor)) return null;
+
+    // On the image, or on the link of a site's own markup
+    const data = (name: "Width" | "Height") =>
+      img.dataset[`imageZoom${name}`] ?? anchor.dataset[`imageZoom${name}`];
+    const width = Number.parseFloat(data("Width") ?? "");
+    const height = Number.parseFloat(data("Height") ?? "");
+    return {
+      src: anchor.href,
+      alt: img.alt || "",
+      caption: this.captionOf(anchor, img),
+      element: anchor,
+      dimensions:
+        width > 0 && height > 0 && Number.isFinite(width + height)
+          ? { width, height }
+          : undefined,
+    };
+  }
+
+  // Asks for the full-size file when a link is pointed at or focused, so the click finds it in the
+  // cache and the zoom opens as the image itself, not as a blurry thumbnail. A moment after, not
+  // at once: a pointer only passing over is no intent, and a site that prefetches its links with
+  // Astro (prefetch, data-astro-prefetch) will have asked for the same file by then, which is then
+  // left to it. Not with the data saver on
+  private preload(anchor: HTMLAnchorElement, wait = PRELOAD_WAIT): void {
+    clearTimeout(this.preloadTimer);
+    this.preloadTimer = window.setTimeout(() => {
+      const connection = (
+        navigator as Navigator & { connection?: { saveData?: boolean } }
+      ).connection;
+      if (this.isOpen || connection?.saveData) return;
+
+      const image = this.describe(anchor);
+      if (!image || this.preloaded.has(image.src)) return;
+      const prefetched = [
+        ...document.head.querySelectorAll<HTMLLinkElement>(
+          'link[rel="prefetch"]',
+        ),
+      ].some((link) => link.href === image.src);
+      if (prefetched) return;
+
+      const file = new Image();
+      file.src = image.src;
+      // Decoded too, off the main thread: the slide that shows it then finds it ready
+      void file.decode().catch(() => {
+        // A broken file: the opening shows the thumbnail instead (showThumbnailInstead())
+      });
+      this.preloaded.set(image.src, file);
+      if (this.preloaded.size > PRELOAD_LIMIT) {
+        const [oldest] = this.preloaded.entries();
+        if (oldest) {
+          // Still on its way: a pointer that went on, no use for the bytes. A loaded one is not harmed
+          if (!oldest[1].complete) oldest[1].src = "";
+          this.preloaded.delete(oldest[0]);
+        }
+      }
+    }, wait);
   }
 
   // The caption of a link: its data-image-zoom-caption (an empty one means no caption), then the
@@ -764,6 +815,33 @@ class Zoom {
       },
       { signal: this.controller.signal },
     );
+
+    // Intent: a pointer over a link (not on touch screens, where there is no hover), the focus of
+    // the keyboard, or a finger or button going down, a moment before the click
+    const intent = (e: Event): void => {
+      if (e instanceof PointerEvent && e.type === "pointerover") {
+        if (e.pointerType === "touch") return;
+      }
+      const link = (e.target as Element).closest?.<HTMLAnchorElement>(
+        "a[data-image-zoom-generated], a[data-image-zoom]",
+      );
+      // A press is the click about to happen: no wait
+      if (link) this.preload(link, e.type === "pointerdown" ? 0 : undefined);
+    };
+    for (const type of ["pointerover", "pointerdown", "focusin"]) {
+      this.wrapper.addEventListener(type, intent, {
+        passive: true,
+        signal: this.controller.signal,
+      });
+    }
+    // Gone before the wait ended: it was passing by
+    for (const type of ["pointerout", "focusout"]) {
+      this.wrapper.addEventListener(
+        type,
+        () => clearTimeout(this.preloadTimer),
+        { passive: true, signal: this.controller.signal },
+      );
+    }
   }
 
   // The overlay is shared, so only the instance that has it open may listen to it
@@ -1633,6 +1711,7 @@ class Zoom {
   public destroy(): void {
     // Remove the listeners on the page's links
     this.controller.abort();
+    clearTimeout(this.preloadTimer);
 
     // Close if open (also releases the overlay listeners)
     if (this.isOpen) this.close();

@@ -577,6 +577,11 @@ astro-image-zoom-overlay::part(caption) {
 - With `data-image-zoom-width` and `-height` the zoom does not wait for the size either: it opens with
   the final shape at once. The file that loads while the zoom animates comes in when the animation
   ends, so a large image does not paint for the first time mid-animation.
+- The file is asked for before the click: once a link has been pointed at or focused for a moment,
+  or pressed, the zoom asks for its full-size file, so the click finds it in the cache. It is
+  skipped with the browser's data saver on, and left to the site when Astro's prefetch
+  (`prefetch: { prefetchAll: true }` or `data-astro-prefetch` on a link) has already asked for the
+  `href`: nothing to configure, and nothing downloaded twice.
 - Animations are CSS only. The zoom itself is a transform; the `clip-path` animates only for a
   thumbnail that crops or rounds the image, and the blur behind the controls comes in once the
   zoom is open, so nothing expensive runs under the animation.
