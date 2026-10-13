@@ -577,8 +577,8 @@ astro-image-zoom-overlay::part(caption) {
 - With `data-image-zoom-width` and `-height` the zoom does not wait for the size either: it opens with
   the final shape at once. The file that loads while the zoom animates comes in when the animation
   ends, so a large image does not paint for the first time mid-animation.
-- Animations are CSS only (transforms, `clip-path` and opacity); the script measures positions and
-  waits for them to end.
+- Animations are CSS only. The zoom itself is a transform; the `clip-path` animates only for a
+  thumbnail that crops or rounds the image.
 - One overlay shared by every gallery on the page, and one delegated click listener per gallery.
 
 ## JavaScript API

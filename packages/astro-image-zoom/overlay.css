@@ -321,12 +321,26 @@
     cubic-bezier(0.2, 0, 0.2, 1) forwards;
 }
 
+/* Only an image the thumbnail crops or rounds animates its clip-path too (is-clipped, zoom.ts): the
+   rest runs as a transform alone, which the browser can run off the main thread */
+.astro-image-zoom-overlay.is-opening
+  .astro-image-zoom-slide.is-active
+  .astro-image-zoom-image.is-clipped {
+  animation-name: astro-image-zoom-in, astro-image-zoom-clip-in;
+}
+
 /* Closing animation - zoom out to thumbnail */
 .astro-image-zoom-overlay.is-closing
   .astro-image-zoom-slide.is-active
   .astro-image-zoom-image {
   animation: astro-image-zoom-out calc(var(--astro-image-zoom-duration) * 0.75)
     cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.astro-image-zoom-overlay.is-closing
+  .astro-image-zoom-slide.is-active
+  .astro-image-zoom-image.is-clipped {
+  animation-name: astro-image-zoom-out, astro-image-zoom-clip-out;
 }
 
 /* The image leaves the shape of its thumbnail for its own (reshape() in zoom.ts): the part the
@@ -355,6 +369,10 @@
     cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+.astro-image-zoom-image.is-detached.is-clipped {
+  animation-name: astro-image-zoom-out, astro-image-zoom-clip-out;
+}
+
 .astro-image-zoom-backdrop.is-detached {
   position: fixed;
   z-index: 9999998;
@@ -367,11 +385,19 @@
   from {
     transform: translate(var(--tx-from, 0), var(--ty-from, 0))
       scale(var(--scale-from, 0.5));
-    clip-path: var(--clip-from, inset(0));
   }
 
   to {
     transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes astro-image-zoom-clip-in {
+  from {
+    clip-path: var(--clip-from, inset(0));
+  }
+
+  to {
     clip-path: var(--astro-image-zoom-clip);
   }
 }
@@ -388,12 +414,20 @@
      while it took its shape or unfolded */
   from {
     transform: var(--transform-now, translate(0, 0) scale(1));
-    clip-path: var(--clip-now, var(--astro-image-zoom-clip));
   }
 
   to {
     transform: translate(var(--tx-from, 0), var(--ty-from, 0))
       scale(var(--scale-from, 0.5));
+  }
+}
+
+@keyframes astro-image-zoom-clip-out {
+  from {
+    clip-path: var(--clip-now, var(--astro-image-zoom-clip));
+  }
+
+  to {
     clip-path: var(--clip-from, inset(0));
   }
 }

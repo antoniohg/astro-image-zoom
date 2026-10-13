@@ -161,9 +161,16 @@ function readOptions(dataset: DOMStringMap): ZoomOptions {
 }
 
 // The CSS animations of the overlay that open() and close() wait for
-const OPEN_ANIMATIONS = ["astro-image-zoom-in", "astro-image-zoom-backdrop-in"];
+// The clip-path of the image animates apart from its transform, and only when there is something
+// to clip (isFlatClip()): a transform alone can run on the compositor, off the main thread
+const OPEN_ANIMATIONS = [
+  "astro-image-zoom-in",
+  "astro-image-zoom-clip-in",
+  "astro-image-zoom-backdrop-in",
+];
 const CLOSE_ANIMATIONS = [
   "astro-image-zoom-out",
+  "astro-image-zoom-clip-out",
   "astro-image-zoom-backdrop-out",
 ];
 
@@ -549,6 +556,17 @@ export function fitWidth(
   return dimensions.width * scale;
 }
 
+/**
+ * Whether a clip-path, as the browser serializes it, clips nothing: every length in it (the insets
+ * and the corner radii) is under half a pixel or a percent. The zoom animation then leaves
+ * clip-path out, and runs as a transform alone.
+ */
+export function isFlatClip(clipPath: string): boolean {
+  if (clipPath === "none") return true;
+  const numbers = clipPath.match(/-?\d*\.?\d+(?:e-?\d+)?/gi) ?? [];
+  return numbers.every((number) => Math.abs(Number(number)) < 0.5);
+}
+
 class Zoom {
   private wrapper: HTMLElement;
   // The element that holds the overlay's shadow root, and its --zoom-* variables
@@ -911,6 +929,12 @@ class Zoom {
     const transform = flipTransform(sourceRect, finalRect, sourceFit);
 
     this.setAnimationVariables(transform);
+    // Only an image that is cropped or rounded animates its clip-path
+    this.imageElement.classList.toggle(
+      "is-clipped",
+      !isFlatClip(transform.clipPath) ||
+        !isFlatClip(getComputedStyle(this.imageElement).clipPath),
+    );
 
     // Hide thumbnail instantly and trigger CSS animation simultaneously
     this.hideThumbnail(sourceImg);
@@ -983,7 +1007,8 @@ class Zoom {
     // placeholder, which the close stops
     const image = getComputedStyle(this.imageElement);
     this.imageElement.style.setProperty("--transform-now", image.transform);
-    this.imageElement.style.setProperty("--clip-now", image.clipPath);
+    const clipNow = image.clipPath;
+    this.imageElement.style.setProperty("--clip-now", clipNow);
 
     // Closed during the opening: the backdrop too, read before the opening stops
     if (closedFrom === "opening") {
@@ -1021,8 +1046,15 @@ class Zoom {
         behavior: "instant",
       });
     const targetRect = sourceImg.getBoundingClientRect();
-    this.setAnimationVariables(
-      flipTransform(targetRect, startRect, thumbnailFit(sourceImg)),
+    const transform = flipTransform(
+      targetRect,
+      startRect,
+      thumbnailFit(sourceImg),
+    );
+    this.setAnimationVariables(transform);
+    this.imageElement.classList.toggle(
+      "is-clipped",
+      !isFlatClip(transform.clipPath) || !isFlatClip(clipNow),
     );
 
     // If closed by scroll, unlock scroll immediately and use special animation
@@ -1315,6 +1347,9 @@ class Zoom {
       this.reshape(index, slide);
     }
     if (this.phase === "open" && slide.decoded) {
+      // The zoom animation that held the crop has just gone: commit the style without it, or the
+      // unfold would start from a style that still had the animation, and jump instead of running
+      void getComputedStyle(slide.img).clipPath;
       this.release(slide);
       slide.img.style.removeProperty("--astro-image-zoom-crop");
     }
@@ -1340,7 +1375,8 @@ class Zoom {
       for (const animation of img.getAnimations()) {
         if (
           animation instanceof CSSAnimation &&
-          animation.animationName === "astro-image-zoom-in"
+          (animation.animationName === "astro-image-zoom-in" ||
+            animation.animationName === "astro-image-zoom-clip-in")
         )
           animation.cancel();
       }
