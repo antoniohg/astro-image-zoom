@@ -1204,12 +1204,12 @@ test.describe("gallery", () => {
     await expect(image).not.toHaveClass(/is-reshaping/);
     await expect(image).toHaveCSS("background-image", /square\.svg/);
 
-    // The file decodes: the placeholder goes, the size is the file's own
+    // The file decodes: the placeholder goes, and the image stays where it was, in the same box
     await releaseDecode(page);
     await expect(image).toHaveCSS("background-image", "none");
-    await expect(image).not.toHaveAttribute("style", /width/);
     const decoded = (await image.boundingBox())!;
-    expect(decoded.width / decoded.height).toBeCloseTo(1.6, 1);
+    expect(decoded.width).toBeCloseTo(box.width, 0);
+    expect(decoded.height).toBeCloseTo(box.height, 0);
   });
 
   test("preloads the neighbors once the opening animation ends", async ({

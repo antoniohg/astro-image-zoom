@@ -125,7 +125,7 @@ without waiting for the first bytes of the file, also with a cropped thumbnail:
 ```
 
 Give the size of the file `data-image-zoom-src` points to. The image fits the screen from the
-start, no bigger than that file.
+start, no bigger than that file, and keeps its box when the file arrives.
 
 > **Note:** Do not pass the `Image` component directly to `data-image-zoom-src` or call it as a function. The zoom script expects a string URL for the `data-image-zoom-src` attribute.
 

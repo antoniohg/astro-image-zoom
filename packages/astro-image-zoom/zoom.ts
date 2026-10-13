@@ -68,7 +68,7 @@ interface ZoomSlide {
   loaded?: Promise<void>;
   // The size of the file, when the page said it: the image opens with its final shape
   dimensions?: ZoomDimensions | undefined;
-  // Laid out at the size in `dimensions`, until the file decodes
+  // Laid out at the size in `dimensions`, as the slide lets it: see fitKnown()
   fixedSize?: boolean;
   // Laid out with the shape of its thumbnail, until the size of the file is known: see loadSlide()
   provisional?: boolean;
@@ -484,7 +484,10 @@ function withoutTransition(element: HTMLElement, change: () => void): void {
 // real shape. Under the 200ms after which the spinner shows (overlay.css)
 const SIZE_WAIT = 150;
 
-// How long the opening waits for a file to decode before the thumbnail stands in for it (whenShowable())
+// How long the opening waits for the bytes of the file (LOAD_GRACE), and for them and its decoding
+// together (DECODE_GRACE), before the thumbnail stands in for it (whenShowable()): the first is all a
+// file on a slow network costs
+const LOAD_GRACE = 30;
 const DECODE_GRACE = 60;
 
 // How much smaller than the slide lets it the thumbnail stands in for the image (fitProvisional()):
@@ -528,6 +531,22 @@ export function placeholderBox(
     size: `${percent(width)} ${percent(height)}`,
     inset: `${insetY} ${insetX} ${insetY} ${insetX}`,
   };
+}
+
+/**
+ * How wide an image shows in `room`, with the shape and size of its `dimensions`: as the room lets
+ * it, and no bigger than its file.
+ */
+export function fitWidth(
+  dimensions: ZoomDimensions,
+  room: { width: number; height: number },
+): number {
+  const scale = Math.min(
+    1,
+    room.width / dimensions.width,
+    room.height / dimensions.height,
+  );
+  return dimensions.width * scale;
 }
 
 class Zoom {
@@ -1105,6 +1124,11 @@ class Zoom {
     if (slide.ready) return slide.ready;
 
     const { img, figure } = slide;
+    // The page said the size: the image has its final box from the start, before its file loads,
+    // and keeps it when the file takes its place
+    this.fitKnown(slide);
+    // The file the person is waiting for goes first; the neighbors load behind it
+    img.fetchPriority = index === this.state.currentIndex ? "high" : "low";
     img.src = slide.src;
     // The CSS shows the spinner only if the wait lasts
     figure.classList.add("is-loading");
@@ -1135,12 +1159,28 @@ class Zoom {
     img.classList.remove("is-holding");
     img.style.removeProperty("background-image");
     img.style.removeProperty("background-size");
-    // The file has its own size now, the one the page said
-    if (slide.fixedSize) {
-      img.style.removeProperty("width");
-      img.style.removeProperty("height");
-      slide.fixedSize = false;
-    }
+    // The size the page said holds, so the file takes its place without a jump. Not if the file has
+    // another shape: it is laid out as its own
+    const { naturalWidth, naturalHeight } = img;
+    const { dimensions } = slide;
+    if (
+      slide.fixedSize &&
+      dimensions &&
+      naturalWidth > 0 &&
+      naturalHeight > 0 &&
+      Math.abs(
+        naturalWidth / naturalHeight / (dimensions.width / dimensions.height) -
+          1,
+      ) > 0.02
+    )
+      this.unfit(slide);
+  }
+
+  // Leaves the image to the size its file and the slide give it
+  private unfit(slide: ZoomSlide): void {
+    slide.img.style.removeProperty("width");
+    slide.img.style.removeProperty("height");
+    slide.fixedSize = false;
   }
 
   // The thumbnail, already loaded, stands in for the full-size image until it decodes. With the
@@ -1152,27 +1192,39 @@ class Zoom {
     slide: ZoomSlide,
     decoded: Promise<void>,
   ): Promise<void> {
-    // A file that decodes at once (a fast network, a cached or prefetched file) opens as the image
-    // itself: painting it for the first time costs a few frames, and in the first frame of the
-    // animation they only delay its start, where under the animation they would be a stutter
-    const quick = await Promise.race([
-      decoded.then(() => true),
-      new Promise<false>((resolve) =>
-        setTimeout(() => resolve(false), DECODE_GRACE),
-      ),
-    ]);
-    if (quick) return;
+    // A file that is there within a moment (in memory, in the cache, a local server) and decodes at
+    // once opens as the image itself, with no placeholder to swap. Painting it for the first time
+    // costs a few frames, which in the first frame of the animation only delay its start, where
+    // under the animation they would be a stutter. The wait comes in two steps, so a file still on
+    // its way costs only the first: its bytes within LOAD_GRACE, then its decoding, all within
+    // DECODE_GRACE
+    const { img } = slide;
+    const started = performance.now();
+    const arrived = img.complete
+      ? Promise.resolve(true)
+      : new Promise<boolean>((resolve) => {
+          img.addEventListener("load", () => resolve(true), { once: true });
+          setTimeout(() => resolve(false), LOAD_GRACE);
+        });
+    if (await arrived) {
+      const quick = await Promise.race([
+        decoded.then(() => true),
+        new Promise<false>((resolve) =>
+          setTimeout(
+            () => resolve(false),
+            Math.max(0, DECODE_GRACE - (performance.now() - started)),
+          ),
+        ),
+      ]);
+      if (quick) return;
+    }
 
     // The page said the size: the final shape at once, with no wait for the first bytes
-    if (slide.dimensions && this.fitKnown(slide)) {
+    if (slide.dimensions && slide.fixedSize) {
       const { width, height } = slide.dimensions;
       const naturalSize = { naturalWidth: width, naturalHeight: height };
-      if (this.showPlaceholder(index, slide.img, naturalSize)) {
-        slide.fixedSize = true;
-        return;
-      }
-      slide.img.style.removeProperty("width");
-      slide.img.style.removeProperty("height");
+      if (this.showPlaceholder(index, slide.img, naturalSize)) return;
+      this.unfit(slide);
     }
 
     const size = sizeKnown(slide.img, decoded);
@@ -1193,25 +1245,25 @@ class Zoom {
     if (!this.showPlaceholder(index, slide.img)) await decoded;
   }
 
-  // Sizes the image to the size the page said for its file, as the slide lets it: no bigger than
-  // the file, nor than the room its max-width and max-height (overlay.css) leave
+  // Sizes the image to the shape the page said for its file, as the slide lets it: in the room its
+  // max-width and max-height (overlay.css) leave, and no bigger than the file. The size is kept after
+  // the file decodes, so nothing moves
   private fitKnown(slide: ZoomSlide): boolean {
     const { img, dimensions } = slide;
     if (!dimensions) return false;
 
     img.style.width = img.style.height = "100vmax";
-    const scale = Math.min(
-      1,
-      img.offsetWidth / dimensions.width,
-      img.offsetHeight / dimensions.height,
-    );
-    if (!(scale > 0)) {
-      img.style.removeProperty("width");
-      img.style.removeProperty("height");
+    const width = fitWidth(dimensions, {
+      width: img.offsetWidth,
+      height: img.offsetHeight,
+    });
+    if (!(width > 0)) {
+      this.unfit(slide);
       return false;
     }
-    img.style.width = `${dimensions.width * scale}px`;
-    img.style.height = `${dimensions.height * scale}px`;
+    img.style.width = `${width}px`;
+    img.style.height = `${(width * dimensions.height) / dimensions.width}px`;
+    slide.fixedSize = true;
     return true;
   }
 
@@ -1330,8 +1382,10 @@ class Zoom {
   ): Promise<void> {
     const source = this.getThumbnail(index)?.currentSrc;
     if (!source || img.src === source) return Promise.resolve();
-    // The thumbnail is the whole image now: no placeholder behind it, nor its crop
+    // The thumbnail is the whole image now: no placeholder behind it, nor its crop, and its own size
     img.classList.remove("is-holding");
+    const slide = this.slides[index];
+    if (slide) this.unfit(slide);
     img.style.removeProperty("background-image");
     img.style.removeProperty("background-size");
     setCrop(img, null);
