@@ -48,21 +48,48 @@ function isSafeUrl(url: string): boolean {
 // The largest safe candidate of a srcset: the widest with width descriptors, else the densest (a
 // candidate without a descriptor is 1x). As the HTML spec parses it, a URL runs up to a space and
 // may contain commas (data: URLs), but not end with them: a trailing comma ends the candidate
-const SRCSET_CANDIDATE = /[\s,]*(\S*[^\s,])(,+|[^,]*)/g;
-const DESCRIPTOR = /^([\d.]+)([wx])$/i;
+const SRCSET_CANDIDATE = /[\s,]*(\S*[^\s,])(?:,+|([^,]*))/g;
+const INTEGER = /^\d+$/;
+const FLOAT = /^(?:\d+|\d*\.\d+)(?:e[+-]?\d+)?$/i;
+
+type Size = { width: boolean; size: number };
+
+// The descriptors of a candidate, as the HTML spec reads them: at most one width (w, a positive
+// integer) or one density (x, a number), and a height (h) only beside a width. Anything else drops
+// the candidate, as the browser does; so does a density of 0, which the browser never shows
+function readDescriptors(text: string): Size | undefined {
+  let width: number | undefined;
+  let density: number | undefined;
+  let height: number | undefined;
+  for (const token of text.split(/\s+/).filter(Boolean)) {
+    const unit = token.at(-1)?.toLowerCase();
+    const value = token.slice(0, -1);
+    if (width !== undefined || density !== undefined) {
+      if (unit !== "h" || density !== undefined || height !== undefined)
+        return undefined;
+    }
+    if (unit === "w" && INTEGER.test(value)) width = Number(value);
+    else if (unit === "x" && FLOAT.test(value)) density = Number(value);
+    else if (unit === "h" && height === undefined && INTEGER.test(value))
+      height = Number(value);
+    else return undefined;
+  }
+  if (height !== undefined && (width === undefined || height === 0))
+    return undefined;
+  if (width !== undefined)
+    return width > 0 ? { width: true, size: width } : undefined;
+  density ??= 1;
+  return density > 0 ? { width: false, size: density } : undefined;
+}
 
 function largestCandidate(srcset: string): string | undefined {
-  let best: { url: string; width: boolean; size: number } | undefined;
-  for (const [, url = "", descriptor = ""] of srcset.matchAll(
+  let best: (Size & { url: string }) | undefined;
+  for (const [, url = "", descriptors = ""] of srcset.matchAll(
     SRCSET_CANDIDATE,
   )) {
-    if (!isSafeUrl(url)) continue;
-    const [, size = "1", unit = "x"] = DESCRIPTOR.exec(descriptor.trim()) ?? [];
-    const candidate = {
-      url,
-      width: unit.toLowerCase() === "w",
-      size: Number(size),
-    };
+    const size = readDescriptors(descriptors);
+    if (!size || !isSafeUrl(url)) continue;
+    const candidate = { url, ...size };
     // Width descriptors win over densities, which are only valid without them
     if (
       !best ||

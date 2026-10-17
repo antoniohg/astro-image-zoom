@@ -322,6 +322,37 @@ describe("wrapImages", () => {
       );
     });
 
+    it.each([
+      ["two densities", "/invalid.jpg 1x 2x"],
+      ["a width and a density", "/invalid.jpg 800w 2x"],
+      ["two widths", "/invalid.jpg 800w 1600w"],
+      ["a zero width", "/invalid.jpg 0w"],
+      ["a zero density", "/invalid.jpg 0x"],
+      ["a width that is not an integer", "/invalid.jpg 1.5w"],
+      ["a value that is not a number", "/invalid.jpg bigx"],
+      ["an unknown descriptor", "/invalid.jpg 2y"],
+      ["a height without a width", "/invalid.jpg 600h"],
+    ])("skips a file with %s, as the browser does", (_, invalid) => {
+      expect(
+        wrapImages(`<img srcset="${invalid}, /valid.jpg 1x" alt="">`),
+      ).toContain('href="/valid.jpg"');
+      const html = `<img srcset="${invalid}" alt="">`;
+      expect(wrapImages(html)).toBe(html);
+    });
+
+    it("reads a height beside a width, and densities written as decimals or exponents", () => {
+      expect(
+        wrapImages(
+          '<img srcset="/small.jpg 400w 300h, /large.jpg 800w 600h" alt="">',
+        ),
+      ).toContain('href="/large.jpg"');
+      expect(
+        wrapImages(
+          '<img srcset="/a.jpg .5x, /b.jpg 1.5x, /c.jpg 1e0x" alt="">',
+        ),
+      ).toContain('href="/b.jpg"');
+    });
+
     it("skips unsafe files", () => {
       expect(
         wrapImages(
