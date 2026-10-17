@@ -185,10 +185,13 @@ function parseSelector(source: string): Selector {
   return selector;
 }
 
+// One selector of a list: commas inside a quoted value, as in [alt="Last, First"], do not split it
+const LIST_ITEM = /(?:"[^"]*"|'[^']*'|[^,])+/g;
+
 /** Parses the ignore prop, a list of simple selectors separated by commas */
 export function parseIgnore(ignore = ""): Selector[] {
-  // Commas inside a quoted value, as in [alt="Last, First"], do not split; a trailing comma is forgiven
-  const parts = ignore.match(/(?:"[^"]*"|'[^']*'|[^,])+/g) ?? [];
+  // A trailing comma is forgiven
+  const parts = ignore.match(LIST_ITEM) ?? [];
   return parts.filter((part) => part.trim()).map(parseSelector);
 }
 
@@ -277,7 +280,7 @@ export function wrapImages(
     selectors.some((selector) => matches(name, attributes, selector));
   // Most tags can match no selector: the attributes are parsed only for those that may
   const mayBeIgnored = (name: string, rawAttributes: string): boolean =>
-    /data-image-zoom-ignore/i.test(rawAttributes) ||
+    rawAttributes.toLowerCase().includes("data-image-zoom-ignore") ||
     ignore.some(({ tag }) => !tag || tag === name);
 
   let output = "";
@@ -313,7 +316,7 @@ export function wrapImages(
 
     const isForeign = name === "svg" || name === "math";
     const selfClosing =
-      (foreignDepth > 0 || isForeign) && /\/\s*$/.test(rawAttributes);
+      (foreignDepth > 0 || isForeign) && rawAttributes.trimEnd().endsWith("/");
     if (isForeign && !selfClosing)
       foreignDepth = Math.max(0, foreignDepth + (closing ? -1 : 1));
 
