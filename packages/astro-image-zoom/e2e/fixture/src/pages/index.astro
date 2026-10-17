@@ -107,6 +107,10 @@ const image = (name: string) => `${base}images/${name}.svg`;
           <a href={image("wide")} data-image-zoom>
             <img src={image("portrait")} alt="Thumbnail in a link" />
           </a>
+          <img
+            srcset={`${image("square")} 1x, ${image("landscape")} 2x`}
+            alt="Thumbnail with only a srcset"
+          />
         </ImageZoom>
       </section>
 

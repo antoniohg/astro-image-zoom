@@ -45,10 +45,68 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
-// The zoom URL of an image: data-image-zoom-src wins over src, and unsafe URLs are ignored
+// The largest safe candidate of a srcset: the widest with width descriptors, else the densest (a
+// candidate without a descriptor is 1x). As the HTML spec parses it, a URL runs up to a space and
+// may contain commas (data: URLs), but not end with them: a trailing comma ends the candidate
+const SRCSET_CANDIDATE = /[\s,]*(\S*[^\s,])(?:,+|([^,]*))/g;
+const INTEGER = /^\d+$/;
+const FLOAT = /^(?:\d+|\d*\.\d+)(?:e[+-]?\d+)?$/i;
+
+type Size = { width: boolean; size: number };
+
+// The descriptors of a candidate, as the HTML spec reads them: at most one width (w, a positive
+// integer) or one density (x, a number), and a height (h) only beside a width. Anything else drops
+// the candidate, as the browser does; so does a density of 0, which the browser never shows
+function readDescriptors(text: string): Size | undefined {
+  let width: number | undefined;
+  let density: number | undefined;
+  let height: number | undefined;
+  for (const token of text.split(/\s+/).filter(Boolean)) {
+    const unit = token.at(-1)?.toLowerCase();
+    const value = token.slice(0, -1);
+    if (width !== undefined || density !== undefined) {
+      if (unit !== "h" || density !== undefined || height !== undefined)
+        return undefined;
+    }
+    if (unit === "w" && INTEGER.test(value)) width = Number(value);
+    else if (unit === "x" && FLOAT.test(value)) density = Number(value);
+    else if (unit === "h" && height === undefined && INTEGER.test(value))
+      height = Number(value);
+    else return undefined;
+  }
+  if (height !== undefined && (width === undefined || height === 0))
+    return undefined;
+  if (width !== undefined)
+    return width > 0 ? { width: true, size: width } : undefined;
+  density ??= 1;
+  return density > 0 ? { width: false, size: density } : undefined;
+}
+
+function largestCandidate(srcset: string): string | undefined {
+  let best: (Size & { url: string }) | undefined;
+  for (const [, url = "", descriptors = ""] of srcset.matchAll(
+    SRCSET_CANDIDATE,
+  )) {
+    const size = readDescriptors(descriptors);
+    if (!size || !isSafeUrl(url)) continue;
+    const candidate = { url, ...size };
+    // Width descriptors win over densities, which are only valid without them
+    if (
+      !best ||
+      (candidate.width && !best.width) ||
+      (candidate.width === best.width && candidate.size > best.size)
+    )
+      best = candidate;
+  }
+  return best?.url;
+}
+
+// The zoom URL of an image: data-image-zoom-src wins over src, then the largest file of a srcset
+// without src; unsafe URLs are ignored
 const getSource = (image: Attributes): string | undefined => {
   const src = image.get("data-image-zoom-src") || image.get("src");
-  return src && isSafeUrl(src) ? src : undefined;
+  if (src) return isSafeUrl(src) ? src : undefined;
+  return largestCandidate(image.get("srcset") ?? "");
 };
 
 // The link is named after the image so screen readers announce what opens
@@ -154,10 +212,13 @@ function parseSelector(source: string): Selector {
   return selector;
 }
 
+// One selector of a list: commas inside a quoted value, as in [alt="Last, First"], do not split it
+const LIST_ITEM = /(?:"[^"]*"|'[^']*'|[^,])+/g;
+
 /** Parses the ignore prop, a list of simple selectors separated by commas */
 export function parseIgnore(ignore = ""): Selector[] {
-  // Commas inside a quoted value, as in [alt="Last, First"], do not split; a trailing comma is forgiven
-  const parts = ignore.match(/(?:"[^"]*"|'[^']*'|[^,])+/g) ?? [];
+  // A trailing comma is forgiven
+  const parts = ignore.match(LIST_ITEM) ?? [];
   return parts.filter((part) => part.trim()).map(parseSelector);
 }
 
@@ -246,7 +307,7 @@ export function wrapImages(
     selectors.some((selector) => matches(name, attributes, selector));
   // Most tags can match no selector: the attributes are parsed only for those that may
   const mayBeIgnored = (name: string, rawAttributes: string): boolean =>
-    /data-image-zoom-ignore/i.test(rawAttributes) ||
+    rawAttributes.toLowerCase().includes("data-image-zoom-ignore") ||
     ignore.some(({ tag }) => !tag || tag === name);
 
   let output = "";
@@ -282,7 +343,7 @@ export function wrapImages(
 
     const isForeign = name === "svg" || name === "math";
     const selfClosing =
-      (foreignDepth > 0 || isForeign) && /\/\s*$/.test(rawAttributes);
+      (foreignDepth > 0 || isForeign) && rawAttributes.trimEnd().endsWith("/");
     if (isForeign && !selfClosing)
       foreignDepth = Math.max(0, foreignDepth + (closing ? -1 : 1));
 

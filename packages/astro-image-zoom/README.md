@@ -77,7 +77,8 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 ### Which image the zoom shows
 
 - **An image on its own** opens the URL in its `data-image-zoom-src`, or its own `src` without it. Plain
-  images work out of the box: `<img src="/photo.jpg">` opens that same file.
+  images work out of the box: `<img src="/photo.jpg">` opens that same file. An image with a `srcset` and
+  no `src` opens the largest file of its `srcset`.
 - **An image inside a link with `data-image-zoom`** (`<a href="…" data-image-zoom>`) opens the `href` of the
   link. Put `data-image-zoom-caption` (or `title`) on the link: the image inside gives only its `alt`
   and its `title`, and its own `data-image-zoom-src` and `data-image-zoom-caption` are ignored. See

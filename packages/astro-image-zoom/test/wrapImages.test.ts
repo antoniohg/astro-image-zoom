@@ -296,6 +296,93 @@ describe("wrapImages", () => {
     expect(wrapImages(picture)).toBe(picture);
   });
 
+  describe("an image with a srcset and no src", () => {
+    it("links to its widest file", () => {
+      expect(
+        wrapImages(
+          '<img srcset="/m.jpg 800w, /l.jpg 1600w, /s.jpg 400w" sizes="50vw" alt="">',
+        ),
+      ).toContain('href="/l.jpg"');
+    });
+
+    it("links to its densest file, a file without a descriptor being 1x", () => {
+      expect(
+        wrapImages('<img srcset="/2x.jpg 2x, /1x.jpg, /1.5x.jpg 1.5x" alt="">'),
+      ).toContain('href="/2x.jpg"');
+    });
+
+    it("reads URLs with commas, and ends a candidate at a comma after its URL", () => {
+      expect(
+        wrapImages(
+          '<img srcset="data:image/png;base64,AAA 1x,data:image/png;base64,BBB 2x" alt="">',
+        ),
+      ).toContain('href="data:image/png;base64,BBB"');
+      expect(wrapImages('<img srcset="/a.jpg, /b.jpg 2x" alt="">')).toContain(
+        'href="/b.jpg"',
+      );
+    });
+
+    it.each([
+      ["two densities", "/invalid.jpg 1x 2x"],
+      ["a width and a density", "/invalid.jpg 800w 2x"],
+      ["two widths", "/invalid.jpg 800w 1600w"],
+      ["a zero width", "/invalid.jpg 0w"],
+      ["a zero density", "/invalid.jpg 0x"],
+      ["a width that is not an integer", "/invalid.jpg 1.5w"],
+      ["a value that is not a number", "/invalid.jpg bigx"],
+      ["an unknown descriptor", "/invalid.jpg 2y"],
+      ["a height without a width", "/invalid.jpg 600h"],
+    ])("skips a file with %s, as the browser does", (_, invalid) => {
+      expect(
+        wrapImages(`<img srcset="${invalid}, /valid.jpg 1x" alt="">`),
+      ).toContain('href="/valid.jpg"');
+      const html = `<img srcset="${invalid}" alt="">`;
+      expect(wrapImages(html)).toBe(html);
+    });
+
+    it("reads a height beside a width, and densities written as decimals or exponents", () => {
+      expect(
+        wrapImages(
+          '<img srcset="/small.jpg 400w 300h, /large.jpg 800w 600h" alt="">',
+        ),
+      ).toContain('href="/large.jpg"');
+      expect(
+        wrapImages(
+          '<img srcset="/a.jpg .5x, /b.jpg 1.5x, /c.jpg 1e0x" alt="">',
+        ),
+      ).toContain('href="/b.jpg"');
+    });
+
+    it("skips unsafe files", () => {
+      expect(
+        wrapImages(
+          '<img srcset="/safe.jpg 400w, javascript:alert(1) 800w" alt="">',
+        ),
+      ).toContain('href="/safe.jpg"');
+      const html = '<img srcset="javascript:alert(1) 1x" alt="">';
+      expect(wrapImages(html)).toBe(html);
+    });
+
+    it("wraps its <picture>", () => {
+      expect(
+        wrapImages(
+          '<picture><source srcset="/a.avif" type="image/avif"><img srcset="/a.jpg 1x, /b.jpg 2x" alt=""></picture>',
+        ),
+      ).toMatch(/^<a href="\/b\.jpg"[^>]*><picture>/);
+    });
+
+    it("prefers src and data-image-zoom-src", () => {
+      expect(
+        wrapImages('<img src="/src.jpg" srcset="/big.jpg 2x" alt="">'),
+      ).toContain('href="/src.jpg"');
+      expect(
+        wrapImages(
+          '<img data-image-zoom-src="/full.jpg" srcset="/big.jpg 2x" alt="">',
+        ),
+      ).toContain('href="/full.jpg"');
+    });
+  });
+
   it("leaves an image without a source alone", () => {
     expect(wrapImages('<img alt="Nothing">')).toBe('<img alt="Nothing">');
   });
