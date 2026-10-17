@@ -296,6 +296,62 @@ describe("wrapImages", () => {
     expect(wrapImages(picture)).toBe(picture);
   });
 
+  describe("an image with a srcset and no src", () => {
+    it("links to its widest file", () => {
+      expect(
+        wrapImages(
+          '<img srcset="/m.jpg 800w, /l.jpg 1600w, /s.jpg 400w" sizes="50vw" alt="">',
+        ),
+      ).toContain('href="/l.jpg"');
+    });
+
+    it("links to its densest file, a file without a descriptor being 1x", () => {
+      expect(
+        wrapImages('<img srcset="/2x.jpg 2x, /1x.jpg, /1.5x.jpg 1.5x" alt="">'),
+      ).toContain('href="/2x.jpg"');
+    });
+
+    it("reads URLs with commas, and ends a candidate at a comma after its URL", () => {
+      expect(
+        wrapImages(
+          '<img srcset="data:image/png;base64,AAA 1x,data:image/png;base64,BBB 2x" alt="">',
+        ),
+      ).toContain('href="data:image/png;base64,BBB"');
+      expect(wrapImages('<img srcset="/a.jpg, /b.jpg 2x" alt="">')).toContain(
+        'href="/b.jpg"',
+      );
+    });
+
+    it("skips unsafe files", () => {
+      expect(
+        wrapImages(
+          '<img srcset="/safe.jpg 400w, javascript:alert(1) 800w" alt="">',
+        ),
+      ).toContain('href="/safe.jpg"');
+      const html = '<img srcset="javascript:alert(1) 1x" alt="">';
+      expect(wrapImages(html)).toBe(html);
+    });
+
+    it("wraps its <picture>", () => {
+      expect(
+        wrapImages(
+          '<picture><source srcset="/a.avif" type="image/avif"><img srcset="/a.jpg 1x, /b.jpg 2x" alt=""></picture>',
+        ),
+      ).toMatch(/^<a href="\/b\.jpg"[^>]*><picture>/);
+    });
+
+    it("prefers src and data-image-zoom-src", () => {
+      expect(
+        wrapImages('<img src="/src.jpg" srcset="/big.jpg 2x" alt="">'),
+      ).toContain('href="/src.jpg"');
+      expect(
+        wrapImages(
+          '<img data-image-zoom-src="/full.jpg" srcset="/big.jpg 2x" alt="">',
+        ),
+      ).toContain('href="/full.jpg"');
+    });
+  });
+
   it("leaves an image without a source alone", () => {
     expect(wrapImages('<img alt="Nothing">')).toBe('<img alt="Nothing">');
   });

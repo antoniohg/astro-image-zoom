@@ -45,10 +45,41 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
-// The zoom URL of an image: data-image-zoom-src wins over src, and unsafe URLs are ignored
+// The largest safe candidate of a srcset: the widest with width descriptors, else the densest (a
+// candidate without a descriptor is 1x). As the HTML spec parses it, a URL runs up to a space and
+// may contain commas (data: URLs), but not end with them: a trailing comma ends the candidate
+const SRCSET_CANDIDATE = /[\s,]*(\S*[^\s,])(,+|[^,]*)/g;
+const DESCRIPTOR = /^([\d.]+)([wx])$/i;
+
+function largestCandidate(srcset: string): string | undefined {
+  let best: { url: string; width: boolean; size: number } | undefined;
+  for (const [, url = "", descriptor = ""] of srcset.matchAll(
+    SRCSET_CANDIDATE,
+  )) {
+    if (!isSafeUrl(url)) continue;
+    const [, size = "1", unit = "x"] = DESCRIPTOR.exec(descriptor.trim()) ?? [];
+    const candidate = {
+      url,
+      width: unit.toLowerCase() === "w",
+      size: Number(size),
+    };
+    // Width descriptors win over densities, which are only valid without them
+    if (
+      !best ||
+      (candidate.width && !best.width) ||
+      (candidate.width === best.width && candidate.size > best.size)
+    )
+      best = candidate;
+  }
+  return best?.url;
+}
+
+// The zoom URL of an image: data-image-zoom-src wins over src, then the largest file of a srcset
+// without src; unsafe URLs are ignored
 const getSource = (image: Attributes): string | undefined => {
   const src = image.get("data-image-zoom-src") || image.get("src");
-  return src && isSafeUrl(src) ? src : undefined;
+  if (src) return isSafeUrl(src) ? src : undefined;
+  return largestCandidate(image.get("srcset") ?? "");
 };
 
 // The link is named after the image so screen readers announce what opens

@@ -425,11 +425,16 @@ test.describe("open and close", () => {
     await expect(zoomedImage(page)).toHaveAttribute("src", /portrait\.svg$/);
   });
 
-  test("opens data-image-zoom-src and the href of a link", async ({ page }) => {
+  test("opens data-image-zoom-src, the href of a link and the largest file of a srcset without src", async ({
+    page,
+  }) => {
     await openZoom(page, "sources", 0);
     await expect(zoomedImage(page)).toHaveAttribute("src", /landscape\.svg$/);
     await page.keyboard.press("ArrowRight");
     await expect(zoomedImage(page)).toHaveAttribute("src", /wide\.svg$/);
+    await page.keyboard.press("ArrowRight");
+    await expect(counter(page)).toHaveText("3 / 3");
+    await expect(zoomedImage(page)).toHaveAttribute("src", /landscape\.svg$/);
   });
 
   test("leaves a normal link with an image alone: it navigates and is not part of the gallery", async ({
