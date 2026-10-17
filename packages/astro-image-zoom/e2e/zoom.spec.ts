@@ -1174,6 +1174,15 @@ test.describe("gallery", () => {
     await holdDecode(page);
     await links(page, "gallery").nth(1).click();
     await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+    // The unfold lasts 300ms at most: slowed, so the check below finds it running
+    await page
+      .locator("astro-image-zoom-overlay")
+      .evaluate((host: HTMLElement) =>
+        host.style.setProperty(
+          "--_image-zoom-settle",
+          "2s cubic-bezier(0.2, 0, 0.2, 1)",
+        ),
+      );
 
     // It decodes mid-animation: the thumbnail stays and the file waits, no first paint of it
     await releaseDecode(page);
@@ -1399,9 +1408,14 @@ test.describe("gallery", () => {
     // Slow animations, so that a long frame on a busy machine cannot skip one whole
     await page
       .locator("astro-image-zoom-overlay")
-      .evaluate((host: HTMLElement) =>
-        host.style.setProperty("--image-zoom-animation-duration", "10s"),
-      );
+      .evaluate((host: HTMLElement) => {
+        host.style.setProperty("--image-zoom-animation-duration", "10s");
+        // The reshape and the unfold last 300ms at most: slowed on their own
+        host.style.setProperty(
+          "--_image-zoom-settle",
+          "10s cubic-bezier(0.2, 0, 0.2, 1)",
+        );
+      });
 
     // Held partway through the reshape, by a watcher set before the image decodes: on a slow
     // machine the reshape is over before a later call reaches the page
@@ -1523,9 +1537,14 @@ test.describe("gallery", () => {
     // Slow animations, so that a long frame on a busy machine cannot skip one whole
     await page
       .locator("astro-image-zoom-overlay")
-      .evaluate((host: HTMLElement) =>
-        host.style.setProperty("--image-zoom-animation-duration", "10s"),
-      );
+      .evaluate((host: HTMLElement) => {
+        host.style.setProperty("--image-zoom-animation-duration", "10s");
+        // The reshape and the unfold last 300ms at most: slowed on their own
+        host.style.setProperty(
+          "--_image-zoom-settle",
+          "10s cubic-bezier(0.2, 0, 0.2, 1)",
+        );
+      });
 
     // Held partway through the unfolding, by a watcher set before the image decodes: on a slow
     // machine the unfolding is over before a later call reaches the page
@@ -1854,6 +1873,56 @@ test.describe("theming", () => {
     await expect(page.locator(".astro-image-zoom-backdrop")).not.toHaveCSS(
       "background-color",
       "rgb(30, 0, 40)",
+    );
+  });
+
+  test("opens and closes with the curves of --image-zoom-easing-in and --image-zoom-easing-out", async ({
+    page,
+  }) => {
+    const backdrop = page.locator(".astro-image-zoom-backdrop");
+    // Slow animations, so the opening and the closing last long enough to be read; the overlay
+    // takes the duration from around the gallery on open, and from its host later
+    const slow = (duration: string) =>
+      page
+        .locator("astro-image-zoom-overlay")
+        .evaluate(
+          (host: HTMLElement, value) =>
+            host.style.setProperty("--image-zoom-animation-duration", value),
+          duration,
+        );
+    await page
+      .locator("#variables")
+      .evaluate((section: HTMLElement) =>
+        section.style.setProperty("--image-zoom-animation-duration", "10s"),
+      );
+
+    await links(page, "variables").click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+    await expect(zoomedImage(page)).toHaveCSS(
+      "animation-timing-function",
+      "linear",
+    );
+    await expect(backdrop).toHaveCSS("animation-timing-function", "linear");
+    await slow("1ms");
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+
+    await slow("10s");
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).toHaveClass(/\bis-closing\b/);
+    await expect(zoomedImage(page)).toHaveCSS(
+      "animation-timing-function",
+      "ease-in",
+    );
+    await expect(backdrop).toHaveCSS("animation-timing-function", "ease-in");
+    await slow("1ms");
+    await expectClosed(page);
+
+    // The default curves for a gallery without them
+    await links(page, "single").click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+    await expect(zoomedImage(page)).toHaveCSS(
+      "animation-timing-function",
+      "cubic-bezier(0.2, 0, 0.2, 1)",
     );
   });
 });

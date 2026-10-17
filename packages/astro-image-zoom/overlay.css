@@ -19,6 +19,20 @@
   color-scheme: var(--image-zoom-color-scheme, light dark);
   /* Every zoom animation and control fade derives from this duration; 0s with reduced motion */
   --_image-zoom-duration: var(--image-zoom-animation-duration, 300ms);
+  /* The curves of the zoom: the image and the backdrop on the way in, and on the way out */
+  --_image-zoom-easing-in: var(
+    --image-zoom-easing-in,
+    cubic-bezier(0.2, 0, 0.2, 1)
+  );
+  --_image-zoom-easing-out: var(
+    --image-zoom-easing-out,
+    cubic-bezier(0.4, 0, 0.2, 1)
+  );
+  /* The image settling into its own shape once its file is known (the reshape, the unfold of a
+     cropped thumbnail): a quick correction with the default curve, whatever the zoom moves with. A
+     spring or a long zoom would make it wobble or drag */
+  --_image-zoom-settle: min(var(--_image-zoom-duration), 300ms)
+    cubic-bezier(0.2, 0, 0.2, 1);
 }
 
 /* Overlay container: a modal <dialog>, so it lives in the top layer */
@@ -99,7 +113,7 @@
 
 .astro-image-zoom-overlay.is-opening .astro-image-zoom-backdrop {
   animation: astro-image-zoom-backdrop-in var(--_image-zoom-duration)
-    cubic-bezier(0.2, 0, 0.2, 1) forwards;
+    var(--_image-zoom-easing-in) forwards;
 }
 
 .astro-image-zoom-overlay.is-open .astro-image-zoom-backdrop {
@@ -108,7 +122,7 @@
 
 .astro-image-zoom-overlay.is-closing .astro-image-zoom-backdrop {
   animation: astro-image-zoom-backdrop-out
-    calc(var(--_image-zoom-duration) * 0.75) cubic-bezier(0.4, 0, 0.2, 1)
+    calc(var(--_image-zoom-duration) * 0.75) var(--_image-zoom-easing-out)
     forwards;
 }
 
@@ -211,7 +225,7 @@
 .astro-image-zoom-track.is-sliding .astro-image-zoom-image {
   transition:
     opacity 0.15s ease,
-    clip-path var(--_image-zoom-duration) cubic-bezier(0.2, 0, 0.2, 1),
+    clip-path var(--_image-zoom-settle),
     translate var(--image-zoom-slide-duration, 400ms)
       var(--image-zoom-slide-easing, cubic-bezier(0.2, 0, 0, 1));
 }
@@ -237,7 +251,7 @@
   clip-path: var(--_image-zoom-clip);
   transition:
     opacity 0.15s ease,
-    clip-path var(--_image-zoom-duration) cubic-bezier(0.2, 0, 0.2, 1);
+    clip-path var(--_image-zoom-settle);
   /* No will-change: a layer per slide, kept while the overlay is open, takes so much memory that iOS
      Safari drops the decoded images off screen, and a slide swiped back flashes blank. The animations
      promote the image while they run */
@@ -329,7 +343,7 @@
   .astro-image-zoom-slide.is-active
   .astro-image-zoom-image {
   animation: astro-image-zoom-in var(--_image-zoom-duration)
-    cubic-bezier(0.2, 0, 0.2, 1) forwards;
+    var(--_image-zoom-easing-in) forwards;
 }
 
 /* Only an image the thumbnail crops or rounds animates its clip-path too (is-clipped, zoom.ts): the
@@ -345,7 +359,7 @@
   .astro-image-zoom-slide.is-active
   .astro-image-zoom-image {
   animation: astro-image-zoom-out calc(var(--_image-zoom-duration) * 0.75)
-    cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    var(--_image-zoom-easing-out) forwards;
 }
 
 .astro-image-zoom-overlay.is-closing
@@ -361,8 +375,7 @@
 .astro-image-zoom-overlay.is-opening
   .astro-image-zoom-slide.is-active
   .astro-image-zoom-image.is-reshaping {
-  animation: astro-image-zoom-reshape var(--_image-zoom-duration)
-    cubic-bezier(0.2, 0, 0.2, 1);
+  animation: astro-image-zoom-reshape var(--_image-zoom-settle);
 }
 
 /*
@@ -377,7 +390,7 @@
   margin: 0;
   pointer-events: none;
   animation: astro-image-zoom-out calc(var(--_image-zoom-duration) * 0.75)
-    cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    var(--_image-zoom-easing-out) forwards;
 }
 
 .astro-image-zoom-image.is-detached.is-clipped {

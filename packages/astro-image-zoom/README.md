@@ -470,6 +470,8 @@ Override the default styles with CSS variables:
   --image-zoom-caption-color: #fff;
   --image-zoom-caption-bg: rgba(0, 0, 0, 0.9);
   --image-zoom-animation-duration: 400ms; /* ms or s; the animationDuration prop wins over it */
+  --image-zoom-easing-in: cubic-bezier(0.2, 0, 0.2, 1); /* the curve of the opening */
+  --image-zoom-easing-out: cubic-bezier(0.4, 0, 0.2, 1); /* and of the closing */
   --image-zoom-slide-duration: 400ms; /* arrows and keys: the glide to the next image */
   --image-zoom-slide-easing: cubic-bezier(0.2, 0, 0, 1);
 
