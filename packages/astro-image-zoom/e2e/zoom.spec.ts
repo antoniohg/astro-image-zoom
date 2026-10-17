@@ -1229,6 +1229,25 @@ test.describe("gallery", () => {
     expect(decoded.height).toBeCloseTo(box.height, 0);
   });
 
+  test("keeps the shape the page says on a narrow screen", async ({ page }) => {
+    // A landscape file on a phone: the width limits it. The image is sized before its file starts
+    // loading, when it does not shrink with its slide on its own
+    await page.setViewportSize({ width: 390, height: 844 });
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg";
+        const img = link.querySelector("img")!;
+        img.dataset.imageZoomWidth = "1600";
+        img.dataset.imageZoomHeight = "1000";
+      });
+
+    await openZoom(page, "gallery", 1);
+    const box = (await zoomedImage(page).boundingBox())!;
+    expect(box.width).toBeLessThanOrEqual(390);
+    expect(box.width / box.height).toBeCloseTo(1.6, 1);
+  });
+
   test("asks for the full-size file when its link is pointed at", async ({
     page,
   }) => {

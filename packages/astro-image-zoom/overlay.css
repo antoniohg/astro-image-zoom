@@ -184,6 +184,9 @@
   height: 100%;
   /* Border box: the padding must not widen the slide, or the carousel loses its step */
   box-sizing: border-box;
+  /* Nor its image: until its file loads, an image sized in px (fitKnown() in zoom.ts) counts as
+     content the slide must hold, its max-width stops shrinking it, and it keeps another shape */
+  min-width: 0;
   margin: 0;
   padding: var(--image-zoom-padding, 0);
   display: flex;
