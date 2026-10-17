@@ -119,6 +119,8 @@ const ZOOM_VARIABLES = [
   "--image-zoom-animation-duration",
   "--image-zoom-easing-in",
   "--image-zoom-easing-out",
+  "--image-zoom-controls-duration",
+  "--image-zoom-controls-easing",
   "--image-zoom-slide-duration",
   "--image-zoom-slide-easing",
   "--image-zoom-color-scheme",

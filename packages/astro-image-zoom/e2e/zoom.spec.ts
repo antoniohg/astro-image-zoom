@@ -1898,6 +1898,38 @@ test.describe("theming", () => {
     );
   });
 
+  test("fades the controls in the time and the curve of --image-zoom-controls-duration and --image-zoom-controls-easing", async ({
+    page,
+  }) => {
+    const close = page.locator(".astro-image-zoom-close");
+    // Their own fade, from the variables set around the gallery
+    await openZoom(page, "variables");
+    await expect(close).toHaveCSS("transition-duration", /^0\.7s,/);
+    await expect(close).toHaveCSS("transition-timing-function", /^linear,/);
+
+    // Three quarters of it when closing
+    await page
+      .locator("astro-image-zoom-overlay")
+      .evaluate((host: HTMLElement) =>
+        host.style.setProperty("--image-zoom-animation-duration", "10s"),
+      );
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).toHaveClass(/\bis-closing\b/);
+    await expect(close).toHaveCSS("transition-duration", "0.525s");
+    await expect(close).toHaveCSS("transition-timing-function", "linear");
+    await page
+      .locator("astro-image-zoom-overlay")
+      .evaluate((host: HTMLElement) =>
+        host.style.setProperty("--image-zoom-animation-duration", "1ms"),
+      );
+    await expectClosed(page);
+
+    // 40% of the zoom by default: 0.12s for 300ms
+    await openZoom(page, "single");
+    await expect(close).toHaveCSS("transition-duration", /^0\.12s,/);
+    await expect(close).toHaveCSS("transition-timing-function", /^ease-out,/);
+  });
+
   test("opens and closes with the curves of --image-zoom-easing-in and --image-zoom-easing-out", async ({
     page,
   }) => {
@@ -1955,6 +1987,11 @@ test.describe("reduced motion", () => {
   test("opens and closes without animating", async ({ page }) => {
     await openZoom(page, "single");
     await expect(zoomedImage(page)).toHaveCSS("animation-duration", "0s");
+    // The controls appear at once too, even with a fade of their own
+    await expect(page.locator(".astro-image-zoom-close")).toHaveCSS(
+      "transition-duration",
+      /^0s,/,
+    );
     await page.keyboard.press("Escape");
     await expectClosed(page);
 
