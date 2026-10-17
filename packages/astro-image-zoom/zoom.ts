@@ -500,6 +500,13 @@ const SIZE_WAIT = 150;
 const LOAD_GRACE = 30;
 const DECODE_GRACE = 60;
 
+// When a file that decoded during the opening comes in (watchArrival()): once the image is within
+// ARRIVED of its final width and moves less than RESTING of it in a frame. Close to rest, the first
+// paint of a large file drops no frame anyone sees; a long or springy opening would otherwise hold
+// it for most of its length
+const ARRIVED = 0.05;
+const RESTING = 0.005;
+
 // How much smaller than the slide lets it the thumbnail stands in for the image (fitProvisional()):
 // the full-size file may show more of the picture than its thumbnail (a crop), so the image is
 // bigger than the thumbnail on screen. Up to this many times wider or taller than the thumbnail, the
@@ -1021,6 +1028,7 @@ class Zoom {
     this.hideThumbnail(sourceImg);
     this.phase = "opening";
     this.overlay.classList.add("is-opening");
+    this.watchArrival(currentOpenId, index, finalRect.width);
 
     // After the animation, switch to the is-open state
     void animationsFinished(this.overlay, OPEN_ANIMATIONS).then(() => {
@@ -1261,9 +1269,9 @@ class Zoom {
   }
 
   // The decoded file takes the place of the thumbnail that stood in for it. Not while the zoom
-  // animation runs: a large image that paints for the first time mid-animation drops frames (a
-  // retina screen, 2000 px and more), so the file waits out of the box (is-holding, overlay.css)
-  // and comes in when the animations end
+  // animation moves fast: a large image that paints for the first time mid-animation drops frames
+  // (a retina screen, 2000 px and more), so the file waits out of the box (is-holding, overlay.css)
+  // and comes in when the image is close to rest (watchArrival()) or the animations end
   private release(slide: ZoomSlide): void {
     const { img } = slide;
     img.classList.remove("is-holding");
@@ -1271,9 +1279,14 @@ class Zoom {
     img.style.removeProperty("background-size");
     // The size the page said holds, so the file takes its place without a jump. Not if the file has
     // another shape: it is laid out as its own
-    const { naturalWidth, naturalHeight } = img;
+    if (this.hasOtherShape(slide)) this.unfit(slide);
+  }
+
+  // The file has another shape than the size the page said
+  private hasOtherShape(slide: ZoomSlide): boolean {
+    const { naturalWidth, naturalHeight } = slide.img;
     const { dimensions } = slide;
-    if (
+    return Boolean(
       slide.fixedSize &&
       dimensions &&
       naturalWidth > 0 &&
@@ -1281,9 +1294,53 @@ class Zoom {
       Math.abs(
         naturalWidth / naturalHeight / (dimensions.width / dimensions.height) -
           1,
-      ) > 0.02
+      ) > 0.02,
+    );
+  }
+
+  // Follows the image on screen during the opening: once it is close to rest (ARRIVED, RESTING),
+  // a file that decoded in the meantime comes in and unfolds from there (arrive()), instead of
+  // waiting for the end of a long or springy animation. Read from the box on screen, not from the
+  // time: a spring reaches its size early, then swings around it
+  private watchArrival(openId: number, index: number, width: number): void {
+    const slide = this.slides[index];
+    if (!slide?.img.classList.contains("is-holding")) return;
+    let previous = Number.NaN;
+    const check = () => {
+      if (openId !== this.openId || this.phase !== "opening") return;
+      const now = slide.img.getBoundingClientRect().width;
+      const near = Math.abs(now / width - 1) <= ARRIVED;
+      const still = Math.abs(now - previous) <= RESTING * width;
+      previous = now;
+      if (near && still && slide.decoded && this.arrive(slide)) return;
+      requestAnimationFrame(check);
+    };
+    requestAnimationFrame(check);
+  }
+
+  // The file comes in before the end of the opening, and the rest of the picture unfolds from the
+  // crop the thumbnail showed. The crop of the opening stops where it is, nearly at its end, so the
+  // unfold transition runs from there (an animation would hide it). Not when the image changes
+  // shape: that waits for the end of the opening (settle())
+  private arrive(slide: ZoomSlide): boolean {
+    const { img } = slide;
+    if (
+      slide.provisional ||
+      img.classList.contains("is-reshaping") ||
+      this.hasOtherShape(slide)
     )
-      this.unfit(slide);
+      return false;
+    for (const animation of img.getAnimations()) {
+      if (
+        animation instanceof CSSAnimation &&
+        animation.animationName === "astro-image-zoom-clip-in"
+      )
+        animation.cancel();
+    }
+    void getComputedStyle(img).clipPath;
+    this.release(slide);
+    img.style.removeProperty("--_image-zoom-crop");
+    return true;
   }
 
   // Leaves the image to the size its file and the slide give it

@@ -1159,7 +1159,7 @@ test.describe("gallery", () => {
     expect(landscape.width / landscape.height).toBeCloseTo(1.6, 1);
   });
 
-  test("keeps the file that loads during the opening out of the box until it ends", async ({
+  test("keeps the file that loads during the opening out of the box until the image nearly rests", async ({
     page,
   }) => {
     // A slow opening, and a file whose decoding waits
@@ -1184,16 +1184,37 @@ test.describe("gallery", () => {
         ),
       );
 
-    // It decodes mid-animation: the thumbnail stays and the file waits, no first paint of it
+    // It decodes while the image still moves fast: the thumbnail stays and the file waits, no
+    // first paint of it
     await releaseDecode(page);
     const image = zoomedImage(page);
     await expect(image).toHaveClass(/is-holding/);
     await expect(image).toHaveCSS("background-image", /square\.svg/);
 
-    // The animations end: the file comes in, and the rest of the picture unfolds from the crop of
-    // the thumbnail with a transition, not in a jump
-    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
-    await expect(image).not.toHaveClass(/is-holding/);
+    // Close to rest, before the opening ends, the file comes in, at nearly its final size
+    const arrival = await image.evaluate(
+      (img: HTMLImageElement) =>
+        new Promise<{ phase: string; width: number; final: number }>(
+          (resolve) => {
+            const dialog = img.closest("dialog")!;
+            const wait = () => {
+              if (img.classList.contains("is-holding"))
+                return requestAnimationFrame(wait);
+              resolve({
+                phase: dialog.className,
+                width: img.getBoundingClientRect().width,
+                final: img.offsetWidth,
+              });
+            };
+            wait();
+          },
+        ),
+    );
+    expect(arrival.phase).toMatch(/\bis-opening\b/);
+    expect(Math.abs(arrival.width / arrival.final - 1)).toBeLessThan(0.06);
+
+    // The rest of the picture unfolds from the crop of the thumbnail with a transition, not in a
+    // jump
     await expect(image).toHaveCSS("background-image", "none");
     await expect
       .poll(() =>
@@ -1206,6 +1227,7 @@ test.describe("gallery", () => {
         ),
       )
       .toContain("clip-path");
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
   });
 
   test("opens with the final shape when the page says the size of the file", async ({
