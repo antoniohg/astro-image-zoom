@@ -1154,6 +1154,167 @@ test.describe("gallery", () => {
     expect(landscape.width / landscape.height).toBeCloseTo(1.6, 1);
   });
 
+  test("keeps the file that loads during the opening out of the box until it ends", async ({
+    page,
+  }) => {
+    // A slow opening, and a file whose decoding waits
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?held";
+        link
+          .closest<HTMLElement>("astro-image-zoom")!
+          .style.setProperty("--zoom-animation-duration", "2s");
+      });
+    await holdDecode(page);
+    await links(page, "gallery").nth(1).click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+
+    // It decodes mid-animation: the thumbnail stays and the file waits, no first paint of it
+    await releaseDecode(page);
+    const image = zoomedImage(page);
+    await expect(image).toHaveClass(/is-holding/);
+    await expect(image).toHaveCSS("background-image", /square\.svg/);
+
+    // The animations end: the file comes in, and the rest of the picture unfolds from the crop of
+    // the thumbnail with a transition, not in a jump
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    await expect(image).not.toHaveClass(/is-holding/);
+    await expect(image).toHaveCSS("background-image", "none");
+    await expect
+      .poll(() =>
+        image.evaluate((img: HTMLImageElement) =>
+          img
+            .getAnimations()
+            .map(
+              (animation) => (animation as CSSTransition).transitionProperty,
+            ),
+        ),
+      )
+      .toContain("clip-path");
+  });
+
+  test("opens with the final shape when the page says the size of the file", async ({
+    page,
+  }) => {
+    // The same square thumbnail of a landscape file whose size and decoding wait, but the page
+    // said it is 1600 × 1000: no wait for the first bytes, and no reshape
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg?held";
+        const img = link.querySelector("img")!;
+        img.dataset.imageZoomWidth = "1600";
+        img.dataset.imageZoomHeight = "1000";
+      });
+    await holdDecode(page, { size: true });
+
+    await openZoom(page, "gallery", 1);
+    const image = zoomedImage(page);
+    const box = (await image.boundingBox())!;
+    expect(box.width / box.height).toBeCloseTo(1.6, 1);
+    await expect(image).not.toHaveClass(/is-reshaping/);
+    await expect(image).toHaveCSS("background-image", /square\.svg/);
+
+    // The file decodes: the placeholder goes, and the image stays where it was, in the same box
+    await releaseDecode(page);
+    await expect(image).toHaveCSS("background-image", "none");
+    const decoded = (await image.boundingBox())!;
+    expect(decoded.width).toBeCloseTo(box.width, 0);
+    expect(decoded.height).toBeCloseTo(box.height, 0);
+  });
+
+  test("asks for the full-size file when its link is pointed at", async ({
+    page,
+  }) => {
+    const requested: string[] = [];
+    page.on("request", (request) => requested.push(request.url()));
+    const asked = () =>
+      requested.filter((url) => url.endsWith("?by-the-zoom")).length;
+    await links(page, "gallery")
+      .nth(0)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/portrait.svg?by-the-zoom";
+      });
+
+    // Passing by is no intent
+    await links(page, "gallery").nth(0).hover();
+    await links(page, "gallery").nth(1).hover();
+    await page.waitForTimeout(400);
+    expect(asked()).toBe(0);
+
+    // Staying is: the file is asked for once, and the click finds it
+    await links(page, "gallery").nth(0).hover();
+    await expect.poll(asked).toBe(1);
+    await links(page, "gallery").nth(0).click();
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    expect(asked()).toBe(1);
+  });
+
+  test("animates the clip-path only when the thumbnail crops or rounds the image", async ({
+    page,
+  }) => {
+    const animations = (): Promise<string[]> =>
+      zoomedImage(page).evaluate((image: HTMLImageElement) =>
+        image
+          .getAnimations()
+          .map((animation) => (animation as CSSAnimation).animationName)
+          .sort(),
+      );
+    const slow = (name: string) =>
+      page
+        .locator(`#${name} astro-image-zoom`)
+        .first()
+        .evaluate((element: HTMLElement) =>
+          element.style.setProperty("--zoom-animation-duration", "2s"),
+        );
+
+    // A thumbnail with the shape of its file: a transform alone
+    await slow("single");
+    await links(page, "single").first().click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+    expect(await animations()).toEqual(["astro-image-zoom-in"]);
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+
+    // A square thumbnail of a landscape file: the thumbnail crops it, so the clip-path animates too
+    await slow("gallery");
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg";
+      });
+    await links(page, "gallery").nth(1).click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+    expect(await animations()).toEqual([
+      "astro-image-zoom-clip-in",
+      "astro-image-zoom-in",
+    ]);
+  });
+
+  test("preloads the neighbors once the opening animation ends", async ({
+    page,
+  }) => {
+    // A slow opening and a file that decodes at once: its neighbors would decode under the animation
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link
+          .closest<HTMLElement>("astro-image-zoom")!
+          .style.setProperty("--zoom-animation-duration", "2s");
+      });
+    await links(page, "gallery").nth(1).click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+    const images = page.locator(".astro-image-zoom-image");
+    await expect(images.nth(0)).not.toHaveAttribute("src");
+    await expect(images.nth(2)).not.toHaveAttribute("src");
+
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    await expect(images.nth(0)).toHaveAttribute("src", /.+/);
+    await expect(images.nth(2)).toHaveAttribute("src", /.+/);
+  });
+
   test("preloads the neighbors once the image on screen has loaded", async ({
     page,
   }) => {

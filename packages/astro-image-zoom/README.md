@@ -110,6 +110,23 @@ const fullSize = await getImage({ src: photo, width: 1920 });
 With Astro's `<Image>` or `<Picture>`, build the full-size version with `getImage()`, as in
 [Usage](#usage).
 
+The zoom can also be told the size of the full-size file, with `data-image-zoom-width` and
+`data-image-zoom-height` on the `<img>`, in pixels. It then opens with its final shape at once,
+without waiting for the first bytes of the file, also with a cropped thumbnail:
+
+```astro
+<img
+  src="/thumbnail.jpg"
+  data-image-zoom-src="/full-2560.jpg"
+  data-image-zoom-width="2560"
+  data-image-zoom-height="1707"
+  alt="High quality image"
+/>
+```
+
+Give the size of the file `data-image-zoom-src` points to. The image fits the screen from the
+start, no bigger than that file, and keeps its box when the file arrives.
+
 > **Note:** Do not pass the `Image` component directly to `data-image-zoom-src` or call it as a function. The zoom script expects a string URL for the `data-image-zoom-src` attribute.
 
 ### Captions
@@ -554,8 +571,20 @@ astro-image-zoom-overlay::part(caption) {
   direction (`<source media>`), is taken as a centered crop: the zoom shows that part, and unfolds
   to the whole picture when the file has loaded. Only a thumbnail that has not loaded leaves the
   zoom waiting for the file, with a spinner if it takes a while.
-- Animations are CSS only (transforms, `clip-path` and opacity); the script measures positions and
-  waits for them to end.
+- A file that decodes within a moment (a fast network, a cached or prefetched file) opens as the
+  image itself, and the neighbors of a gallery load once the opening animation ends, so no large
+  image decodes or paints under it.
+- With `data-image-zoom-width` and `-height` the zoom does not wait for the size either: it opens with
+  the final shape at once. The file that loads while the zoom animates comes in when the animation
+  ends, so a large image does not paint for the first time mid-animation.
+- The file is asked for before the click: once a link has been pointed at or focused for a moment,
+  or pressed, the zoom asks for its full-size file, so the click finds it in the cache. It is
+  skipped with the browser's data saver on, and left to the site when Astro's prefetch
+  (`prefetch: { prefetchAll: true }` or `data-astro-prefetch` on a link) has already asked for the
+  `href`: nothing to configure, and nothing downloaded twice.
+- Animations are CSS only. The zoom itself is a transform; the `clip-path` animates only for a
+  thumbnail that crops or rounds the image, and the blur behind the controls comes in once the
+  zoom is open, so nothing expensive runs under the animation.
 - One overlay shared by every gallery on the page, and one delegated click listener per gallery.
 
 ## JavaScript API
