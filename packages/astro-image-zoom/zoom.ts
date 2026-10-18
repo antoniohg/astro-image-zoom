@@ -100,26 +100,26 @@ function sizeKnown(
 // The custom properties of the overlay. When it opens, it takes the values set around the
 // <astro-image-zoom> that opened it, so each gallery can have its own
 const ZOOM_VARIABLES = [
-  "--zoom-bg",
-  "--zoom-close-color",
-  "--zoom-close-bg",
-  "--zoom-nav-color",
-  "--zoom-nav-bg",
-  "--zoom-caption-color",
-  "--zoom-caption-bg",
-  "--zoom-controls-offset",
-  "--zoom-caption-max-width",
-  "--zoom-caption-font",
-  "--zoom-caption-font-size",
-  "--zoom-caption-radius",
-  "--zoom-padding",
-  "--zoom-image-radius",
-  "--zoom-button-size",
-  "--zoom-button-radius",
-  "--zoom-animation-duration",
-  "--zoom-slide-duration",
-  "--zoom-slide-easing",
-  "--zoom-color-scheme",
+  "--image-zoom-bg",
+  "--image-zoom-close-color",
+  "--image-zoom-close-bg",
+  "--image-zoom-nav-color",
+  "--image-zoom-nav-bg",
+  "--image-zoom-caption-color",
+  "--image-zoom-caption-bg",
+  "--image-zoom-controls-offset",
+  "--image-zoom-caption-max-width",
+  "--image-zoom-caption-font",
+  "--image-zoom-caption-font-size",
+  "--image-zoom-caption-radius",
+  "--image-zoom-padding",
+  "--image-zoom-image-radius",
+  "--image-zoom-button-size",
+  "--image-zoom-button-radius",
+  "--image-zoom-animation-duration",
+  "--image-zoom-slide-duration",
+  "--image-zoom-slide-easing",
+  "--image-zoom-color-scheme",
 ];
 
 // The options of a gallery, from the data-image-zoom-* attributes of its wrapper
@@ -281,7 +281,8 @@ function getOverlay(): HTMLDialogElement {
   host.id = OVERLAY_ID;
   const root = host.attachShadow({ mode: "open" });
   const style = document.createElement("style");
-  style.textContent = overlayStyles;
+  // In the package's own cascade layer, like the styles it puts on a Starlight page
+  style.textContent = `@layer image-zoom {${overlayStyles}}`;
   const template = document.createElement("template");
   template.innerHTML = OVERLAY_HTML.trim();
   root.append(style, template.content);
@@ -473,8 +474,8 @@ function paintsAtOnce(
 // clip it in or out, a blink when the slide is on screen
 function setCrop(img: HTMLImageElement, inset: string | null): void {
   withoutTransition(img, () => {
-    if (inset) img.style.setProperty("--astro-image-zoom-crop", inset);
-    else img.style.removeProperty("--astro-image-zoom-crop");
+    if (inset) img.style.setProperty("--_image-zoom-crop", inset);
+    else img.style.removeProperty("--_image-zoom-crop");
   });
 }
 
@@ -575,7 +576,7 @@ const PRELOAD_WAIT = 200;
 
 class Zoom {
   private wrapper: HTMLElement;
-  // The element that holds the overlay's shadow root, and its --zoom-* variables
+  // The element that holds the overlay's shadow root, and its --image-zoom-* variables
   private host: HTMLElement;
   private overlay: HTMLDialogElement;
   private backdrop: HTMLElement;
@@ -1187,10 +1188,7 @@ class Zoom {
   // Moves the images of the slides by `offset` px, gliding there when `animate`, at once otherwise
   private setSlideOffset(offset: number, animate: boolean): void {
     this.track.classList.toggle("is-sliding", animate);
-    this.track.style.setProperty(
-      "--astro-image-zoom-slide-offset",
-      `${offset}px`,
-    );
+    this.track.style.setProperty("--_image-zoom-slide-offset", `${offset}px`);
     // Commit the offset before the transition starts from it
     if (!animate) void this.track.offsetWidth;
   }
@@ -1429,7 +1427,7 @@ class Zoom {
       // unfold would start from a style that still had the animation, and jump instead of running
       void getComputedStyle(slide.img).clipPath;
       this.release(slide);
-      slide.img.style.removeProperty("--astro-image-zoom-crop");
+      slide.img.style.removeProperty("--_image-zoom-crop");
     }
   }
 
@@ -1538,15 +1536,15 @@ class Zoom {
   ): void {
     figure.classList.add("is-from-thumbnail");
     figure.style.setProperty(
-      "--astro-image-zoom-spinner-x",
+      "--_image-zoom-spinner-x",
       `${left + width / 2}px`,
     );
     figure.style.setProperty(
-      "--astro-image-zoom-spinner-y",
+      "--_image-zoom-spinner-y",
       `${top + height / 2}px`,
     );
     figure.style.setProperty(
-      "--astro-image-zoom-spinner-size",
+      "--_image-zoom-spinner-size",
       `${Math.min(32, Math.min(width, height) * 0.4)}px`,
     );
   }
@@ -1717,8 +1715,8 @@ class Zoom {
     if (this.isOpen) this.close();
   }
 
-  // Copies the --zoom-* values around the wrapper to the overlay's host, which lives in <body> and
-  // would otherwise only see the ones set on :root. A previous opening's values are cleared too.
+  // Copies the --image-zoom-* values around the wrapper to the overlay's host, which lives in <body>
+  // and would otherwise only see the ones set on :root. A previous opening's values are cleared too.
   // On the host, they also reach the image that leaves the dialog when a scroll closes it.
   private inheritVariables(): void {
     const styles = getComputedStyle(this.wrapper);
@@ -1886,7 +1884,7 @@ class Zoom {
     this.removeSlides();
     this.track.style.overflowX = "";
     this.track.classList.remove("is-sliding");
-    this.track.style.removeProperty("--astro-image-zoom-slide-offset");
+    this.track.style.removeProperty("--_image-zoom-slide-offset");
     this.captionElement.textContent = "";
     this.slides = [];
 

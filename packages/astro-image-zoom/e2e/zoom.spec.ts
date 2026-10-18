@@ -927,7 +927,7 @@ test.describe("gallery", () => {
     await expect(counter(page)).toHaveText("1 / 3");
   });
 
-  test("slides to the next image in the time set by --zoom-slide-duration, in every browser", async ({
+  test("slides to the next image in the time set by --image-zoom-slide-duration, in every browser", async ({
     page,
   }) => {
     await openZoom(page, "gallery");
@@ -1135,7 +1135,7 @@ test.describe("gallery", () => {
         link.href = "/images/landscape.svg?held";
         link
           .closest<HTMLElement>("astro-image-zoom")!
-          .style.setProperty("--zoom-animation-duration", "2s");
+          .style.setProperty("--image-zoom-animation-duration", "2s");
       });
     await holdDecode(page, { size: true });
     await links(page, "gallery").nth(1).click();
@@ -1169,7 +1169,7 @@ test.describe("gallery", () => {
         link.href = "/images/landscape.svg?held";
         link
           .closest<HTMLElement>("astro-image-zoom")!
-          .style.setProperty("--zoom-animation-duration", "2s");
+          .style.setProperty("--image-zoom-animation-duration", "2s");
       });
     await holdDecode(page);
     await links(page, "gallery").nth(1).click();
@@ -1271,7 +1271,7 @@ test.describe("gallery", () => {
         .locator(`#${name} astro-image-zoom`)
         .first()
         .evaluate((element: HTMLElement) =>
-          element.style.setProperty("--zoom-animation-duration", "2s"),
+          element.style.setProperty("--image-zoom-animation-duration", "2s"),
         );
 
     // A thumbnail with the shape of its file: a transform alone
@@ -1307,7 +1307,7 @@ test.describe("gallery", () => {
       .evaluate((link: HTMLAnchorElement) => {
         link
           .closest<HTMLElement>("astro-image-zoom")!
-          .style.setProperty("--zoom-animation-duration", "2s");
+          .style.setProperty("--image-zoom-animation-duration", "2s");
       });
     await links(page, "gallery").nth(1).click();
     await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
@@ -1381,7 +1381,7 @@ test.describe("gallery", () => {
     await page
       .locator("astro-image-zoom-overlay")
       .evaluate((host: HTMLElement) =>
-        host.style.setProperty("--zoom-animation-duration", "10s"),
+        host.style.setProperty("--image-zoom-animation-duration", "10s"),
       );
 
     // Held partway through the reshape, by a watcher set before the image decodes: on a slow
@@ -1444,7 +1444,7 @@ test.describe("gallery", () => {
         link.href = "/images/landscape.svg?held";
         link
           .closest<HTMLElement>("astro-image-zoom")!
-          .style.setProperty("--zoom-image-radius", "40px");
+          .style.setProperty("--image-zoom-image-radius", "40px");
       });
     await holdDecode(page);
 
@@ -1505,7 +1505,7 @@ test.describe("gallery", () => {
     await page
       .locator("astro-image-zoom-overlay")
       .evaluate((host: HTMLElement) =>
-        host.style.setProperty("--zoom-animation-duration", "10s"),
+        host.style.setProperty("--image-zoom-animation-duration", "10s"),
       );
 
     // Held partway through the unfolding, by a watcher set before the image decodes: on a slow
@@ -1640,7 +1640,7 @@ test.describe("gallery", () => {
       .evaluate((wrapper) =>
         wrapper.setAttribute(
           "style",
-          "--zoom-button-size: 64px; --zoom-controls-offset: 64px",
+          "--image-zoom-button-size: 64px; --image-zoom-controls-offset: 64px",
         ),
       );
     await openZoom(page, "layout");

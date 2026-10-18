@@ -13,7 +13,7 @@ const shortMeta = rows.every(
   ({ type = "", default: value = "" }) => type.length + value.length <= 36,
 );
 
-// Text between backticks is code: `--zoom-bg` becomes <code>--zoom-bg</code>
+// Text between backticks is code: `--image-zoom-bg` becomes <code>--image-zoom-bg</code>
 const parts = (text: string) =>
   text.split("`").map((part, index) => ({ part, code: index % 2 === 1 }));
 ---

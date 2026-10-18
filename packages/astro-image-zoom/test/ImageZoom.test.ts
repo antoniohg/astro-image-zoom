@@ -82,7 +82,7 @@ describe("<ImageZoom>", () => {
     expect(await counterOf({ showCounter: false })).toBe("false");
   });
 
-  it("turns the theme and the duration into --zoom-* variables", async () => {
+  it("turns the theme and the duration into --image-zoom-* variables", async () => {
     const { attributes } = await render({
       theme: {
         backgroundColor: "#050a1a",
@@ -96,9 +96,9 @@ describe("<ImageZoom>", () => {
       animationDuration: 800,
     });
     expect(attributes.get("style")).toBe(
-      "--zoom-bg: #050a1a; --zoom-close-color: white; --zoom-close-bg: black; " +
-        "--zoom-nav-color: rgb(1, 2, 3); --zoom-nav-bg: navy; --zoom-caption-color: red; " +
-        "--zoom-caption-bg: light-dark(#fff, #000); --zoom-animation-duration: 800ms",
+      "--image-zoom-bg: #050a1a; --image-zoom-close-color: white; --image-zoom-close-bg: black; " +
+        "--image-zoom-nav-color: rgb(1, 2, 3); --image-zoom-nav-bg: navy; --image-zoom-caption-color: red; " +
+        "--image-zoom-caption-bg: light-dark(#fff, #000); --image-zoom-animation-duration: 800ms",
     );
   });
 
@@ -107,10 +107,10 @@ describe("<ImageZoom>", () => {
       (await render({ theme: { navigationColor: "red" } })).attributes.get(
         "style",
       ),
-    ).toBe("--zoom-nav-color: red");
+    ).toBe("--image-zoom-nav-color: red");
     expect(
       (await render({ animationDuration: 0 })).attributes.get("style"),
-    ).toBe("--zoom-animation-duration: 0ms");
+    ).toBe("--image-zoom-animation-duration: 0ms");
   });
 
   it("leaves out the images of the ignore prop and hands the selectors to the client", async () => {
@@ -133,10 +133,10 @@ describe("<ImageZoom>", () => {
     );
   });
 
-  it("declares its display in its own shadow root, with no stylesheet on the page", async () => {
+  it("declares its display in its own shadow root and layer, with no stylesheet on the page", async () => {
     const { html } = await render();
     expect(html).toMatch(
-      /<astro-image-zoom\b[^>]*>\s*<template shadowrootmode="open"><style>:host \{ display: contents; \}<\/style><slot><\/slot><\/template>/,
+      /<astro-image-zoom\b[^>]*>\s*<template shadowrootmode="open"><style>@layer image-zoom \{ :host \{ display: contents; \} \}<\/style><slot><\/slot><\/template>/,
     );
     expect(html).not.toContain("<link");
   });
