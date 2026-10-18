@@ -28,33 +28,40 @@ for (const key of Object.keys(labels) as (keyof ImageZoomLabels)[]) {
 </ImageZoom>
 
 <style is:global>
-  /* Starlight's palette as the default --zoom-* colors. :where() takes them to zero specificity, so
-     any rule of the site wins, and the theme option, inline on the element, wins over both. The
-     var()s resolve on :root, where Starlight switches its tokens with the theme */
-  :where(:root) {
-    --zoom-bg: var(--sl-color-black);
-    --zoom-close-color: var(--sl-color-white);
-    --zoom-close-bg: color-mix(
-      in srgb,
-      var(--sl-color-gray-6) 80%,
-      transparent
-    );
-    --zoom-nav-color: var(--sl-color-white);
-    --zoom-nav-bg: color-mix(in srgb, var(--sl-color-gray-6) 80%, transparent);
-    --zoom-caption-color: var(--sl-color-white);
-    --zoom-caption-bg: color-mix(
-      in srgb,
-      var(--sl-color-gray-6) 80%,
-      transparent
-    );
-  }
+  /* Starlight's palette as the default --image-zoom-* colors, in the image-zoom cascade layer and
+     at zero specificity (:where()), so any rule of the site wins, and the theme option, inline on
+     the element, wins over both. The var()s resolve on :root, where Starlight switches its tokens
+     with the theme */
+  @layer image-zoom {
+    :where(:root) {
+      --image-zoom-bg: var(--sl-color-black);
+      --image-zoom-close-color: var(--sl-color-white);
+      --image-zoom-close-bg: color-mix(
+        in srgb,
+        var(--sl-color-gray-6) 80%,
+        transparent
+      );
+      --image-zoom-nav-color: var(--sl-color-white);
+      --image-zoom-nav-bg: color-mix(
+        in srgb,
+        var(--sl-color-gray-6) 80%,
+        transparent
+      );
+      --image-zoom-caption-color: var(--sl-color-white);
+      --image-zoom-caption-bg: color-mix(
+        in srgb,
+        var(--sl-color-gray-6) 80%,
+        transparent
+      );
+    }
 
-  /* Starlight puts the theme on screen in data-theme, from its toggle or the OS. The overlay's own
-     light and dark details follow it, not the OS */
-  :where(:root[data-theme="light"]) {
-    --zoom-color-scheme: light;
-  }
-  :where(:root[data-theme="dark"]) {
-    --zoom-color-scheme: dark;
+    /* Starlight puts the theme on screen in data-theme, from its toggle or the OS. The overlay's
+       own light and dark details follow it, not the OS */
+    :where(:root[data-theme="light"]) {
+      --image-zoom-color-scheme: light;
+    }
+    :where(:root[data-theme="dark"]) {
+      --image-zoom-color-scheme: dark;
+    }
   }
 </style>

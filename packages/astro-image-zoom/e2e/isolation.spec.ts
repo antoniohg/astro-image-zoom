@@ -74,6 +74,28 @@ test("the CSS of the page cannot change the overlay", async ({ page }) => {
   expect(hostile).toEqual(normal);
 });
 
+test("the overlay's styles live in the image-zoom cascade layer", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator("#single astro-image-zoom a").click();
+  await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+  const layers = await page.evaluate(() =>
+    [
+      document.querySelector("astro-image-zoom-overlay")!.shadowRoot!,
+      document.querySelector("astro-image-zoom")!.shadowRoot!,
+    ].map((root) =>
+      [...root.styleSheets].flatMap((sheet) =>
+        [...sheet.cssRules].map((rule) =>
+          rule instanceof CSSLayerBlockRule ? rule.name : rule.cssText,
+        ),
+      ),
+    ),
+  );
+  // The overlay and the element's own shadow root, each a single layer block
+  expect(layers).toEqual([["image-zoom"], ["image-zoom"]]);
+});
+
 test("the focus style of the page reaches the generated link as the site wrote it", async ({
   page,
 }) => {

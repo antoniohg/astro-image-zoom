@@ -23,7 +23,7 @@ screen, and the images of a gallery become a carousel you can swipe.
 - **Galleries**: a native scroll-snap carousel with touch and touchpad swipes, arrow keys, buttons and
   a counter.
 - **Isolated**: the overlay lives in a shadow root, so the CSS of your site can't break it.
-- **Customizable**: `--zoom-*` CSS variables, per gallery if you want, `::part()` and props.
+- **Customizable**: `--image-zoom-*` CSS variables, per gallery if you want, `::part()` and props.
 - **Light and dark**: follows the light or dark preference of the system, or the scheme you set.
 - **No dependencies**: TypeScript and CSS only; without JavaScript, each image links to the file the zoom opens.
 - **Starlight**: one line in the config zooms every image of the docs, in Starlight's colors and
@@ -383,14 +383,14 @@ keep only one of them.
 | Prop                          | Type                       | Default                             | Description                                                                                                                                |
 | ----------------------------- | -------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `theme`                       | `object`                   | `{}`                                | Theme configuration object                                                                                                                 |
-| `theme.backgroundColor`       | `string`                   | light or dark, following the system | Overlay background color (`--zoom-bg`)                                                                                                     |
-| `theme.closeButtonColor`      | `string`                   | light or dark, following the system | Close icon color (`--zoom-close-color`)                                                                                                    |
-| `theme.closeButtonBackground` | `string`                   | translucent, following the system   | Close button background (`--zoom-close-bg`)                                                                                                |
-| `theme.navigationColor`       | `string`                   | light or dark, following the system | Arrows and counter color (`--zoom-nav-color`)                                                                                              |
-| `theme.navigationBackground`  | `string`                   | translucent, following the system   | Navigation bar background, or each arrow in the sides layout (`--zoom-nav-bg`)                                                             |
-| `theme.captionColor`          | `string`                   | light or dark, following the system | Caption text color (`--zoom-caption-color`)                                                                                                |
-| `theme.captionBackground`     | `string`                   | translucent, following the system   | Caption box background (`--zoom-caption-bg`)                                                                                               |
-| `animationDuration`           | `number`                   | —                                   | Animation duration in milliseconds; overrides `--zoom-animation-duration` (300ms by default)                                               |
+| `theme.backgroundColor`       | `string`                   | light or dark, following the system | Overlay background color (`--image-zoom-bg`)                                                                                               |
+| `theme.closeButtonColor`      | `string`                   | light or dark, following the system | Close icon color (`--image-zoom-close-color`)                                                                                              |
+| `theme.closeButtonBackground` | `string`                   | translucent, following the system   | Close button background (`--image-zoom-close-bg`)                                                                                          |
+| `theme.navigationColor`       | `string`                   | light or dark, following the system | Arrows and counter color (`--image-zoom-nav-color`)                                                                                        |
+| `theme.navigationBackground`  | `string`                   | translucent, following the system   | Navigation bar background, or each arrow in the sides layout (`--image-zoom-nav-bg`)                                                       |
+| `theme.captionColor`          | `string`                   | light or dark, following the system | Caption text color (`--image-zoom-caption-color`)                                                                                          |
+| `theme.captionBackground`     | `string`                   | translucent, following the system   | Caption box background (`--image-zoom-caption-bg`)                                                                                         |
+| `animationDuration`           | `number`                   | —                                   | Animation duration in milliseconds; overrides `--image-zoom-animation-duration` (300ms by default)                                         |
 | `closeOnBackdrop`             | `boolean`                  | `true`                              | Close when clicking backdrop                                                                                                               |
 | `closeOnImage`                | `boolean`                  | `true`                              | Close when clicking the zoomed image                                                                                                       |
 | `closeOnScroll`               | `boolean`                  | `true`                              | Close on a wheel or touchpad scroll, or a vertical swipe                                                                                   |
@@ -448,34 +448,42 @@ The caption is your own text, so it is not translated by the component.
 
 ## Styling
 
+The package's styles live in the `image-zoom` cascade layer, so any unlayered CSS of yours wins.
+To place it in your own order, declare the layer first (`@layer reset, image-zoom, components;`).
+The overlay itself lives in a shadow root, which your rules don't reach: the variables and the
+parts below are the way in.
+
+> Before 0.1.0-beta.12 the variables were named `--zoom-*`: `--zoom-bg` is now `--image-zoom-bg`,
+> and so on for every one, with no fallback to the old names.
+
 ### CSS Variables
 
 Override the default styles with CSS variables:
 
 ```css
 :root {
-  --zoom-bg: rgba(20, 20, 30, 0.98);
-  --zoom-close-color: #ff6b6b;
-  --zoom-nav-color: #4ecdc4; /* arrows and counter */
-  --zoom-close-bg: rgba(255, 255, 255, 0.1);
-  --zoom-nav-bg: rgba(255, 255, 255, 0.1);
-  --zoom-caption-color: #fff;
-  --zoom-caption-bg: rgba(0, 0, 0, 0.9);
-  --zoom-animation-duration: 400ms; /* ms or s; the animationDuration prop wins over it */
-  --zoom-slide-duration: 400ms; /* arrows and keys: the glide to the next image */
-  --zoom-slide-easing: cubic-bezier(0.2, 0, 0, 1);
+  --image-zoom-bg: rgba(20, 20, 30, 0.98);
+  --image-zoom-close-color: #ff6b6b;
+  --image-zoom-nav-color: #4ecdc4; /* arrows and counter */
+  --image-zoom-close-bg: rgba(255, 255, 255, 0.1);
+  --image-zoom-nav-bg: rgba(255, 255, 255, 0.1);
+  --image-zoom-caption-color: #fff;
+  --image-zoom-caption-bg: rgba(0, 0, 0, 0.9);
+  --image-zoom-animation-duration: 400ms; /* ms or s; the animationDuration prop wins over it */
+  --image-zoom-slide-duration: 400ms; /* arrows and keys: the glide to the next image */
+  --image-zoom-slide-easing: cubic-bezier(0.2, 0, 0, 1);
 
   /* Layout */
-  --zoom-padding: 0; /* space between the zoomed image and the screen edges */
-  --zoom-image-radius: 0; /* corners of the zoomed image */
-  --zoom-button-size: 40px; /* arrows and close button; 36px on phones */
-  --zoom-button-radius: 999px; /* shape of the buttons and the navigation bar */
-  --zoom-controls-offset: 16px; /* distance from the controls and the caption to the edges; 12px on phones */
-  --zoom-caption-max-width: 70%; /* 100% on phones */
-  --zoom-caption-font: inherit; /* the font of your site */
-  --zoom-caption-font-size: 13px; /* 12px on phones */
-  --zoom-color-scheme: light dark; /* set "dark" or "light" to follow your own theme toggle */
-  --zoom-caption-radius: 10px;
+  --image-zoom-padding: 0; /* space between the zoomed image and the screen edges */
+  --image-zoom-image-radius: 0; /* corners of the zoomed image */
+  --image-zoom-button-size: 40px; /* arrows and close button; 36px on phones */
+  --image-zoom-button-radius: 999px; /* shape of the buttons and the navigation bar */
+  --image-zoom-controls-offset: 16px; /* distance from the controls and the caption to the edges; 12px on phones */
+  --image-zoom-caption-max-width: 70%; /* 100% on phones */
+  --image-zoom-caption-font: inherit; /* the font of your site */
+  --image-zoom-caption-font-size: 13px; /* 12px on phones */
+  --image-zoom-color-scheme: light dark; /* set "dark" or "light" to follow your own theme toggle */
+  --image-zoom-caption-radius: 10px;
 }
 ```
 
@@ -485,26 +493,26 @@ the variables.
 
 ```css
 .portfolio {
-  --zoom-padding: 5vmin;
-  --zoom-image-radius: 12px;
+  --image-zoom-padding: 5vmin;
+  --image-zoom-image-radius: 12px;
 }
 ```
 
 On screens up to 640px wide the overlay makes its buttons, its distance to the edges and the caption
 text smaller, and lets the caption take the whole width. A variable you set wins on every screen:
-`--zoom-button-size: 56px` keeps 56px buttons on a phone too. Keep the large values for wide screens
+`--image-zoom-button-size: 56px` keeps 56px buttons on a phone too. Keep the large values for wide screens
 with a media query, or let them grow with the screen with `clamp()`. The overlay reads the values
 each time a gallery opens.
 
 ```css
 .portfolio {
-  --zoom-padding: clamp(12px, 5vw, 64px);
+  --image-zoom-padding: clamp(12px, 5vw, 64px);
 }
 
 @media (width > 640px) {
   .portfolio {
-    --zoom-button-size: 56px;
-    --zoom-controls-offset: 32px;
+    --image-zoom-button-size: 56px;
+    --image-zoom-controls-offset: 32px;
   }
 }
 ```
@@ -679,7 +687,7 @@ loads, create a zoom with `ZoomClass` on the element around the links:
 
 `ZoomClass` reads the options from the same `data-*` attributes that `<ImageZoom>` renders on its
 element (`data-image-zoom-show-counter="false"`, `data-image-zoom-close-scroll="false"`…); the theme and the duration come
-from the `--zoom-*` variables. Images are not wrapped then, so only links with `data-image-zoom` count, and
+from the `--image-zoom-*` variables. Images are not wrapped then, so only links with `data-image-zoom` count, and
 `data-image-zoom-ignore-selector` on the wrapper takes any CSS selector, since the browser matches it.
 
 ## License

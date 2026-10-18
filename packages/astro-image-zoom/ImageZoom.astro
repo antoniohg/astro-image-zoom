@@ -9,28 +9,28 @@ import { DEFAULT_LABELS, type ImageZoomLabels } from "./labels";
 
 export interface Props {
   /**
-   * Colors of the overlay; each one sets a --zoom-* variable and wins over it
+   * Colors of the overlay; each one sets a --image-zoom-* variable and wins over it
    */
   theme?: {
-    /** Overlay background (--zoom-bg) */
+    /** Overlay background (--image-zoom-bg) */
     backgroundColor?: string;
-    /** Close icon (--zoom-close-color) */
+    /** Close icon (--image-zoom-close-color) */
     closeButtonColor?: string;
-    /** Close button (--zoom-close-bg) */
+    /** Close button (--image-zoom-close-bg) */
     closeButtonBackground?: string;
-    /** Arrows and counter (--zoom-nav-color) */
+    /** Arrows and counter (--image-zoom-nav-color) */
     navigationColor?: string;
-    /** Navigation bar, or each arrow in the sides layout (--zoom-nav-bg) */
+    /** Navigation bar, or each arrow in the sides layout (--image-zoom-nav-bg) */
     navigationBackground?: string;
-    /** Caption text (--zoom-caption-color) */
+    /** Caption text (--image-zoom-caption-color) */
     captionColor?: string;
-    /** Caption box (--zoom-caption-bg) */
+    /** Caption box (--image-zoom-caption-bg) */
     captionBackground?: string;
   };
 
   /**
    * Animation duration in milliseconds. Without it, the duration comes from the
-   * --zoom-animation-duration CSS variable (300ms by default)
+   * --image-zoom-animation-duration CSS variable (300ms by default)
    */
   animationDuration?: number;
 
@@ -107,17 +107,17 @@ const {
   class: className = "",
 } = Astro.props;
 
-// The theme and the duration become --zoom-* variables on the element, which the overlay copies
-// when it opens: they win over the variables of the site, set on this element or around it
+// The theme and the duration become --image-zoom-* variables on the element, which the overlay
+// copies when it opens: they win over the variables of the site, set on this element or around it
 const variables = Object.entries({
-  "--zoom-bg": theme.backgroundColor,
-  "--zoom-close-color": theme.closeButtonColor,
-  "--zoom-close-bg": theme.closeButtonBackground,
-  "--zoom-nav-color": theme.navigationColor,
-  "--zoom-nav-bg": theme.navigationBackground,
-  "--zoom-caption-color": theme.captionColor,
-  "--zoom-caption-bg": theme.captionBackground,
-  "--zoom-animation-duration":
+  "--image-zoom-bg": theme.backgroundColor,
+  "--image-zoom-close-color": theme.closeButtonColor,
+  "--image-zoom-close-bg": theme.closeButtonBackground,
+  "--image-zoom-nav-color": theme.navigationColor,
+  "--image-zoom-nav-bg": theme.navigationBackground,
+  "--image-zoom-caption-color": theme.captionColor,
+  "--image-zoom-caption-bg": theme.captionBackground,
+  "--image-zoom-animation-duration":
     animationDuration === undefined ? undefined : `${animationDuration}ms`,
 })
   .filter(([, value]) => value)
@@ -138,7 +138,7 @@ const slotContent = wrapImages(
 // so, with no stylesheet on the page: any rule of the site, layered or not, wins over :host. A string,
 // since Astro would take <slot> for its own
 const shadowRoot =
-  '<template shadowrootmode="open"><style>:host { display: contents; }</style><slot></slot></template>';
+  '<template shadowrootmode="open"><style>@layer image-zoom { :host { display: contents; } }</style><slot></slot></template>';
 ---
 
 <astro-image-zoom

@@ -56,7 +56,7 @@ With Vitest, for the code that runs without a browser:
 - `wrapImages.test.ts`: how the images of the slot become zoom links (sources, captions, links
   and `<picture>` elements, and which URLs are allowed).
 - `ImageZoom.test.ts`: the HTML of the component, rendered with the Astro Container API: each prop
-  as its `data-*` attribute, and `theme` and `animationDuration` as `--zoom-*` variables.
+  as its `data-*` attribute, and `theme` and `animationDuration` as `--image-zoom-*` variables.
 - `flipTransform.test.ts`: the math of the opening and closing animation (scale, translation and
   clip of a thumbnail, following its `object-fit` and `object-position`, even when its file is
   already cropped from the full image). A file stretched to another shape with `object-fit: fill`

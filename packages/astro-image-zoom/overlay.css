@@ -1,8 +1,9 @@
 /**
  * Styles of the zoom overlay, applied inside its shadow root: the CSS of the page cannot reach
  * them, and they cannot leak out. zoom.ts imports this file with ?inline, so Vite hands it over
- * as a string, minified in production builds. Sites customize the overlay through the --zoom-* custom
- * properties, which cross the shadow boundary, and through the parts exposed with ::part().
+ * as a string, minified in production builds, and puts it in the image-zoom cascade layer. Sites
+ * customize the overlay through the --image-zoom-* custom properties, which cross the shadow
+ * boundary, and through the parts exposed with ::part().
  *
  * Lengths are in px, not rem: rem follows the font size of the page's <html>.
  */
@@ -15,9 +16,9 @@
   display: contents;
   font-family: inherit;
   /* On the host, so what leaves the dialog on a scroll close keeps the light or dark scheme */
-  color-scheme: var(--zoom-color-scheme, light dark);
+  color-scheme: var(--image-zoom-color-scheme, light dark);
   /* Every zoom animation and control fade derives from this duration; 0s with reduced motion */
-  --astro-image-zoom-duration: var(--zoom-animation-duration, 300ms);
+  --_image-zoom-duration: var(--image-zoom-animation-duration, 300ms);
 }
 
 /* Overlay container: a modal <dialog>, so it lives in the top layer */
@@ -37,31 +38,31 @@
   margin: 0;
   /*
    * Defaults shared by the controls and the caption. Set on the dialog, so nothing inherited from
-   * the page can reach them; a --zoom-* variable, when set, wins on every screen size. The surfaces
-   * are translucent and blur the image behind them, so they cover little of it.
+   * the page can reach them; a --image-zoom-* variable, when set, wins on every screen size. The
+   * surfaces are translucent and blur the image behind them, so they cover little of it.
    */
-  --astro-image-zoom-button-size: var(--zoom-button-size, 40px);
-  --astro-image-zoom-offset: var(--zoom-controls-offset, 16px);
-  --astro-image-zoom-caption-font-size: var(--zoom-caption-font-size, 13px);
-  --astro-image-zoom-surface: light-dark(
+  --_image-zoom-button-size: var(--image-zoom-button-size, 40px);
+  --_image-zoom-offset: var(--image-zoom-controls-offset, 16px);
+  --_image-zoom-caption-font-size: var(--image-zoom-caption-font-size, 13px);
+  --_image-zoom-surface: light-dark(
     rgba(255, 255, 255, 0.75),
     rgba(28, 28, 30, 0.7)
   );
-  --astro-image-zoom-on-surface: light-dark(
+  --_image-zoom-on-surface: light-dark(
     rgba(0, 0, 0, 0.88),
     rgba(255, 255, 255, 0.92)
   );
-  --astro-image-zoom-hairline: light-dark(
+  --_image-zoom-hairline: light-dark(
     rgba(0, 0, 0, 0.08),
     rgba(255, 255, 255, 0.12)
   );
   /* The surfaces blur what is behind them, but only once the zoom is open: a blur over an image
      that moves is computed again on every frame of the animation */
-  --astro-image-zoom-blur: none;
+  --_image-zoom-blur: none;
 }
 
 .astro-image-zoom-overlay.is-open {
-  --astro-image-zoom-blur: blur(16px) saturate(1.6);
+  --_image-zoom-blur: blur(16px) saturate(1.6);
 }
 
 .astro-image-zoom-overlay[open] {
@@ -78,7 +79,7 @@
   position: absolute;
   inset: 0;
   background-color: var(
-    --zoom-bg,
+    --image-zoom-bg,
     light-dark(rgba(255, 255, 255, 0.98), rgba(0, 0, 0, 0.95))
   );
   opacity: 0;
@@ -97,7 +98,7 @@
 }
 
 .astro-image-zoom-overlay.is-opening .astro-image-zoom-backdrop {
-  animation: astro-image-zoom-backdrop-in var(--astro-image-zoom-duration)
+  animation: astro-image-zoom-backdrop-in var(--_image-zoom-duration)
     cubic-bezier(0.2, 0, 0.2, 1) forwards;
 }
 
@@ -107,7 +108,7 @@
 
 .astro-image-zoom-overlay.is-closing .astro-image-zoom-backdrop {
   animation: astro-image-zoom-backdrop-out
-    calc(var(--astro-image-zoom-duration) * 0.75) cubic-bezier(0.4, 0, 0.2, 1)
+    calc(var(--_image-zoom-duration) * 0.75) cubic-bezier(0.4, 0, 0.2, 1)
     forwards;
 }
 
@@ -184,7 +185,7 @@
   /* Border box: the padding must not widen the slide, or the carousel loses its step */
   box-sizing: border-box;
   margin: 0;
-  padding: var(--zoom-padding, 0);
+  padding: var(--image-zoom-padding, 0);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -201,15 +202,15 @@
  * move, not the slides: the browser would snap the track to moved slides. Swipes stay native.
  */
 .astro-image-zoom-track .astro-image-zoom-image {
-  translate: var(--astro-image-zoom-slide-offset, 0px) 0;
+  translate: var(--_image-zoom-slide-offset, 0px) 0;
 }
 
 .astro-image-zoom-track.is-sliding .astro-image-zoom-image {
   transition:
     opacity 0.15s ease,
-    clip-path var(--astro-image-zoom-duration) cubic-bezier(0.2, 0, 0.2, 1),
-    translate var(--zoom-slide-duration, 400ms)
-      var(--zoom-slide-easing, cubic-bezier(0.2, 0, 0, 1));
+    clip-path var(--_image-zoom-duration) cubic-bezier(0.2, 0, 0.2, 1),
+    translate var(--image-zoom-slide-duration, 400ms)
+      var(--image-zoom-slide-easing, cubic-bezier(0.2, 0, 0, 1));
 }
 
 /* Image - animated from the thumbnail position */
@@ -220,20 +221,20 @@
   width: auto;
   height: auto;
   object-fit: contain;
-  border-radius: var(--zoom-image-radius, 0);
+  border-radius: var(--image-zoom-image-radius, 0);
   user-select: none;
   -webkit-user-select: none;
   -webkit-user-drag: none;
   cursor: zoom-out;
   /* While a cropped thumbnail stands in for the image, only its part shows; the rest unfolds once the
-     file has decoded (zoom.ts sets --astro-image-zoom-crop, the insets). Rounded like the image */
-  --astro-image-zoom-clip: inset(
-    var(--astro-image-zoom-crop, 0) round var(--zoom-image-radius, 0)
+     file has decoded (zoom.ts sets --_image-zoom-crop, the insets). Rounded like the image */
+  --_image-zoom-clip: inset(
+    var(--_image-zoom-crop, 0) round var(--image-zoom-image-radius, 0)
   );
-  clip-path: var(--astro-image-zoom-clip);
+  clip-path: var(--_image-zoom-clip);
   transition:
     opacity 0.15s ease,
-    clip-path var(--astro-image-zoom-duration) cubic-bezier(0.2, 0, 0.2, 1);
+    clip-path var(--_image-zoom-duration) cubic-bezier(0.2, 0, 0.2, 1);
   /* No will-change: a layer per slide, kept while the overlay is open, takes so much memory that iOS
      Safari drops the decoded images off screen, and a slide swiped back flashes blank. The animations
      promote the image while they run */
@@ -269,17 +270,17 @@
  * its center and size, in the viewport), white with a soft shadow, to show on any photo
  */
 .astro-image-zoom-slide.is-loading::after {
-  --astro-image-zoom-spinner: var(--astro-image-zoom-spinner-size, 40px);
+  --_image-zoom-spinner: var(--_image-zoom-spinner-size, 40px);
   content: "";
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   box-sizing: border-box;
-  width: var(--astro-image-zoom-spinner);
-  height: var(--astro-image-zoom-spinner);
-  color: var(--astro-image-zoom-on-surface);
-  border: max(2px, calc(var(--astro-image-zoom-spinner) / 16)) solid;
+  width: var(--_image-zoom-spinner);
+  height: var(--_image-zoom-spinner);
+  color: var(--_image-zoom-on-surface);
+  border: max(2px, calc(var(--_image-zoom-spinner) / 16)) solid;
   border-color: color-mix(in srgb, currentColor 35%, transparent);
   border-left-color: currentColor;
   border-radius: 50%;
@@ -292,8 +293,8 @@
 /* Fixed, not for every slide: a neighbor loading off screen would show its spinner in the middle */
 .astro-image-zoom-slide.is-loading.is-from-thumbnail::after {
   position: fixed;
-  top: var(--astro-image-zoom-spinner-y);
-  left: var(--astro-image-zoom-spinner-x);
+  top: var(--_image-zoom-spinner-y);
+  left: var(--_image-zoom-spinner-x);
   color: #fff;
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.6));
 }
@@ -324,7 +325,7 @@
 .astro-image-zoom-overlay.is-opening
   .astro-image-zoom-slide.is-active
   .astro-image-zoom-image {
-  animation: astro-image-zoom-in var(--astro-image-zoom-duration)
+  animation: astro-image-zoom-in var(--_image-zoom-duration)
     cubic-bezier(0.2, 0, 0.2, 1) forwards;
 }
 
@@ -340,7 +341,7 @@
 .astro-image-zoom-overlay.is-closing
   .astro-image-zoom-slide.is-active
   .astro-image-zoom-image {
-  animation: astro-image-zoom-out calc(var(--astro-image-zoom-duration) * 0.75)
+  animation: astro-image-zoom-out calc(var(--_image-zoom-duration) * 0.75)
     cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
@@ -357,7 +358,7 @@
 .astro-image-zoom-overlay.is-opening
   .astro-image-zoom-slide.is-active
   .astro-image-zoom-image.is-reshaping {
-  animation: astro-image-zoom-reshape var(--astro-image-zoom-duration)
+  animation: astro-image-zoom-reshape var(--_image-zoom-duration)
     cubic-bezier(0.2, 0, 0.2, 1);
 }
 
@@ -372,7 +373,7 @@
   z-index: 9999999;
   margin: 0;
   pointer-events: none;
-  animation: astro-image-zoom-out calc(var(--astro-image-zoom-duration) * 0.75)
+  animation: astro-image-zoom-out calc(var(--_image-zoom-duration) * 0.75)
     cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
@@ -385,7 +386,7 @@
   z-index: 9999998;
   pointer-events: none;
   animation: astro-image-zoom-backdrop-out
-    calc(var(--astro-image-zoom-duration) * 0.75) ease-out forwards;
+    calc(var(--_image-zoom-duration) * 0.75) ease-out forwards;
 }
 
 @keyframes astro-image-zoom-in {
@@ -405,7 +406,7 @@
   }
 
   to {
-    clip-path: var(--astro-image-zoom-clip);
+    clip-path: var(--_image-zoom-clip);
   }
 }
 
@@ -431,7 +432,7 @@
 
 @keyframes astro-image-zoom-clip-out {
   from {
-    clip-path: var(--clip-now, var(--astro-image-zoom-clip));
+    clip-path: var(--clip-now, var(--_image-zoom-clip));
   }
 
   to {
@@ -446,13 +447,13 @@
 .astro-image-zoom-bottom {
   position: fixed;
   inset-inline: 0;
-  bottom: var(--astro-image-zoom-offset);
+  bottom: var(--_image-zoom-offset);
   z-index: 11;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding-inline: var(--astro-image-zoom-offset);
+  padding-inline: var(--_image-zoom-offset);
   pointer-events: none;
 }
 
@@ -463,20 +464,20 @@
 /* Caption - above the navigation bar, or at the top of the screen; hidden while empty */
 .astro-image-zoom-caption {
   box-sizing: border-box;
-  max-width: var(--zoom-caption-max-width, 70%);
+  max-width: var(--image-zoom-caption-max-width, 70%);
   margin: 0;
   padding: 7px 14px;
-  color: var(--zoom-caption-color, var(--astro-image-zoom-on-surface));
-  font-family: var(--zoom-caption-font, inherit);
-  font-size: var(--astro-image-zoom-caption-font-size);
+  color: var(--image-zoom-caption-color, var(--_image-zoom-on-surface));
+  font-family: var(--image-zoom-caption-font, inherit);
+  font-size: var(--_image-zoom-caption-font-size);
   font-weight: 500;
   line-height: 1.5;
   text-align: center;
-  background-color: var(--zoom-caption-bg, var(--astro-image-zoom-surface));
-  border: 1px solid var(--astro-image-zoom-hairline);
-  border-radius: var(--zoom-caption-radius, 10px);
-  -webkit-backdrop-filter: var(--astro-image-zoom-blur);
-  backdrop-filter: var(--astro-image-zoom-blur);
+  background-color: var(--image-zoom-caption-bg, var(--_image-zoom-surface));
+  border: 1px solid var(--_image-zoom-hairline);
+  border-radius: var(--image-zoom-caption-radius, 10px);
+  -webkit-backdrop-filter: var(--_image-zoom-blur);
+  backdrop-filter: var(--_image-zoom-blur);
   transition: backdrop-filter 0.15s ease;
 }
 
@@ -488,46 +489,40 @@
 /*
  * At the top, the caption stays clear of the close button in the corner: centered beside it, with
  * the same room on both sides. When large buttons or offsets leave less than 160px there, it moves
- * below the button and takes the whole width. --astro-image-zoom-caption-below is 0 while the room
+ * below the button and takes the whole width. --_image-zoom-caption-below is 0 while the room
  * is enough and a large length otherwise, a step built with max() and min(). It measures the room
  * with vw: in top, % would refer to the height.
  */
 .astro-image-zoom-overlay[data-caption-position="top"]
   .astro-image-zoom-caption {
-  --astro-image-zoom-caption-below: max(
+  --_image-zoom-caption-below: max(
     0px,
     (
         160px - 100vw + 2 *
-          (
-            var(--astro-image-zoom-button-size) + 2 *
-              var(--astro-image-zoom-offset)
-          )
+          (var(--_image-zoom-button-size) + 2 * var(--_image-zoom-offset))
       ) *
       1000
   );
   position: fixed;
   top: calc(
-    var(--astro-image-zoom-offset) +
+    var(--_image-zoom-offset) +
       min(
-        var(--astro-image-zoom-caption-below),
-        var(--astro-image-zoom-button-size) + 8px
+        var(--_image-zoom-caption-below),
+        var(--_image-zoom-button-size) + 8px
       )
   );
   inset-inline: 0;
   width: fit-content;
   max-width: max(
     min(
-      var(--zoom-caption-max-width, 70%),
+      var(--image-zoom-caption-max-width, 70%),
       100% - 2 *
-        (
-          var(--astro-image-zoom-button-size) + 2 *
-            var(--astro-image-zoom-offset)
-        )
+        (var(--_image-zoom-button-size) + 2 * var(--_image-zoom-offset))
     ),
     min(
-      var(--zoom-caption-max-width, 100%),
-      100% - 2 * var(--astro-image-zoom-offset),
-      var(--astro-image-zoom-caption-below)
+      var(--image-zoom-caption-max-width, 100%),
+      100% - 2 * var(--_image-zoom-offset),
+      var(--_image-zoom-caption-below)
     )
   );
   margin-inline: auto;
@@ -551,8 +546,8 @@
   opacity: 1;
   visibility: visible;
   transition:
-    opacity calc(var(--astro-image-zoom-duration) * 0.4) ease-out
-      calc(var(--astro-image-zoom-duration) * 0.6),
+    opacity calc(var(--_image-zoom-duration) * 0.4) ease-out
+      calc(var(--_image-zoom-duration) * 0.6),
     background-color 0.15s ease,
     backdrop-filter 0.15s ease;
 }
@@ -560,12 +555,12 @@
 .astro-image-zoom-overlay.is-closing
   :is(.astro-image-zoom-close, .astro-image-zoom-bottom) {
   visibility: visible;
-  transition: opacity calc(var(--astro-image-zoom-duration) * 0.3) ease-in;
+  transition: opacity calc(var(--_image-zoom-duration) * 0.3) ease-in;
 }
 
 /*
  * Controls: the close button in the corner, and the navigation bar (previous, counter, next).
- * Every color, size and shape comes from a --zoom-* variable.
+ * Every color, size and shape comes from a --image-zoom-* variable.
  */
 .astro-image-zoom-close,
 .astro-image-zoom-nav {
@@ -573,13 +568,13 @@
   align-items: center;
   justify-content: center;
   flex: none;
-  width: var(--astro-image-zoom-button-size);
-  height: var(--astro-image-zoom-button-size);
+  width: var(--_image-zoom-button-size);
+  height: var(--_image-zoom-button-size);
   padding: 0;
   color: inherit;
   background: transparent;
   border: 0;
-  border-radius: var(--zoom-button-radius, 999px);
+  border-radius: var(--image-zoom-button-radius, 999px);
   cursor: pointer;
   transition:
     background-color 0.15s ease,
@@ -604,26 +599,26 @@
 .astro-image-zoom-toolbar,
 .astro-image-zoom-overlay[data-navigation-layout="sides"]
   :is(.astro-image-zoom-nav, .astro-image-zoom-counter) {
-  border: 1px solid var(--astro-image-zoom-hairline);
-  -webkit-backdrop-filter: var(--astro-image-zoom-blur);
-  backdrop-filter: var(--astro-image-zoom-blur);
+  border: 1px solid var(--_image-zoom-hairline);
+  -webkit-backdrop-filter: var(--_image-zoom-blur);
+  backdrop-filter: var(--_image-zoom-blur);
 }
 
 .astro-image-zoom-close {
   position: absolute;
-  top: var(--astro-image-zoom-offset);
-  right: var(--astro-image-zoom-offset);
+  top: var(--_image-zoom-offset);
+  right: var(--_image-zoom-offset);
   z-index: 11;
-  color: var(--zoom-close-color, var(--astro-image-zoom-on-surface));
-  background-color: var(--zoom-close-bg, var(--astro-image-zoom-surface));
+  color: var(--image-zoom-close-color, var(--_image-zoom-on-surface));
+  background-color: var(--image-zoom-close-bg, var(--_image-zoom-surface));
 }
 
 /* The colors of the navigation: the bar, and in "sides" layout each arrow and the counter */
 .astro-image-zoom-toolbar,
 .astro-image-zoom-overlay[data-navigation-layout="sides"]
   :is(.astro-image-zoom-nav, .astro-image-zoom-counter) {
-  color: var(--zoom-nav-color, var(--astro-image-zoom-on-surface));
-  background-color: var(--zoom-nav-bg, var(--astro-image-zoom-surface));
+  color: var(--image-zoom-nav-color, var(--_image-zoom-on-surface));
+  background-color: var(--image-zoom-nav-bg, var(--_image-zoom-surface));
 }
 
 .astro-image-zoom-toolbar {
@@ -631,7 +626,7 @@
   align-items: center;
   padding: 2px;
   transition: backdrop-filter 0.15s ease;
-  border-radius: calc(var(--zoom-button-radius, 999px) + 2px);
+  border-radius: calc(var(--image-zoom-button-radius, 999px) + 2px);
 }
 
 /* display: flex above would beat the [hidden] of the user agent */
@@ -642,13 +637,13 @@
 /* Hover tints whatever background the button has, so custom colors keep working */
 .astro-image-zoom-close:hover,
 .astro-image-zoom-nav:hover {
-  --astro-image-zoom-tint: light-dark(
+  --_image-zoom-tint: light-dark(
     rgba(0, 0, 0, 0.08),
     rgba(255, 255, 255, 0.16)
   );
   background-image: linear-gradient(
-    var(--astro-image-zoom-tint),
-    var(--astro-image-zoom-tint)
+    var(--_image-zoom-tint),
+    var(--_image-zoom-tint)
   );
 }
 
@@ -698,18 +693,18 @@
 
 .astro-image-zoom-overlay[data-navigation-layout="sides"]
   .astro-image-zoom-prev {
-  left: var(--astro-image-zoom-offset);
+  left: var(--_image-zoom-offset);
 }
 
 .astro-image-zoom-overlay[data-navigation-layout="sides"]
   .astro-image-zoom-next {
-  right: var(--astro-image-zoom-offset);
+  right: var(--_image-zoom-offset);
 }
 
 .astro-image-zoom-overlay[data-navigation-layout="sides"]
   .astro-image-zoom-counter {
   padding: 6px 10px;
-  border-radius: var(--zoom-button-radius, 999px);
+  border-radius: var(--image-zoom-button-radius, 999px);
 }
 
 /* Windows high contrast: the surfaces lose their backgrounds, so they get an outline */
@@ -732,13 +727,13 @@
 /* Phones: smaller controls, and the caption may take the whole width between the offsets */
 @media (max-width: 640px) {
   .astro-image-zoom-overlay {
-    --astro-image-zoom-button-size: var(--zoom-button-size, 36px);
-    --astro-image-zoom-offset: var(--zoom-controls-offset, 12px);
-    --astro-image-zoom-caption-font-size: var(--zoom-caption-font-size, 12px);
+    --_image-zoom-button-size: var(--image-zoom-button-size, 36px);
+    --_image-zoom-offset: var(--image-zoom-controls-offset, 12px);
+    --_image-zoom-caption-font-size: var(--image-zoom-caption-font-size, 12px);
   }
 
   .astro-image-zoom-caption {
-    max-width: var(--zoom-caption-max-width, 100%);
+    max-width: var(--image-zoom-caption-max-width, 100%);
     padding: 6px 12px;
   }
 }
@@ -746,7 +741,7 @@
 /* Reduced motion: the zoom runs in no time; zoom.ts still waits for its end, which comes at once */
 @media (prefers-reduced-motion: reduce) {
   :host {
-    --astro-image-zoom-duration: 0s;
+    --_image-zoom-duration: 0s;
   }
 
   .astro-image-zoom-image {

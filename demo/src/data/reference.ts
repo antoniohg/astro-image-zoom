@@ -13,38 +13,38 @@ export interface ReferenceRow {
 // Colors of the overlay
 export const colorVariables: ReferenceRow[] = [
   {
-    name: "--zoom-bg",
+    name: "--image-zoom-bg",
     description: "Overlay background",
     default: "light-dark(rgba(255, 255, 255, 0.98), rgba(0, 0, 0, 0.95))",
   },
   {
-    name: "--zoom-close-color",
+    name: "--image-zoom-close-color",
     description: "Close icon",
     default: "light-dark(rgba(0, 0, 0, 0.88), rgba(255, 255, 255, 0.92))",
   },
   {
-    name: "--zoom-close-bg",
+    name: "--image-zoom-close-bg",
     description: "Close button, translucent over a blur",
     default: "light-dark(rgba(255, 255, 255, 0.75), rgba(28, 28, 30, 0.7))",
   },
   {
-    name: "--zoom-nav-color",
+    name: "--image-zoom-nav-color",
     description: "Arrows and counter",
     default: "light-dark(rgba(0, 0, 0, 0.88), rgba(255, 255, 255, 0.92))",
   },
   {
-    name: "--zoom-nav-bg",
+    name: "--image-zoom-nav-bg",
     description:
       "Navigation bar (or each arrow in the sides layout), translucent over a blur",
     default: "light-dark(rgba(255, 255, 255, 0.75), rgba(28, 28, 30, 0.7))",
   },
   {
-    name: "--zoom-caption-color",
+    name: "--image-zoom-caption-color",
     description: "Caption text",
     default: "light-dark(rgba(0, 0, 0, 0.88), rgba(255, 255, 255, 0.92))",
   },
   {
-    name: "--zoom-caption-bg",
+    name: "--image-zoom-caption-bg",
     description: "Caption box, translucent over a blur",
     default: "light-dark(rgba(255, 255, 255, 0.75), rgba(28, 28, 30, 0.7))",
   },
@@ -53,48 +53,48 @@ export const colorVariables: ReferenceRow[] = [
 // Spacing, corners, controls and caption
 export const layoutVariables: ReferenceRow[] = [
   {
-    name: "--zoom-padding",
+    name: "--image-zoom-padding",
     description: "Space between the zoomed image and the screen edges",
     default: "0",
   },
   {
-    name: "--zoom-image-radius",
+    name: "--image-zoom-image-radius",
     description: "Corners of the zoomed image",
     default: "0",
   },
   {
-    name: "--zoom-button-size",
+    name: "--image-zoom-button-size",
     description: "Size of the arrows and the close button",
     default: "40px (36px on phones)",
   },
   {
-    name: "--zoom-button-radius",
+    name: "--image-zoom-button-radius",
     description: "Shape of the buttons and the navigation bar",
     default: "999px",
   },
   {
-    name: "--zoom-controls-offset",
+    name: "--image-zoom-controls-offset",
     description:
       "Distance from the controls and the caption to the screen edges",
     default: "16px (12px on phones)",
   },
   {
-    name: "--zoom-caption-max-width",
+    name: "--image-zoom-caption-max-width",
     description: "Widest the caption can get",
     default: "70% (100% on phones)",
   },
   {
-    name: "--zoom-caption-font",
+    name: "--image-zoom-caption-font",
     description: "Font family of the caption",
     default: "inherit",
   },
   {
-    name: "--zoom-caption-font-size",
+    name: "--image-zoom-caption-font-size",
     description: "Font size of the caption",
     default: "13px (12px on phones)",
   },
   {
-    name: "--zoom-caption-radius",
+    name: "--image-zoom-caption-radius",
     description: "Corners of the caption box",
     default: "10px",
   },
@@ -103,23 +103,23 @@ export const layoutVariables: ReferenceRow[] = [
 // Color scheme and motion
 export const otherVariables: ReferenceRow[] = [
   {
-    name: "--zoom-color-scheme",
+    name: "--image-zoom-color-scheme",
     description:
       "Set dark or light to follow your own theme toggle instead of the system",
     default: "light dark",
   },
   {
-    name: "--zoom-animation-duration",
+    name: "--image-zoom-animation-duration",
     description: "Zoom animation; the animationDuration prop wins over it",
     default: "300ms",
   },
   {
-    name: "--zoom-slide-duration",
+    name: "--image-zoom-slide-duration",
     description: "The glide to the next image with the arrows and keys",
     default: "400ms",
   },
   {
-    name: "--zoom-slide-easing",
+    name: "--image-zoom-slide-easing",
     description: "Its easing",
     default: "cubic-bezier(0.2, 0, 0, 1)",
   },
@@ -149,7 +149,7 @@ export const props: ReferenceRow[] = [
   },
   {
     name: "animationDuration",
-    description: "Milliseconds; overrides `--zoom-animation-duration`",
+    description: "Milliseconds; overrides `--image-zoom-animation-duration`",
     type: "number",
     default: "300",
   },

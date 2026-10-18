@@ -124,14 +124,17 @@ const captions: ExampleData[] = [
   },
 ];
 
-const framed = { "--zoom-padding": "6vmin", "--zoom-image-radius": "16px" };
+const framed = {
+  "--image-zoom-padding": "6vmin",
+  "--image-zoom-image-radius": "16px",
+};
 const customControls = {
-  "--zoom-button-size": "38px",
-  "--zoom-button-radius": "2px",
-  "--zoom-caption-radius": "0",
-  "--zoom-controls-offset": "0.75rem",
-  "--zoom-caption-bg": "#ff7a66",
-  "--zoom-caption-color": "#131722",
+  "--image-zoom-button-size": "38px",
+  "--image-zoom-button-radius": "2px",
+  "--image-zoom-caption-radius": "0",
+  "--image-zoom-controls-offset": "0.75rem",
+  "--image-zoom-caption-bg": "#ff7a66",
+  "--image-zoom-caption-color": "#131722",
 };
 
 const spacing: ExampleData[] = [
@@ -635,22 +638,23 @@ export default defineConfig({
             On screens up to 640px wide the overlay makes its buttons, its
             distance to the edges and the caption text smaller, and lets the
             caption take the whole width. A variable you set wins on every
-            screen: <code>--zoom-button-size: 56px</code> keeps 56px buttons on
-            a phone too. Keep the large values for wide screens with a media
-            query, or let them grow with the screen with <code>clamp()</code>.
+            screen: <code>--image-zoom-button-size: 56px</code> keeps 56px
+            buttons on a phone too. Keep the large values for wide screens with
+            a media query, or let them grow with the screen with{" "}
+            <code>clamp()</code>.
           </p>
           <CodeSample
             open
             lang="css"
             code={`/* <ImageZoom class="gallery"> */
 .gallery {
-  --zoom-padding: clamp(12px, 5vw, 64px);
+  --image-zoom-padding: clamp(12px, 5vw, 64px);
 }
 
 @media (width > 640px) {
   .gallery {
-    --zoom-button-size: 56px;
-    --zoom-controls-offset: 32px;
+    --image-zoom-button-size: 56px;
+    --image-zoom-controls-offset: 32px;
   }
 }`}
           />
@@ -710,8 +714,8 @@ export default defineConfig({
 
         <Section title="CSS variables" id="css-variables" level={3}>
           <p>
-            When a gallery opens, the overlay takes the <code>--zoom-*</code>{" "}
-            values found around it. The
+            When a gallery opens, the overlay takes the{" "}
+            <code>--image-zoom-*</code> values found around it. The
             <code>theme</code> prop wins over them.
           </p>
           <CodeSample
@@ -719,13 +723,13 @@ export default defineConfig({
             lang="css"
             code={`/* The whole site */
 :root {
-  --zoom-bg: rgb(5 8 20 / 0.97);
+  --image-zoom-bg: rgb(5 8 20 / 0.97);
 }
 
 /* One gallery: <ImageZoom class="portfolio"> */
 .portfolio {
-  --zoom-padding: 5vmin;
-  --zoom-image-radius: 12px;
+  --image-zoom-padding: 5vmin;
+  --image-zoom-image-radius: 12px;
 }`}
           />
           <h4>Colors</h4>
@@ -859,7 +863,7 @@ const translations: Record<string, Partial<ImageZoomLabels>> = {
           It reads the options from the same <code>data-*</code> attributes{" "}
           <code>{`<ImageZoom>`}</code> renders on its element, such as
           <code>data-image-zoom-show-counter="false"</code>; the theme and the
-          duration come from the <code>--zoom-*</code> variables.
+          duration come from the <code>--image-zoom-*</code> variables.
           <code>data-image-zoom-ignore-selector</code> on the wrapper takes any
           CSS selector, since the browser matches it.
         </p>

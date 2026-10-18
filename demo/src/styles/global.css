@@ -79,13 +79,16 @@
     --color-rule: light-dark(#cfd3da, #292e3c);
 
     /* Zoom component theme */
-    --zoom-bg: light-dark(rgb(238 239 242 / 0.98), rgb(16 19 27 / 0.97));
-    --zoom-close-color: var(--color-text);
-    --zoom-nav-color: var(--color-text);
-    --zoom-caption-color: light-dark(#eeeff2, #10131b);
-    --zoom-caption-bg: light-dark(rgb(21 23 29 / 0.9), rgb(232 233 238 / 0.92));
-    --zoom-caption-font: var(--font-sans);
-    --zoom-caption-font-size: 0.8125rem;
+    --image-zoom-bg: light-dark(rgb(238 239 242 / 0.98), rgb(16 19 27 / 0.97));
+    --image-zoom-close-color: var(--color-text);
+    --image-zoom-nav-color: var(--color-text);
+    --image-zoom-caption-color: light-dark(#eeeff2, #10131b);
+    --image-zoom-caption-bg: light-dark(
+      rgb(21 23 29 / 0.9),
+      rgb(232 233 238 / 0.92)
+    );
+    --image-zoom-caption-font: var(--font-sans);
+    --image-zoom-caption-font-size: 0.8125rem;
 
     /*
      * Focus ring, the same on every element, the zoom controls included. A plain color, set per
