@@ -13,7 +13,10 @@ import OverlaySketch from "@components/OverlaySketch.astro";
 import Reference from "@components/Reference.astro";
 import TableOfContents from "@components/TableOfContents.astro";
 import Photo from "@components/Photo.astro";
+import EasingCurve from "@components/EasingCurve.astro";
 import { photos, type PhotoName } from "@data/photos";
+import { easings, easingVariables } from "@data/easings";
+import { themeList } from "@data/themes";
 import {
   attributes,
   colorVariables,
@@ -124,6 +127,30 @@ const captions: ExampleData[] = [
   },
 ];
 
+// One example per ready-made curve, each with a photo of its own
+const easingPhotos: Record<string, LocalPhoto> = {
+  snappy: "dragonApproach",
+  back: "westerlund2",
+  spring: "solarFlare",
+  bounce: "youngLeap",
+  cinematic: "marsSunset",
+  "stop-motion": "artemisLaunch",
+};
+const easingExamples = easings.map((easing) => {
+  const vars = easingVariables(easing);
+  return {
+    easing,
+    title: easing.label,
+    description: easing.description,
+    code: cssRule(`.${easing.value}`, vars),
+    lang: "css" as const,
+    vars,
+    names: [easingPhotos[easing.value] ?? "dragonApproach"],
+  };
+});
+
+// Each new caption comes in from the side of its image
+const captionParallax = { "--image-zoom-caption-enter-x": "120px" };
 const framed = {
   "--image-zoom-padding": "6vmin",
   "--image-zoom-image-radius": "16px",
@@ -191,6 +218,11 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
   { id: "starlight", title: "Starlight" },
   { id: "behavior", title: "Behavior" },
   {
+    id: "animation",
+    title: "Animation",
+    children: [{ id: "easing", title: "Easing" }],
+  },
+  {
     id: "layout",
     title: "Layout",
     children: [
@@ -205,6 +237,7 @@ const toc: ComponentProps<typeof TableOfContents>["entries"] = [
     title: "Theming",
     children: [
       { id: "playground", title: "Playground" },
+      { id: "themes", title: "Themes" },
       { id: "theme-prop", title: "The theme prop" },
       { id: "css-variables", title: "CSS variables" },
       { id: "parts", title: "Parts" },
@@ -543,8 +576,8 @@ export default defineConfig({
 
       <Section title="Behavior" id="behavior">
         <p>
-          Props change how the zoom moves, closes and animates. Open each
-          example to try it.
+          Props change how the zoom moves and closes. Open each example to try
+          it.
         </p>
         <ul class="examples" role="list">
           {options.map(({ names, zoom, ...example }) => (
@@ -552,6 +585,19 @@ export default defineConfig({
               <ExamplePhotos names={names} zoom={zoom} />
             </Example>
           ))}
+        </ul>
+      </Section>
+
+      <Section title="Animation" id="animation">
+        <p>
+          The zoom grows from the thumbnail and shrinks back into it, or fades
+          in where it lands with <code>animation="fade"</code>. How long it
+          takes is a prop or a CSS variable; how it moves is two CSS variables,
+          so each gallery can have its own feel. In a gallery, the caption of
+          each new image comes in from where a few more variables say. With
+          reduced motion nothing animates, whatever is set here.
+        </p>
+        <ul class="examples" role="list">
           <Example
             title="Faster or slower"
             description="The length of the zoom in milliseconds: 150 on the left, 800 on the right."
@@ -565,7 +611,53 @@ export default defineConfig({
               zoom={[{ animationDuration: 150 }, { animationDuration: 800 }]}
             />
           </Example>
+          <Example
+            title="Zoom or fade"
+            description="The image grows from its thumbnail on the left, and fades in where it lands on the right: calmer, and the thumbnail stays on the page."
+            code={`<ImageZoom>
+<ImageZoom animation="fade">`}
+            icon={GaugeIcon}
+            level={3}
+          >
+            <ExamplePhotos
+              names={["artemisEarthset", "artemisCrescent"]}
+              zoom={[{}, { animation: "fade" }]}
+            />
+          </Example>
+          <Example
+            title="Captions in parallax"
+            description="Move through the gallery: each new caption comes in from the side of its image, at the pace of the gallery but a shorter way, so it floats above the photos. By default it only fades in; --image-zoom-caption-enter-y makes it rise into place, alone or along with the parallax, and 0s in --image-zoom-caption-duration changes it at once."
+            code={cssRule(".gallery", captionParallax)}
+            lang="css"
+            vars={captionParallax}
+            sketch={{ highlight: ["caption"] }}
+            level={3}
+          >
+            <ExamplePhotos
+              names={["geminiApproach", "geminiNose", "geminiStationKeeping"]}
+            />
+          </Example>
         </ul>
+
+        <Section title="Easing" id="easing" level={3}>
+          <p>
+            <code>--image-zoom-easing-in</code> sets the curve of the opening
+            and <code>--image-zoom-easing-out</code> the curve of the closing.
+            Any CSS easing works: <code>cubic-bezier()</code>,{" "}
+            <code>steps()</code> and <code>linear()</code> springs and bounces.
+            Each graph shows the opening, time across and size up. Open the
+            photos to compare them, or mix your own in the{" "}
+            <a href="#playground">playground</a>.
+          </p>
+          <ul class="examples" role="list">
+            {easingExamples.map(({ easing, names, ...example }) => (
+              <Example {...example}>
+                <EasingCurve slot="visual" easing={easing.in ?? "ease"} />
+                <ExamplePhotos names={names} />
+              </Example>
+            ))}
+          </ul>
+        </Section>
       </Section>
 
       <Section title="Layout" id="layout">
@@ -611,7 +703,8 @@ export default defineConfig({
           <p>
             The caption comes from <code>data-image-zoom-caption</code> (or the{" "}
             <code>title</code> of a <code>data-image-zoom</code> link), and sits
-            at the bottom by default.
+            at the bottom by default. How it changes from one image to the next
+            is in <a href="#animation">Animation</a>.
           </p>
           <ul class="examples" role="list">
             {captions.map(({ names, zoom, ...example }) => (
@@ -681,6 +774,23 @@ export default defineConfig({
             the variables only apply to this gallery.
           </p>
           <CssPlayground images={["crab", "spirograph"]} />
+        </Section>
+
+        <Section title="Themes" id="themes" level={3}>
+          <p>
+            A whole theme is a set of <code>--image-zoom-*</code> variables on a
+            class around the gallery. These ten, also live on the{" "}
+            <a href={`${base}#themes`}>overview</a>, follow the light or dark
+            preference with <code>light-dark()</code> and bring their own
+            motion; copy one and make it yours.
+          </p>
+          {themeList.map(({ name, description, css }) => (
+            <>
+              <h4>{name}</h4>
+              <p>{description}</p>
+              <CodeSample lang="css" code={css} />
+            </>
+          ))}
         </Section>
 
         <Section title="The theme prop" id="theme-prop" level={3}>

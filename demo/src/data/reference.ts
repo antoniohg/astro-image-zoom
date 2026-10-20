@@ -114,6 +114,27 @@ export const otherVariables: ReferenceRow[] = [
     default: "300ms",
   },
   {
+    name: "--image-zoom-easing-in",
+    description: "The curve of the opening",
+    default: "cubic-bezier(0.2, 0, 0.2, 1)",
+  },
+  {
+    name: "--image-zoom-easing-out",
+    description: "The curve of the closing",
+    default: "cubic-bezier(0.4, 0, 0.2, 1)",
+  },
+  {
+    name: "--image-zoom-controls-duration",
+    description:
+      "The fade of the buttons and the caption, after most of the zoom; three quarters of it when closing",
+    default: "40% of the zoom",
+  },
+  {
+    name: "--image-zoom-controls-easing",
+    description: "Its curve",
+    default: "ease-out in, ease-in out",
+  },
+  {
     name: "--image-zoom-slide-duration",
     description: "The glide to the next image with the arrows and keys",
     default: "400ms",
@@ -122,6 +143,34 @@ export const otherVariables: ReferenceRow[] = [
     name: "--image-zoom-slide-easing",
     description: "Its easing",
     default: "cubic-bezier(0.2, 0, 0, 1)",
+  },
+  {
+    name: "--image-zoom-caption-duration",
+    description:
+      "The caption of each new image in a gallery coming in, and its rise on opening; 0s changes it at once",
+    default: "the slide",
+  },
+  {
+    name: "--image-zoom-caption-easing",
+    description: "Its curve",
+    default: "the curve of the slide",
+  },
+  {
+    name: "--image-zoom-caption-enter-opacity",
+    description: "The opacity a new caption starts from",
+    default: "0",
+  },
+  {
+    name: "--image-zoom-caption-enter-x",
+    description:
+      "A parallax: how far to the side a new caption starts, the side its image comes from",
+    default: "0px",
+  },
+  {
+    name: "--image-zoom-caption-enter-y",
+    description:
+      "A rise: how far below a new caption starts (above at the top), also on opening",
+    default: "0px",
   },
 ];
 
@@ -152,6 +201,13 @@ export const props: ReferenceRow[] = [
     description: "Milliseconds; overrides `--image-zoom-animation-duration`",
     type: "number",
     default: "300",
+  },
+  {
+    name: "animation",
+    description:
+      "How the image opens and closes: it grows from its thumbnail, or fades in where it lands",
+    type: '"zoom" | "fade"',
+    default: '"zoom"',
   },
   {
     name: "showNavigation",

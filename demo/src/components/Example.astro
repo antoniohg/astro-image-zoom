@@ -8,7 +8,10 @@ interface Props {
   description: string;
   code: string;
   lang?: "astro" | "css";
-  /** What the option changes: a drawing of the overlay, or an icon for a behavior */
+  /**
+   * What the option changes: a drawing of the overlay, or an icon for a behavior. The "visual" slot
+   * takes anything else, such as the graph of an easing
+   */
   sketch?: ComponentProps<typeof OverlaySketch>;
   /** Phosphor duotone icon from src/assets/icons */
   icon?: SvgComponent;
@@ -39,6 +42,7 @@ const Heading = `h${level}` as const;
     <div class="visual">
       {sketch && <OverlaySketch {...sketch} />}
       {!sketch && Icon && <Icon width={28} height={28} aria-hidden="true" />}
+      <slot name="visual" />
     </div>
     <div class="text">
       <Heading>{title}</Heading>

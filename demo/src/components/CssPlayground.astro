@@ -3,6 +3,7 @@ import { Code } from "astro:components";
 import ImageZoom from "astro-image-zoom/ImageZoom.astro";
 import Photo from "@components/Photo.astro";
 import type { PhotoName } from "@data/photos";
+import { easings } from "@data/easings";
 
 interface Props {
   images: Exclude<PhotoName, "blueMarble">[];
@@ -10,11 +11,12 @@ interface Props {
 
 const { images } = Astro.props;
 
-// Starting values of the controls: the ranges at the defaults of the overlay, the colors at a deep
-// petrol with sand controls, a theme a real site could use. A color input can't show the default of
-// the overlay (translucent, light or dark), so the playground starts with that theme applied: what
-// the controls show is what the photos open with. Sand on the buttons: 4.9:1, on the backdrop and
-// the caption: 7.6:1
+// Starting values of the controls: the colors at a deep petrol with sand controls, a theme a real
+// site could use, framed with some padding and rounded corners so the first zoom already looks
+// different from the default; the other ranges at the defaults of the overlay. A color input can't
+// show the default of the overlay (translucent, light or dark), so the playground starts with that
+// theme applied: what the controls show is what the photos open with. Sand on the buttons: 4.9:1,
+// on the backdrop and the caption: 7.6:1
 const colors = [
   { name: "--image-zoom-bg", label: "Background", value: "#1f4b55" },
   { name: "--image-zoom-close-color", label: "Close icon", value: "#f3e3d3" },
@@ -33,6 +35,7 @@ const colors = [
   { name: "--image-zoom-caption-bg", label: "Caption box", value: "#f3e3d3" },
 ];
 
+// value: the default of the overlay; start: where the slider starts instead, applied from the start
 // phone: the default of the overlay up to 640px wide, where its controls get smaller
 // phoneMax: the limit on that screen, so the photo and the controls keep room to show
 const ranges: {
@@ -42,6 +45,7 @@ const ranges: {
   max: number;
   step: number;
   value: number;
+  start?: number;
   unit: string;
   phone?: number;
   phoneMax?: number;
@@ -53,6 +57,7 @@ const ranges: {
     max: 96,
     step: 4,
     value: 0,
+    start: 24,
     phoneMax: 32,
     unit: "px",
   },
@@ -63,6 +68,7 @@ const ranges: {
     max: 40,
     step: 2,
     value: 0,
+    start: 16,
     unit: "px",
   },
   {
@@ -105,6 +111,24 @@ const ranges: {
     value: 300,
     unit: "ms",
   },
+  {
+    name: "--image-zoom-caption-enter-x",
+    label: "Caption parallax",
+    min: 0,
+    max: 200,
+    step: 8,
+    value: 0,
+    unit: "px",
+  },
+  {
+    name: "--image-zoom-caption-enter-y",
+    label: "Caption rise",
+    min: 0,
+    max: 32,
+    step: 2,
+    value: 0,
+    unit: "px",
+  },
 ];
 ---
 
@@ -131,7 +155,18 @@ const ranges: {
     <fieldset class="ranges">
       <legend>Layout and motion</legend>
       {ranges.map(
-        ({ name, label, min, max, step, value, unit, phone, phoneMax }) => (
+        ({
+          name,
+          label,
+          min,
+          max,
+          step,
+          value,
+          start,
+          unit,
+          phone,
+          phoneMax,
+        }) => (
           <label class="range">
             <span class="name">
               {label}
@@ -143,14 +178,47 @@ const ranges: {
               min={min}
               max={max}
               step={step}
-              value={value}
+              value={start ?? value}
               data-unit={unit}
+              data-start={start !== undefined || undefined}
               data-phone={phone}
               data-phone-max={phoneMax}
             />
             <output
-              data-default={`${value}${unit}`}
-            >{`${value}${unit}`}</output>
+              data-default={`${start ?? value}${unit}`}
+            >{`${start ?? value}${unit}`}</output>
+          </label>
+        ),
+      )}
+    </fieldset>
+
+    <fieldset class="prop">
+      <legend>Animation</legend>
+      <label>
+        <input type="radio" name="animation" value="zoom" checked /> Zoom
+      </label>
+      <label>
+        <input type="radio" name="animation" value="fade" /> Fade
+      </label>
+    </fieldset>
+
+    <fieldset class="prop">
+      <legend>Easing</legend>
+      <label>
+        <input type="radio" name="easing" value="default" checked /> Default
+      </label>
+      {easings.map(
+        ({ value, label, in: easingIn, out: easingOut, duration }) => (
+          <label>
+            <input
+              type="radio"
+              name="easing"
+              value={value}
+              data-in={easingIn}
+              data-out={easingOut}
+              data-duration={duration}
+            />{" "}
+            {label}
           </label>
         ),
       )}
@@ -212,9 +280,11 @@ const ranges: {
 </css-playground>
 
 <script>
-  // Mirrors each changed control into a CSS variable on the element around the gallery, and the
-  // caption and navigation controls into the props (data attributes) of its <astro-image-zoom>
+  // Mirrors each changed control into a CSS variable on the element around the gallery, an easing
+  // into the two curve variables, and the animation, caption and navigation controls into the props
+  // (data attributes) of its <astro-image-zoom>
   const PROPS = {
+    animation: { attribute: "imageZoomAnimation", initial: "zoom" },
     captionPosition: {
       attribute: "imageZoomCaptionPosition",
       initial: "bottom",
@@ -248,7 +318,7 @@ const ranges: {
       this.form.addEventListener("input", this.handleInput);
       this.form.addEventListener("reset", this.handleReset);
       this.phone.addEventListener("change", this.fitScreen);
-      this.applyColors();
+      this.applyStartingTheme();
       this.fitScreen();
     }
 
@@ -288,10 +358,10 @@ const ranges: {
       }
     };
 
-    // The colors are always set, from the starting theme on
-    private applyColors() {
+    // The colors and the sliders with a starting value are always set, from the starting theme on
+    private applyStartingTheme() {
       for (const input of this.form.querySelectorAll<HTMLInputElement>(
-        'input[type="color"]',
+        'input[type="color"], input[data-start]',
       ))
         this.setVariable(input);
     }
@@ -300,7 +370,9 @@ const ranges: {
       const input = event.target;
       if (!(input instanceof HTMLInputElement)) return;
 
-      if (input.name in PROPS) {
+      if (input.name === "easing") {
+        this.setEasing(input);
+      } else if (input.name in PROPS) {
         const { attribute } = PROPS[input.name as keyof typeof PROPS];
         this.zoom.dataset[attribute] =
           input.type === "checkbox" ? String(input.checked) : input.value;
@@ -318,6 +390,37 @@ const ranges: {
       if (output) output.value = value;
     }
 
+    // The curves of the chosen easing, the ones it leaves out back to the default, and the Duration
+    // slider moved to the length the easing reads best at (Default puts it back)
+    private setEasing(input: HTMLInputElement) {
+      const slider = this.form.querySelector<HTMLInputElement>(
+        'input[name="--image-zoom-animation-duration"]',
+      )!;
+      slider.value = input.dataset.duration ?? slider.defaultValue;
+      if (input.dataset.duration) {
+        this.setVariable(slider);
+      } else {
+        this.changed.delete(slider.name);
+        this.scope.style.removeProperty(slider.name);
+        const output = slider.parentElement?.querySelector("output");
+        if (output) output.value = output.dataset.default ?? "";
+      }
+
+      const curves = {
+        "--image-zoom-easing-in": input.dataset.in,
+        "--image-zoom-easing-out": input.dataset.out,
+      };
+      for (const [name, value] of Object.entries(curves)) {
+        if (value) {
+          this.changed.set(name, value);
+          this.scope.style.setProperty(name, value);
+        } else {
+          this.changed.delete(name);
+          this.scope.style.removeProperty(name);
+        }
+      }
+    }
+
     private handleReset = () => {
       for (const name of this.changed.keys())
         this.scope.style.removeProperty(name);
@@ -327,10 +430,10 @@ const ranges: {
       for (const output of this.form.querySelectorAll("output"))
         output.value = output.dataset.default ?? "";
       // The form puts the controls back after this event: then set the sliders of this screen and
-      // the starting colors again
+      // the starting theme again
       requestAnimationFrame(() => {
         this.showDefaults();
-        this.applyColors();
+        this.applyStartingTheme();
         this.render();
       });
     };
@@ -339,6 +442,7 @@ const ranges: {
     private render() {
       const { dataset } = this.zoom;
       const props = [
+        dataset.imageZoomAnimation === "fade" ? ' animation="fade"' : "",
         dataset.imageZoomCaptionPosition === "top"
           ? ' captionPosition="top"'
           : "",
