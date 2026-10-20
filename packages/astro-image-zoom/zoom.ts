@@ -123,6 +123,11 @@ const ZOOM_VARIABLES = [
   "--image-zoom-controls-easing",
   "--image-zoom-slide-duration",
   "--image-zoom-slide-easing",
+  "--image-zoom-caption-duration",
+  "--image-zoom-caption-easing",
+  "--image-zoom-caption-enter-opacity",
+  "--image-zoom-caption-enter-x",
+  "--image-zoom-caption-enter-y",
   "--image-zoom-color-scheme",
 ];
 
@@ -1692,6 +1697,7 @@ class Zoom {
 
   // Marks the slide on screen and updates what depends on it: caption and buttons
   private renderActive(index: number): void {
+    const from = index < this.state.currentIndex ? "previous" : "next";
     this.state.currentIndex = index;
 
     this.slides.forEach(({ figure }, i) => {
@@ -1699,8 +1705,23 @@ class Zoom {
       figure.setAttribute("aria-hidden", String(i !== index));
     });
 
-    this.captionElement.textContent = this.state.images[index]?.caption ?? "";
+    this.renderCaption(this.state.images[index]?.caption ?? "", from);
     this.updateNavigationButtons();
+  }
+
+  // The caption of the slide on screen. A new text in the open zoom comes in as the
+  // --image-zoom-caption-enter-* variables say (overlay.css), from the side of the image it belongs to:
+  // the class comes off and back on to start it again, also midway
+  private renderCaption(text: string, from: "previous" | "next"): void {
+    const caption = this.captionElement;
+    if (caption.textContent === text) return;
+
+    caption.textContent = text;
+    caption.dataset.from = from;
+    caption.classList.remove("is-changing");
+    if (this.phase !== "open" || !text) return;
+    void caption.offsetWidth;
+    caption.classList.add("is-changing");
   }
 
   // The navigation bar: arrows and counter, each one on its own, only for galleries
@@ -1976,6 +1997,8 @@ class Zoom {
     this.track.classList.remove("is-sliding");
     this.track.style.removeProperty("--_image-zoom-slide-offset");
     this.captionElement.textContent = "";
+    this.captionElement.classList.remove("is-changing");
+    delete this.captionElement.dataset.from;
     this.slides = [];
 
     // Restore focus. close() may have given it back already to the link a click focused, with the

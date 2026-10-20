@@ -28,15 +28,24 @@
     --image-zoom-easing-out,
     cubic-bezier(0.4, 0, 0.2, 1)
   );
-  /* The image settling into its own shape once its file is known (the reshape, the unfold of a
-     cropped thumbnail): a quick correction with the default curve, whatever the zoom moves with. A
-     spring or a long zoom would make it wobble or drag */
   /* The fade of the controls and the caption: 40% of the zoom by default, from its 60% on, and
      three quarters of that on the way out */
   --_image-zoom-controls-duration: var(
     --image-zoom-controls-duration,
     calc(var(--_image-zoom-duration) * 0.4)
   );
+  /* The caption of a new slide coming in: with the glide of the images by default */
+  --_image-zoom-caption-motion: var(
+      --image-zoom-caption-duration,
+      var(--image-zoom-slide-duration, 400ms)
+    )
+    var(
+      --image-zoom-caption-easing,
+      var(--image-zoom-slide-easing, cubic-bezier(0.2, 0, 0, 1))
+    );
+  /* The image settling into its own shape once its file is known (the reshape, the unfold of a
+     cropped thumbnail): a quick correction with the default curve, whatever the zoom moves with. A
+     spring or a long zoom would make it wobble or drag */
   --_image-zoom-settle: min(var(--_image-zoom-duration), 300ms)
     cubic-bezier(0.2, 0, 0.2, 1);
 }
@@ -545,6 +554,50 @@
 }
 
 /*
+ * The caption of each new slide comes in (zoom.ts marks it .is-changing) from the state the
+ * --image-zoom-caption-enter-* variables describe: its opacity, a shift along the way the images come
+ * from (left going back, right going forward: a parallax) and a rise into place (from below at
+ * the bottom, from above at the top), which it also makes on opening, along with the fade of the
+ * controls. A fade by default; 0s in --image-zoom-caption-duration changes it at once. Closing, it
+ * leaves with the controls.
+ */
+.astro-image-zoom-caption {
+  --_image-zoom-caption-x: var(--image-zoom-caption-enter-x, 0px);
+  --_image-zoom-caption-y: var(--image-zoom-caption-enter-y, 0px);
+}
+
+.astro-image-zoom-caption[data-from="previous"] {
+  --_image-zoom-caption-x: calc(-1 * var(--image-zoom-caption-enter-x, 0px));
+}
+
+.astro-image-zoom-overlay[data-caption-position="top"]
+  .astro-image-zoom-caption {
+  --_image-zoom-caption-y: calc(-1 * var(--image-zoom-caption-enter-y, 0px));
+}
+
+.astro-image-zoom-overlay:is(.is-opening, .is-open) .astro-image-zoom-caption {
+  animation: astro-image-zoom-caption-rise var(--_image-zoom-caption-motion)
+    calc(var(--_image-zoom-duration) * 0.6) backwards;
+}
+
+.astro-image-zoom-overlay .astro-image-zoom-caption.is-changing {
+  animation: astro-image-zoom-caption-enter var(--_image-zoom-caption-motion);
+}
+
+@keyframes astro-image-zoom-caption-rise {
+  from {
+    translate: 0 var(--_image-zoom-caption-y);
+  }
+}
+
+@keyframes astro-image-zoom-caption-enter {
+  from {
+    opacity: var(--image-zoom-caption-enter-opacity, 0);
+    translate: var(--_image-zoom-caption-x) var(--_image-zoom-caption-y);
+  }
+}
+
+/*
  * At the top, the caption stays clear of the close button in the corner: centered beside it, with
  * the same room on both sides. When large buttons or offsets leave less than 160px there, it moves
  * below the button and takes the whole width. --_image-zoom-caption-below is 0 while the room
@@ -803,6 +856,7 @@
   :host {
     --_image-zoom-duration: 0s;
     --_image-zoom-controls-duration: 0s;
+    --_image-zoom-caption-motion: 0s;
   }
 
   .astro-image-zoom-image {

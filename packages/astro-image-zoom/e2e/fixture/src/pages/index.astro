@@ -202,6 +202,60 @@ const image = (name: string) => `${base}images/${name}.svg`;
         </ImageZoom>
       </section>
 
+      <section id="caption-rise" style="--image-zoom-caption-enter-y: 8px">
+        <h2>Captions that rise</h2>
+        <ImageZoom>
+          <img
+            src={image("wide")}
+            alt="Wide caption rises"
+            data-image-zoom-caption="Rises one"
+          />
+          <img
+            src={image("portrait")}
+            alt="Portrait caption rises"
+            data-image-zoom-caption="Rises two"
+          />
+        </ImageZoom>
+      </section>
+
+      <section
+        id="caption-top"
+        style="--image-zoom-caption-enter-y: 8px; --image-zoom-caption-enter-opacity: 1"
+      >
+        <h2>Captions that come from above, at the top</h2>
+        <ImageZoom captionPosition="top">
+          <img
+            src={image("wide")}
+            alt="Wide caption from above"
+            data-image-zoom-caption="From above one"
+          />
+          <img
+            src={image("portrait")}
+            alt="Portrait caption from above"
+            data-image-zoom-caption="From above two"
+          />
+        </ImageZoom>
+      </section>
+
+      <section
+        id="caption-parallax"
+        style="--image-zoom-caption-enter-x: 160px"
+      >
+        <h2>Captions in parallax</h2>
+        <ImageZoom>
+          <img
+            src={image("wide")}
+            alt="Wide caption in parallax"
+            data-image-zoom-caption="Parallax one"
+          />
+          <img
+            src={image("portrait")}
+            alt="Portrait caption in parallax"
+            data-image-zoom-caption="Parallax two"
+          />
+        </ImageZoom>
+      </section>
+
       <section id="no-arrows">
         <h2>No arrows, the counter stays</h2>
         <ImageZoom showNavigation={false}>

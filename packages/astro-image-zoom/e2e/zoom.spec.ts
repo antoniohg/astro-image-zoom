@@ -747,6 +747,126 @@ test.describe("gallery", () => {
     await expect(counter(page)).toHaveText("2 / 3");
   });
 
+  test("fades in the caption of the next slide", async ({ page }) => {
+    await openZoom(page, "gallery");
+    // The first caption comes with the controls, not with an entrance of its own
+    await expect(caption(page)).not.toHaveClass(/\bis-changing\b/);
+
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveText("Second");
+    await expect(caption(page)).toHaveCSS(
+      "animation-name",
+      "astro-image-zoom-caption-enter",
+    );
+    // With the glide of the images by default
+    await expect(caption(page)).toHaveCSS("animation-duration", "0.4s");
+    await expect
+      .poll(() =>
+        caption(page).evaluate((element) => element.getAnimations().length),
+      )
+      .toBe(0);
+    await expect(caption(page)).toHaveCSS("opacity", "1");
+    await expect(caption(page)).toHaveCSS("translate", "none");
+
+    // Closed, it starts again without it
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+    await openZoom(page, "gallery");
+    await expect(caption(page)).not.toHaveClass(/\bis-changing\b/);
+  });
+
+  test("brings the caption in from where its variables say", async ({
+    page,
+  }) => {
+    // Slowed down and taken back to its start, to read where each entrance starts
+    for (const id of ["caption-rise", "caption-top", "caption-parallax"])
+      await page
+        .locator(`#${id} astro-image-zoom`)
+        .evaluate((element: HTMLElement) =>
+          element.style.setProperty("--image-zoom-caption-duration", "10s"),
+        );
+    const start = () =>
+      caption(page).evaluate((element: HTMLElement) => {
+        const [animation] = element.getAnimations();
+        animation?.pause();
+        if (animation) animation.currentTime = 0;
+        const style = getComputedStyle(element);
+        const [x = "0", y = "0"] = style.translate.split(" ");
+        // WebKit may read it a hair past the start
+        const round = (value: number) => Math.round(value * 10) / 10;
+        return {
+          opacity: round(Number(style.opacity)),
+          x: round(Number.parseFloat(x)),
+          y: round(Number.parseFloat(y)),
+        };
+      });
+
+    // A rise: from below on opening, with the controls, and again for each new image
+    await links(page, "caption-rise").first().click();
+    await expect(caption(page)).toHaveCSS(
+      "animation-name",
+      "astro-image-zoom-caption-rise",
+    );
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveText("Rises two");
+    await expect(caption(page)).toHaveCSS(
+      "animation-name",
+      "astro-image-zoom-caption-enter",
+    );
+    expect(await start()).toMatchObject({ opacity: 0, x: 0, y: 8 });
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+
+    // At the top it comes from above, and an opacity of 1 keeps it visible
+    await openZoom(page, "caption-top");
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveText("From above two");
+    expect(await start()).toMatchObject({ opacity: 1, y: -8 });
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+
+    // A parallax: from the side the image comes from
+    await openZoom(page, "caption-parallax");
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveText("Parallax two");
+    expect((await start()).x).toBe(160);
+    await page.keyboard.press("ArrowLeft");
+    await expect(caption(page)).toHaveText("Parallax one");
+    expect((await start()).x).toBe(-160);
+  });
+
+  test("takes the timing of the caption from its variables", async ({
+    page,
+  }) => {
+    await page
+      .locator("#gallery astro-image-zoom")
+      .evaluate((element: HTMLElement) => {
+        element.style.setProperty("--image-zoom-caption-duration", "700ms");
+        element.style.setProperty("--image-zoom-caption-easing", "linear");
+      });
+    await openZoom(page, "gallery");
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveCSS("animation-duration", "0.7s");
+    await expect(caption(page)).toHaveCSS(
+      "animation-timing-function",
+      "linear",
+    );
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+
+    // 0s changes it at once
+    await page
+      .locator("#gallery astro-image-zoom")
+      .evaluate((element: HTMLElement) =>
+        element.style.setProperty("--image-zoom-caption-duration", "0s"),
+      );
+    await openZoom(page, "gallery");
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveText("Second");
+    await expect(caption(page)).toHaveCSS("animation-duration", "0s");
+  });
+
   test("takes the caption from the figcaption or the title of the image", async ({
     page,
   }) => {
@@ -2116,6 +2236,31 @@ test.describe("reduced motion", () => {
     await page.keyboard.press("ArrowRight");
     await expect(counter(page)).toHaveText("2 / 3");
     await expect(zoomedImage(page)).toHaveCSS("transition-duration", "0s");
+    // And the caption changes with it
+    await expect(caption(page)).toHaveText("Second");
+    await expect(caption(page)).toHaveCSS("animation-duration", "0s");
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+
+    // A caption that rises is in place at once, on opening and on each new image
+    await openZoom(page, "caption-rise");
+    await expect(caption(page)).toHaveCSS("animation-duration", "0s");
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveText("Rises two");
+    await expect(caption(page)).toHaveCSS("animation-duration", "0s");
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+
+    // And so is one in parallax, whatever its own duration says
+    await page
+      .locator("#caption-parallax astro-image-zoom")
+      .evaluate((element: HTMLElement) =>
+        element.style.setProperty("--image-zoom-caption-duration", "700ms"),
+      );
+    await openZoom(page, "caption-parallax");
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveText("Parallax two");
+    await expect(caption(page)).toHaveCSS("animation-duration", "0s");
     await page.keyboard.press("Escape");
     await expectClosed(page);
   });

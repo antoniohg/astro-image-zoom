@@ -477,6 +477,11 @@ Override the default styles with CSS variables:
   --image-zoom-controls-easing: ease-out; /* its curve; ease-out in and ease-in out by default */
   --image-zoom-slide-duration: 400ms; /* arrows and keys: the glide to the next image */
   --image-zoom-slide-easing: cubic-bezier(0.2, 0, 0, 1);
+  --image-zoom-caption-duration: 400ms; /* the caption of each new image coming in; the slide by default, 0s changes it at once */
+  --image-zoom-caption-easing: ease-out; /* the curve of the slide by default */
+  --image-zoom-caption-enter-opacity: 0; /* where a new caption starts: its opacity, */
+  --image-zoom-caption-enter-x: 0px; /* a parallax from the side its image comes from, */
+  --image-zoom-caption-enter-y: 0px; /* and a rise into place (also on opening), from above at the top */
 
   /* Layout */
   --image-zoom-padding: 0; /* space between the zoomed image and the screen edges */
