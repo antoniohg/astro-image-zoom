@@ -128,6 +128,7 @@ const ZOOM_VARIABLES = [
 
 // The options of a gallery, from the data-image-zoom-* attributes of its wrapper
 interface ZoomOptions {
+  animation: "zoom" | "fade";
   closeOnBackdrop: boolean;
   closeOnImage: boolean;
   closeOnScroll: boolean;
@@ -150,6 +151,7 @@ function oneOf<T extends string>(
 function readOptions(dataset: DOMStringMap): ZoomOptions {
   const flag = (value: string | undefined): boolean => value !== "false";
   return {
+    animation: oneOf(dataset.imageZoomAnimation, ["zoom", "fade"]),
     closeOnBackdrop: flag(dataset.imageZoomCloseBackdrop),
     closeOnImage: flag(dataset.imageZoomCloseImage),
     closeOnScroll: flag(dataset.imageZoomCloseScroll),
@@ -170,11 +172,13 @@ function readOptions(dataset: DOMStringMap): ZoomOptions {
 const OPEN_ANIMATIONS = [
   "astro-image-zoom-in",
   "astro-image-zoom-clip-in",
+  "astro-image-zoom-fade-in",
   "astro-image-zoom-backdrop-in",
 ];
 const CLOSE_ANIMATIONS = [
   "astro-image-zoom-out",
   "astro-image-zoom-clip-out",
+  "astro-image-zoom-fade-out",
   "astro-image-zoom-backdrop-out",
 ];
 
@@ -899,6 +903,7 @@ class Zoom {
   private applyOverlayConfig(): void {
     const { options } = this;
     Object.assign(this.overlay.dataset, {
+      animation: options.animation,
       closeBackdrop: String(options.closeOnBackdrop),
       closeImage: String(options.closeOnImage),
       captionPosition: options.captionPosition,
@@ -945,6 +950,11 @@ class Zoom {
         signal,
       });
     }
+  }
+
+  // The image fades in and out where it lands, instead of flying from its thumbnail
+  private get fades(): boolean {
+    return this.options.animation === "fade";
   }
 
   // From open() until close() starts
@@ -1019,15 +1029,17 @@ class Zoom {
     const transform = flipTransform(sourceRect, finalRect, sourceFit);
 
     this.setAnimationVariables(transform);
-    // Only an image that is cropped or rounded animates its clip-path
+    // Only an image that is cropped or rounded animates its clip-path; a fade has no clip to animate
     this.imageElement.classList.toggle(
       "is-clipped",
-      !isFlatClip(transform.clipPath) ||
-        !isFlatClip(getComputedStyle(this.imageElement).clipPath),
+      !this.fades &&
+        (!isFlatClip(transform.clipPath) ||
+          !isFlatClip(getComputedStyle(this.imageElement).clipPath)),
     );
 
-    // Hide thumbnail instantly and trigger CSS animation simultaneously
-    this.hideThumbnail(sourceImg);
+    // Hide thumbnail instantly and trigger CSS animation simultaneously. A fade does not come from
+    // the thumbnail: it stays on the page, under the overlay
+    if (!this.fades) this.hideThumbnail(sourceImg);
     this.phase = "opening";
     this.overlay.classList.add("is-opening");
     this.watchArrival(currentOpenId, index, finalRect.width);
@@ -1100,6 +1112,7 @@ class Zoom {
     this.imageElement.style.setProperty("--transform-now", image.transform);
     const clipNow = image.clipPath;
     this.imageElement.style.setProperty("--clip-now", clipNow);
+    this.imageElement.style.setProperty("--opacity-now", image.opacity);
 
     // Closed during the opening: the backdrop too, read before the opening stops
     if (closedFrom === "opening") {
@@ -1128,14 +1141,26 @@ class Zoom {
 
     // To the thumbnail of the image on screen, which may not be the one the opening started from.
     // The gallery may have moved to one off screen: the page, hidden under the overlay, scrolls to
-    // it first, so the image lands in view and so does the focus. Not on a scroll close, where the
-    // page is already moving with the gesture
+    // it first, so the image lands in view and so does the focus (a fade needs only the focus). Not
+    // on a scroll close, where the page is already moving with the gesture
     if (!byScroll)
       sourceImg.scrollIntoView({
         block: "nearest",
         inline: "nearest",
         behavior: "instant",
       });
+
+    // A fade leaves where it is: no thumbnail to fly back to, nor an image to take out of the
+    // dialog on a scroll close, where the page moves under it as it fades
+    if (this.fades) {
+      this.imageElement.classList.remove("is-clipped");
+      if (byScroll) this.unlockScroll();
+      void animationsFinished(this.overlay, CLOSE_ANIMATIONS).then(() =>
+        this.finalizeClose(sourceImg),
+      );
+      return;
+    }
+
     const targetRect = sourceImg.getBoundingClientRect();
     const transform = flipTransform(
       targetRect,
@@ -1499,6 +1524,8 @@ class Zoom {
   // else it waits for the animation to end (settle() runs again)
   private reshape(index: number, slide: ZoomSlide): void {
     const { img } = slide;
+    // A fade animates the whole image, not a part of it to follow: it takes its shape at the end
+    if (this.phase === "opening" && this.fades) return;
     if (this.phase === "opening") {
       const thumbnail = this.getThumbnail(index);
       const hasPart =
@@ -1631,9 +1658,11 @@ class Zoom {
     const index = Math.round(this.track.scrollLeft / width);
     if (index === this.state.currentIndex || !this.slides[index]) return;
 
-    // Only the thumbnail of the image on screen stays hidden
-    this.showThumbnail(this.getThumbnail(this.state.currentIndex));
-    this.hideThumbnail(this.getThumbnail(index));
+    // Only the thumbnail of the image on screen stays hidden; with a fade none is
+    if (!this.fades) {
+      this.showThumbnail(this.getThumbnail(this.state.currentIndex));
+      this.hideThumbnail(this.getThumbnail(index));
+    }
 
     this.renderActive(index);
     this.emit("change");

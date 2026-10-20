@@ -374,6 +374,42 @@
   animation-name: astro-image-zoom-out, astro-image-zoom-clip-out;
 }
 
+/* The fade (animation="fade"): the image appears where it lands and leaves from there, growing
+   a little into place, with no flight from the thumbnail and no clip to follow */
+.astro-image-zoom-overlay[data-animation="fade"].is-opening
+  .astro-image-zoom-slide.is-active
+  .astro-image-zoom-image {
+  animation: astro-image-zoom-fade-in var(--_image-zoom-duration)
+    var(--_image-zoom-easing-in) forwards;
+}
+
+.astro-image-zoom-overlay[data-animation="fade"].is-closing
+  .astro-image-zoom-slide.is-active
+  .astro-image-zoom-image {
+  animation: astro-image-zoom-fade-out calc(var(--_image-zoom-duration) * 0.75)
+    var(--_image-zoom-easing-out) forwards;
+}
+
+@keyframes astro-image-zoom-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes astro-image-zoom-fade-out {
+  /* --opacity-now and --transform-now: where the image was when the zoom closed (zoom.ts) */
+  from {
+    opacity: var(--opacity-now, 1);
+    transform: var(--transform-now, none);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
 /* The image leaves the shape of its thumbnail for its own (reshape() in zoom.ts): the part the
    thumbnail shows moves and scales from where it was. Also during the opening, where it replaces
    the zoom animation: more specific than its rule, the animation goes on when the overlay opens */

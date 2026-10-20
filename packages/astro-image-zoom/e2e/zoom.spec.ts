@@ -1981,12 +1981,128 @@ test.describe("theming", () => {
   });
 });
 
+test.describe("fade", () => {
+  // Slow animations, so the opening and the closing can be read: from around the gallery on
+  // open, from the host of the overlay later
+  const slow = (page: Page, duration: string) =>
+    page
+      .locator("astro-image-zoom-overlay")
+      .evaluate(
+        (host: HTMLElement, value) =>
+          host.style.setProperty("--image-zoom-animation-duration", value),
+        duration,
+      );
+  const center = async (page: Page) => {
+    const box = (await zoomedImage(page).boundingBox())!;
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  };
+
+  test("fades the image in where it lands, and leaves the thumbnail on the page", async ({
+    page,
+  }) => {
+    await page
+      .locator("#fade")
+      .evaluate((section: HTMLElement) =>
+        section.style.setProperty("--image-zoom-animation-duration", "10s"),
+      );
+    await links(page, "fade").first().click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+    await expect(zoomedImage(page)).toHaveCSS(
+      "animation-name",
+      "astro-image-zoom-fade-in",
+    );
+    // In the middle of the screen from the start, not on the thumbnail
+    const viewport = page.viewportSize()!;
+    const { x, y } = await center(page);
+    expect(Math.abs(x - viewport.width / 2)).toBeLessThan(2);
+    expect(Math.abs(y - viewport.height / 2)).toBeLessThan(2);
+    await expect(links(page, "fade").first().locator("img")).toHaveCSS(
+      "opacity",
+      "1",
+    );
+    await slow(page, "1ms");
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+  });
+
+  test("fades out where it is, also when closed during the opening", async ({
+    page,
+  }) => {
+    await page
+      .locator("#fade")
+      .evaluate((section: HTMLElement) =>
+        section.style.setProperty("--image-zoom-animation-duration", "10s"),
+      );
+    await links(page, "fade").first().click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).toHaveClass(/\bis-closing\b/);
+    await expect(zoomedImage(page)).toHaveCSS(
+      "animation-name",
+      "astro-image-zoom-fade-out",
+    );
+    // From the opacity it had, in place: it does not fly to the thumbnail
+    const opacity = Number(
+      await zoomedImage(page).evaluate(
+        (img: HTMLImageElement) => getComputedStyle(img).opacity,
+      ),
+    );
+    expect(opacity).toBeLessThan(1);
+    const viewport = page.viewportSize()!;
+    const { x } = await center(page);
+    expect(Math.abs(x - viewport.width / 2)).toBeLessThan(2);
+
+    await slow(page, "1ms");
+    await expectClosed(page);
+    await expect(links(page, "fade").first()).toBeFocused();
+  });
+
+  test("scrolls the page to the thumbnail when it is off screen, so the focus lands in view after a fade", async ({
+    page,
+  }) => {
+    await openZoom(page, "fade");
+    await page.evaluate(() =>
+      window.scrollTo(0, document.documentElement.scrollHeight),
+    );
+    await expect(links(page, "fade").first()).not.toBeInViewport();
+
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+    await expect(links(page, "fade").first().locator("img")).toBeInViewport();
+    await expect(links(page, "fade").first()).toBeFocused();
+  });
+
+  test("fades out on a scroll close, without taking the image out of the dialog", async ({
+    page,
+  }) => {
+    await openZoom(page, "fade");
+    await page.mouse.move(640, 360);
+    await page.mouse.wheel(0, 400);
+    await expect(dialog(page)).toHaveClass(/\bis-closing\b/);
+    expect(
+      await page
+        .locator("astro-image-zoom-overlay")
+        .evaluate(
+          (host: HTMLElement) =>
+            host.shadowRoot!.querySelectorAll(".is-detached").length,
+        ),
+    ).toBe(0);
+    await expectClosed(page);
+  });
+});
+
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
 
   test("opens and closes without animating", async ({ page }) => {
     await openZoom(page, "single");
     await expect(zoomedImage(page)).toHaveCSS("animation-duration", "0s");
+    // A fade too
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+    await openZoom(page, "fade");
+    await expect(zoomedImage(page)).toHaveCSS("animation-duration", "0s");
+
     // The controls appear at once too, even with a fade of their own
     await expect(page.locator(".astro-image-zoom-close")).toHaveCSS(
       "transition-duration",

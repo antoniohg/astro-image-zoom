@@ -194,6 +194,14 @@ const image = (name: string) => `${base}images/${name}.svg`;
         </ImageZoom>
       </section>
 
+      <section id="fade">
+        <h2>Fade</h2>
+        <ImageZoom animation="fade">
+          <img src={image("wide")} alt="Wide that fades" />
+          <img src={image("portrait")} alt="Portrait that fades" />
+        </ImageZoom>
+      </section>
+
       <section id="no-arrows">
         <h2>No arrows, the counter stays</h2>
         <ImageZoom showNavigation={false}>

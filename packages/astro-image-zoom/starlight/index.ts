@@ -20,6 +20,7 @@ export type StarlightImageZoomOptions = Pick<
   | "showCaption"
   | "captionPosition"
   | "animationDuration"
+  | "animation"
   | "ignore"
   | "theme"
 >;
