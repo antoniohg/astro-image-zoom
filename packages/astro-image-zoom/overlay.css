@@ -1,9 +1,10 @@
 /**
  * Styles of the zoom overlay, applied inside its shadow root: the CSS of the page cannot reach
  * them, and they cannot leak out. zoom.ts imports this file with ?inline, so Vite hands it over
- * as a string, minified in production builds, and puts it in the image-zoom cascade layer. Sites
- * customize the overlay through the --image-zoom-* custom properties, which cross the shadow
- * boundary, and through the parts exposed with ::part().
+ * as a string, minified in production builds, and puts it in the image-zoom cascade layer of the
+ * shadow root, apart from the layers of the page. Sites customize the overlay through the
+ * --image-zoom-* custom properties, which cross the shadow boundary, and through the parts exposed
+ * with ::part().
  *
  * Lengths are in px, not rem: rem follows the font size of the page's <html>.
  */

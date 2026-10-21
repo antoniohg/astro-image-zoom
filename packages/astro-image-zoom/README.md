@@ -342,7 +342,10 @@ imageZoom({ showCounter: false, theme: { backgroundColor: "black" } });
 ```
 
 Starlight's colors are only defaults: the [CSS variables](#css-variables) of your site replace
-them, and `theme` replaces both, color by color.
+them, and `theme` replaces both, color by color. They are the one rule the package puts on the page,
+in the `image-zoom` cascade layer and at zero specificity, so unlayered CSS of yours always wins. If
+you set the variables inside a layer of your own, declare the order first, so yours comes after:
+`@layer image-zoom, components;`.
 
 ### Translations
 
@@ -449,10 +452,11 @@ The caption is your own text, so it is not translated by the component.
 
 ## Styling
 
-The package's styles live in the `image-zoom` cascade layer, so any unlayered CSS of yours wins.
-To place it in your own order, declare the layer first (`@layer reset, image-zoom, components;`).
-The overlay itself lives in a shadow root, which your rules don't reach: the variables and the
-parts below are the way in.
+The overlay lives in a shadow root, which the CSS of your site doesn't reach: the variables and the
+parts below are the way in. The component adds no stylesheet to your page ([Your page](#your-page)),
+so there is nothing to order with your cascade layers: the `image-zoom` layer the package uses
+lives inside its shadow roots, apart from the layers of your page. Only the
+[Starlight plugin](#starlight) puts a rule on the page.
 
 > Before 0.1.0-beta.12 the variables were named `--zoom-*`: `--zoom-bg` is now `--image-zoom-bg`,
 > and so on for every one, with no fallback to the old names.
