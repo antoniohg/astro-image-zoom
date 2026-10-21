@@ -1,12 +1,12 @@
 import type { PhotoName } from "@data/photos";
 
 /**
- * Ready-to-copy themes made only of --image-zoom-* variables, shown live on the overview with their CSS
- * and listed in the docs. Variables work per gallery, so each theme is one class around one
- * <ImageZoom>; ::part() would style every gallery of the page, as the overlay is shared. Every color
- * is a light-dark() pair: the overlay follows the light or dark preference of the system, as the
- * site does. The buttons and the caption sit over the photo and blur it: their backgrounds are
- * glass(), mostly opaque, so their text keeps its contrast over a black or a white picture alike
+ * Ready-to-copy themes made of --image-zoom-* variables, shown live on the overview with their CSS.
+ * Variables work per gallery, so each theme is one class on one <ImageZoom>; ::part() would style
+ * every gallery of the page, as the overlay is shared. Every color is a light-dark() pair: the
+ * overlay follows the light or dark preference of the system, as the site does. The buttons and
+ * the caption sit over the photo and blur it: their backgrounds are glass(), mostly opaque, so
+ * their text keeps its contrast over a black or a white picture alike
  */
 interface Timing {
   duration: number;

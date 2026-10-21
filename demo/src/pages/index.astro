@@ -11,7 +11,7 @@ import UserSoundIcon from "../assets/icons/user-sound.svg";
 import HandSwipeRightIcon from "../assets/icons/hand-swipe-right.svg";
 import LinkIcon from "../assets/icons/link.svg";
 import ShieldCheckIcon from "../assets/icons/shield-check.svg";
-import PackageIcon from "../assets/icons/package.svg";
+import GaugeIcon from "../assets/icons/gauge.svg";
 import type { PhotoName } from "@data/photos";
 import { themeList } from "@data/themes";
 import type { SvgComponent } from "astro/types";
@@ -124,9 +124,9 @@ const features: { icon: SvgComponent; title: string; text: string }[] = [
     text: "A shadow root keeps your styles out of the zoom and the zoom out of your page; you change it on purpose, with CSS variables and parts.",
   },
   {
-    icon: PackageIcon,
-    title: "Zero dependencies",
-    text: "One Astro component and a small script that follow light and dark mode, reduced motion and forced colors.",
+    icon: GaugeIcon,
+    title: "Motion you can tune",
+    text: "Zoom or fade, any CSS easing from springs to steps, and captions that glide in with each photo; with reduced motion, it all stays still.",
   },
 ];
 
@@ -270,10 +270,11 @@ const docs = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}docs/`;
     <Section title="Make it yours" id="themes" wide>
       <p class="themes-intro wide">
         Ten ready-made themes, one component, from everyday to just for fun.
-        Each is a handful of <code>--image-zoom-*</code> variables on a class
-        around the gallery: colors for light and dark mode, caption font,
-        spacing, the shape of the controls and the motion. Pick one, open a
-        photo, copy the CSS.
+        Each is a handful of <code>--image-zoom-*</code> variables: colors for
+        light and dark mode, caption font, spacing, the shape of the controls
+        and the motion, plus a prop or two for the layout. Pick one, open a
+        photo, copy the CSS: on <code>:root</code> for the whole site, or on one
+        gallery as here.
       </p>
       <div class="theme-studio wide">
         <fieldset class="theme-picker">
@@ -388,10 +389,11 @@ import ImageZoom from 'astro-image-zoom/ImageZoom.astro';
           </Case>
         </li>
         <li>
-          <Case title="Make it yours" number={3}>
+          <Case title="Customize it" number={3}>
             <p class="next">
               Options for the navigation, the caption and how it closes; colors,
-              spacing and shapes with CSS variables.
+              spacing, shapes and <a href={`${docs}#animation`}>motion</a> with
+              CSS variables.
             </p>
             <a class="button" href={docs}>
               Read the docs
