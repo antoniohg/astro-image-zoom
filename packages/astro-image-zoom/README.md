@@ -598,8 +598,8 @@ astro-image-zoom-overlay::part(caption) {
   image itself, and the neighbors of a gallery load once the opening animation ends, so no large
   image decodes or paints under it.
 - With `data-image-zoom-width` and `-height` the zoom does not wait for the size either: it opens with
-  the final shape at once. The file that loads while the zoom animates comes in when the animation
-  ends, so a large image does not paint for the first time mid-animation.
+  the final shape at once. The file that loads while the zoom animates comes in once the image is
+  nearly at rest, so a large image does not paint for the first time while it moves fast.
 - The file is asked for before the click: once a link has been pointed at or focused for a moment,
   or pressed, the zoom asks for its full-size file, so the click finds it in the cache. It is
   skipped with the browser's data saver on, and left to the site when Astro's prefetch
