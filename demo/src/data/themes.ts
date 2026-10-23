@@ -28,8 +28,6 @@ export interface Theme {
   name: string;
   /** The kind of site it suits */
   description: string;
-  /** Playful themes, listed after the everyday ones */
-  fun?: boolean;
   photos: [Exclude<PhotoName, "blueMarble">, Exclude<PhotoName, "blueMarble">];
   /** Text color of its card on the overview; not part of the theme */
   ink: string;
@@ -43,6 +41,8 @@ export interface Theme {
     in?: string;
     out?: string;
     slide?: Timing;
+    /** How the close button and the navigation fade in and out */
+    controls?: Timing;
     caption?: CaptionMotion;
   };
   /** How the image comes in, and where the caption and the arrows go: props of <ImageZoom>, not
@@ -58,14 +58,11 @@ export interface Theme {
 
 const EXPO = "cubic-bezier(0.16, 1, 0.3, 1)";
 const QUART = "cubic-bezier(0.25, 1, 0.5, 1)";
-const SNAPPY = "cubic-bezier(0.05, 0.7, 0.1, 1)";
-const SMOOTH = "cubic-bezier(0.22, 1, 0.36, 1)";
-const GENTLE_BACK = "cubic-bezier(0.34, 1.3, 0.64, 1)";
 const BACK = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+// A spring that overshoots once and settles by the end: a long, still tail would leave the crop of the
+// thumbnail unfolding after the image has stopped
 const SPRING =
-  "linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1.004 83.8%, 1)";
-const BOUNCE =
-  "linear(0, 0.01, 0.04, 0.09, 0.16, 0.25, 0.36, 0.49, 0.64, 0.81, 1 36.4%, 0.891, 0.813, 0.766, 0.75 54.5%, 0.766, 0.813, 0.891, 1 72.7%, 0.953, 0.938 81.8%, 0.953, 1 90.9%, 0.988, 0.984 95.5%, 0.988, 1)";
+  "linear(0, 0.041 3%, 0.143 6%, 0.283 9%, 0.438 12%, 0.642 16%, 0.819 20%, 0.984 25%, 1.082 30%, 1.122 35%, 1.122 40%, 1.093 46%, 1.054 52%, 1.020 58%, 0.995 65%, 0.985 72%, 0.986 80%, 0.994 90%, 1)";
 
 const SERIF =
   '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif';
@@ -84,18 +81,23 @@ const themes: Theme[] = [
     value: "darkroom",
     name: "Darkroom",
     description:
-      "For photographers: nothing but the picture, on white or on black, fading in with quiet controls.",
+      "For photographers: nothing but the picture, almost edge to edge on white or black, no counter, and controls that fade in slowly.",
     photos: ["antennae", "magellanicStorm"],
     ink: "light-dark(#111111, #f2f2f2)",
     motion: {
-      label: "Expo",
+      label: "Expo fade",
       duration: 500,
       in: EXPO,
       out: "cubic-bezier(0.7, 0, 0.84, 0)",
       slide: { duration: 600, easing: EXPO },
+      controls: { duration: 700, easing: EXPO },
       caption: { duration: 400 },
     },
-    layout: { animation: "fade", navigationLayout: "sides" },
+    layout: {
+      animation: "fade",
+      navigationLayout: "sides",
+      showCounter: false,
+    },
     vars: {
       "--image-zoom-bg": "light-dark(#ffffff, #000000)",
       ...controls(
@@ -106,169 +108,114 @@ const themes: Theme[] = [
       "--image-zoom-caption-bg": "light-dark(#ffffff, #1a1a1a)",
       "--image-zoom-caption-font-size": "12px",
       "--image-zoom-caption-radius": "999px",
-      "--image-zoom-button-size": "40px",
+      "--image-zoom-button-size": "36px",
       "--image-zoom-button-radius": "999px",
-      "--image-zoom-padding": "3vmin",
+      "--image-zoom-padding": "2vmin",
       "--image-zoom-image-radius": "0px",
-      "--image-zoom-controls-offset": "24px",
+      "--image-zoom-controls-offset": "16px",
     },
   },
   {
-    value: "magazine",
-    name: "Magazine",
+    value: "editorial",
+    name: "Editorial",
     description:
-      "For long reads: warm paper or a dark page, a serif caption and a wide margin around the photo.",
+      "For long reads: cream paper or a dark page, a serif caption set like a printed one above the photo, wide margins and a claret accent.",
     photos: ["johnson1962", "johnson1980"],
-    ink: "light-dark(#1a1a1a, #f1ece4)",
+    ink: "light-dark(#1f1a17, #efe6d8)",
     motion: {
       label: "Quart",
-      duration: 550,
+      duration: 600,
       in: QUART,
       out: "cubic-bezier(0.5, 0, 0.75, 0)",
-      slide: { duration: 550, easing: QUART },
+      slide: { duration: 600, easing: QUART },
       caption: { x: "120px" },
     },
     layout: { captionPosition: "top" },
     vars: {
-      "--image-zoom-bg": "light-dark(#faf7f2, #161412)",
+      "--image-zoom-bg": "light-dark(#f6f1e7, #1b1714)",
       ...controls(
-        "light-dark(#1a1a1a, #f1ece4)",
-        "light-dark(#ebe4d8, #2e2a25)",
+        "light-dark(#ffffff, #1b1714)",
+        "light-dark(#7a1f2b, #e8a8a0)",
       ),
-      "--image-zoom-caption-color": "light-dark(#1a1a1a, #f1ece4)",
-      "--image-zoom-caption-bg": "light-dark(#faf7f2, #221f1b)",
+      "--image-zoom-caption-color": "light-dark(#1f1a17, #efe6d8)",
+      "--image-zoom-caption-bg": "light-dark(#f6f1e7, #1b1714)",
       "--image-zoom-caption-font": SERIF,
-      "--image-zoom-caption-font-size": "15px",
+      "--image-zoom-caption-font-size": "17px",
+      "--image-zoom-caption-max-width": "560px",
       "--image-zoom-caption-radius": "0px",
       "--image-zoom-button-size": "40px",
       "--image-zoom-button-radius": "0px",
       "--image-zoom-controls-offset": "20px",
-      "--image-zoom-padding": "8vmin",
+      "--image-zoom-padding": "10vmin",
       "--image-zoom-image-radius": "0px",
     },
   },
   {
-    value: "storefront",
-    name: "Storefront",
+    value: "museum",
+    name: "Museum",
     description:
-      "For products: a clean white or zinc stage, solid pill buttons and softly rounded photos.",
-    photos: ["mcclainSelfie", "cupola"],
-    ink: "light-dark(#18181b, #fafafa)",
+      "For art and archives: a warm grey or deep green wall, a lot of room around the picture, a small label plate and brass controls, in no hurry.",
+    photos: ["roseGalaxies", "mcclainSelfie"],
+    ink: "light-dark(#2b2a26, #e9e2cf)",
     motion: {
-      label: "Snappy",
-      duration: 350,
-      in: SNAPPY,
-      out: "cubic-bezier(0.3, 0, 0.8, 0.15)",
-      slide: { duration: 300, easing: SNAPPY },
-      caption: { x: "64px" },
+      label: "Slow quart",
+      duration: 750,
+      in: QUART,
+      out: "cubic-bezier(0.5, 0, 0.75, 0)",
+      slide: { duration: 800, easing: QUART },
+      caption: { duration: 500, y: "6px" },
     },
-    layout: { navigationLayout: "sides" },
+    layout: { navigationLayout: "sides", showCounter: false },
     vars: {
-      "--image-zoom-bg": "light-dark(#ffffff, #18181b)",
+      "--image-zoom-bg": "light-dark(#e6e1d6, #1c2621)",
       ...controls(
-        "light-dark(#ffffff, #18181b)",
-        "light-dark(#18181b, #fafafa)",
+        "light-dark(#ffffff, #1c2621)",
+        "light-dark(#5e4818, #d4b26a)",
       ),
-      "--image-zoom-caption-color": "light-dark(#ffffff, #18181b)",
-      "--image-zoom-caption-bg": "light-dark(#18181b, #fafafa)",
-      "--image-zoom-caption-radius": "999px",
-      "--image-zoom-button-size": "44px",
-      "--image-zoom-button-radius": "999px",
-      "--image-zoom-controls-offset": "20px",
-      "--image-zoom-padding": "6vmin",
-      "--image-zoom-image-radius": "12px",
+      "--image-zoom-caption-color": "light-dark(#2b2a26, #1c2621)",
+      "--image-zoom-caption-bg": "light-dark(#fbf8f1, #f4efe2)",
+      "--image-zoom-caption-font": SERIF,
+      "--image-zoom-caption-font-size": "13px",
+      "--image-zoom-caption-max-width": "320px",
+      "--image-zoom-caption-radius": "2px",
+      "--image-zoom-button-size": "40px",
+      "--image-zoom-button-radius": "2px",
+      "--image-zoom-controls-offset": "24px",
+      "--image-zoom-padding": "12vmin",
+      "--image-zoom-image-radius": "0px",
     },
   },
   {
-    value: "midnight",
-    name: "Midnight",
+    value: "blueprint",
+    name: "Blueprint",
     description:
-      "For apps and dashboards: cool grey or deep navy, an indigo accent and rounded cards.",
-    photos: ["apollo11Control", "apollo13Control"],
-    ink: "light-dark(#3730a3, #c7d2fe)",
-    motion: {
-      label: "Smooth",
-      duration: 400,
-      in: SMOOTH,
-      out: "cubic-bezier(0.64, 0, 0.78, 0)",
-      slide: { duration: 450, easing: SMOOTH },
-      caption: { duration: 350, easing: SMOOTH, y: "8px" },
-    },
-    layout: { captionPosition: "top" },
-    vars: {
-      "--image-zoom-bg": "light-dark(#f4f6fb, #0b1020)",
-      ...controls(
-        "light-dark(#3730a3, #c7d2fe)",
-        "light-dark(#e0e3ff, #222b52)",
-      ),
-      "--image-zoom-caption-color": "light-dark(#1e2240, #e6e9f5)",
-      "--image-zoom-caption-bg": "light-dark(#ffffff, #1a2135)",
-      "--image-zoom-caption-radius": "12px",
-      "--image-zoom-button-size": "44px",
-      "--image-zoom-button-radius": "12px",
-      "--image-zoom-padding": "4vmin",
-      "--image-zoom-image-radius": "16px",
-    },
-  },
-  {
-    value: "linen",
-    name: "Linen",
-    description:
-      "For personal blogs: linen or espresso, terracotta buttons and round shapes that settle gently.",
-    photos: ["curiositySelfie", "niliDunes"],
-    ink: "light-dark(#8a3818, #f0a47a)",
-    motion: {
-      label: "Gentle back",
-      duration: 500,
-      in: GENTLE_BACK,
-      slide: { duration: 550, easing: GENTLE_BACK },
-      caption: { duration: 400, easing: GENTLE_BACK, y: "10px" },
-    },
-    vars: {
-      "--image-zoom-bg": "light-dark(#f6f1ea, #1d1916)",
-      ...controls(
-        "light-dark(#ffffff, #2a1408)",
-        "light-dark(#86361a, #f0a47a)",
-      ),
-      "--image-zoom-caption-color": "light-dark(#fff8f2, #2a1408)",
-      "--image-zoom-caption-bg": "light-dark(#86361a, #f0a47a)",
-      "--image-zoom-caption-font-size": "14px",
-      "--image-zoom-caption-radius": "999px",
-      "--image-zoom-button-size": "46px",
-      "--image-zoom-button-radius": "999px",
-      "--image-zoom-padding": "5vmin",
-      "--image-zoom-image-radius": "24px",
-    },
-  },
-  {
-    value: "docs",
-    name: "Docs",
-    description:
-      "For documentation, maps and diagrams: the look of a docs site, a blue accent, monospaced captions and a quick zoom.",
+      "For maps, diagrams and technical docs: blueprint blue, monospaced labels, a counter to keep your place and a quick, mechanical zoom.",
     photos: ["curiosityRoute", "mountSharpPath"],
-    ink: "light-dark(#1d4ed8, #93c5fd)",
+    ink: "light-dark(#0b3d91, #dbe8ff)",
     motion: {
-      label: "Default curve",
-      duration: 250,
-      slide: { duration: 250 },
+      label: "Mechanical",
+      duration: 220,
+      in: "cubic-bezier(0.2, 0, 0, 1)",
+      out: "cubic-bezier(0.3, 0, 1, 1)",
+      slide: { duration: 200, easing: "linear" },
       caption: { duration: 0 },
     },
-    layout: { navigationLayout: "sides" },
     vars: {
-      "--image-zoom-bg": "light-dark(#ffffff, #0f1115)",
+      "--image-zoom-bg": "light-dark(#e8f0fb, #0a2a5e)",
       ...controls(
-        "light-dark(#1e3a8a, #bfdbfe)",
-        "light-dark(#e3ebfd, #1e3a5f)",
+        "light-dark(#ffffff, #0a2a5e)",
+        "light-dark(#0b3d91, #dbe8ff)",
       ),
-      "--image-zoom-caption-color": "light-dark(#0f172a, #e2e8f0)",
-      "--image-zoom-caption-bg": "light-dark(#f1f5f9, #1e293b)",
+      "--image-zoom-caption-color": "light-dark(#0b3d91, #ffffff)",
+      "--image-zoom-caption-bg": "light-dark(#ffffff, #0d3a7a)",
       "--image-zoom-caption-font": MONOSPACE,
       "--image-zoom-caption-font-size": "12px",
-      "--image-zoom-caption-radius": "8px",
+      "--image-zoom-caption-radius": "2px",
       "--image-zoom-button-size": "36px",
-      "--image-zoom-button-radius": "8px",
-      "--image-zoom-padding": "6vmin",
-      "--image-zoom-image-radius": "8px",
+      "--image-zoom-button-radius": "2px",
+      "--image-zoom-controls-offset": "16px",
+      "--image-zoom-padding": "5vmin",
+      "--image-zoom-image-radius": "0px",
     },
   },
   {
@@ -276,7 +223,6 @@ const themes: Theme[] = [
     name: "Arcade",
     description:
       "Hot pink, cyan and yellow on deep purple, square pixels and a zoom in five frames, like an 8-bit game.",
-    fun: true,
     photos: ["jupiterAuroras", "uranusAuroras"],
     ink: "light-dark(#7a0a52, #ff7ac4)",
     motion: {
@@ -285,6 +231,7 @@ const themes: Theme[] = [
       in: "steps(5, jump-none)",
       out: "steps(5, jump-none)",
       slide: { duration: 360, easing: "steps(4, jump-none)" },
+      controls: { duration: 200, easing: "steps(2, jump-none)" },
       caption: { duration: 0 },
     },
     layout: { captionPosition: "top", navigationLayout: "sides" },
@@ -306,104 +253,35 @@ const themes: Theme[] = [
     },
   },
   {
-    value: "terminal",
-    name: "Terminal",
-    description:
-      "Green phosphor on black, or green ink on pale paper: a 1960s computer room, monospaced to the last label.",
-    fun: true,
-    photos: ["ibmInstall", "dataProcessing"],
-    ink: "light-dark(#0b5d27, #39ff7a)",
-    motion: {
-      label: "Snappy",
-      duration: 300,
-      in: SNAPPY,
-      out: "cubic-bezier(0.3, 0, 0.8, 0.15)",
-      slide: { duration: 240, easing: "steps(3, jump-none)" },
-      caption: { duration: 0 },
-    },
-    layout: { captionPosition: "top" },
-    vars: {
-      "--image-zoom-bg": "light-dark(#eef7ee, #030a05)",
-      ...controls(
-        "light-dark(#06441c, #39ff7a)",
-        "light-dark(#d3ead6, #0d2a16)",
-      ),
-      "--image-zoom-caption-color": "light-dark(#06441c, #39ff7a)",
-      "--image-zoom-caption-bg": "light-dark(#d3ead6, #0d2a16)",
-      "--image-zoom-caption-font": MONOSPACE,
-      "--image-zoom-caption-font-size": "12px",
-      "--image-zoom-caption-radius": "2px",
-      "--image-zoom-button-size": "40px",
-      "--image-zoom-button-radius": "2px",
-      "--image-zoom-padding": "5vmin",
-      "--image-zoom-image-radius": "2px",
-      "--image-zoom-controls-offset": "0px",
-      "--image-zoom-caption-max-width": "100%",
-    },
-  },
-  {
-    value: "comic",
-    name: "Comic",
-    description:
-      "Black on yellow, or yellow on black, like a comic strip: big square buttons, a white speech-bubble caption and a bouncing zoom.",
-    fun: true,
-    photos: ["snoopyConsole", "hadfieldGuitar"],
-    ink: "light-dark(#111111, #ffde33)",
-    motion: {
-      label: "Bounce",
-      duration: 900,
-      in: BOUNCE,
-      slide: { duration: 500, easing: BACK },
-      caption: { duration: 700, easing: BOUNCE, y: "16px" },
-    },
-    layout: { captionPosition: "top", navigationLayout: "sides" },
-    vars: {
-      "--image-zoom-bg": "light-dark(#ffde33, #111111)",
-      ...controls(
-        "light-dark(#ffde33, #111111)",
-        "light-dark(#111111, #ffde33)",
-      ),
-      "--image-zoom-caption-color": "#111111",
-      "--image-zoom-caption-bg": "#ffffff",
-      "--image-zoom-caption-font-size": "15px",
-      "--image-zoom-caption-radius": "0px",
-      "--image-zoom-button-size": "52px",
-      "--image-zoom-button-radius": "0px",
-      "--image-zoom-controls-offset": "28px",
-      "--image-zoom-padding": "6vmin",
-      "--image-zoom-image-radius": "0px",
-    },
-  },
-  {
     value: "bubblegum",
     name: "Bubblegum",
     description:
-      "Candy pink, very round and a little springy: for anything that should feel sweet.",
-    fun: true,
-    photos: ["roseGalaxies", "candyBag"],
-    ink: "light-dark(#a3125f, #ff9ccf)",
+      "Playful and soft: candy pink or plum, big round buttons, round photos and a springy zoom that overshoots and settles.",
+    photos: ["candyBag", "hadfieldGuitar"],
+    ink: "light-dark(#8a1458, #ffb3dc)",
     motion: {
       label: "Spring",
-      duration: 800,
+      duration: 400,
       in: SPRING,
-      slide: { duration: 700, easing: SPRING },
-      caption: { x: "120px", y: "12px" },
+      slide: { duration: 400, easing: BACK },
+      caption: { duration: 400, easing: BACK, y: "20px" },
     },
-    layout: { captionPosition: "top", showCounter: false },
+    layout: { navigationLayout: "sides" },
     vars: {
-      "--image-zoom-bg": "light-dark(#ffe8f3, #2b0e22)",
+      "--image-zoom-bg": "light-dark(#ffe4f1, #2a0f2e)",
       ...controls(
-        "light-dark(#ffffff, #2b0e22)",
-        "light-dark(#a8105f, #ff8cc6)",
+        "light-dark(#ffffff, #2a0f2e)",
+        "light-dark(#ad1457, #ffb3dc)",
       ),
-      "--image-zoom-caption-color": "light-dark(#5a0f3c, #2b0e22)",
-      "--image-zoom-caption-bg": "light-dark(#ffffff, #ffd1e8)",
-      "--image-zoom-caption-font-size": "14px",
+      "--image-zoom-caption-color": "light-dark(#4a0d33, #2a0f2e)",
+      "--image-zoom-caption-bg": "light-dark(#ffffff, #fff0f7)",
+      "--image-zoom-caption-font-size": "15px",
       "--image-zoom-caption-radius": "999px",
-      "--image-zoom-button-size": "52px",
+      "--image-zoom-button-size": "56px",
       "--image-zoom-button-radius": "999px",
-      "--image-zoom-padding": "5vmin",
-      "--image-zoom-image-radius": "32px",
+      "--image-zoom-controls-offset": "28px",
+      "--image-zoom-padding": "7vmin",
+      "--image-zoom-image-radius": "28px",
     },
   },
 ];
@@ -430,6 +308,7 @@ export const themeList = themes.map((theme) => {
     in: easingIn,
     out: easingOut,
     slide,
+    controls: fade,
     caption,
   } = theme.motion;
   const vars: Record<`--image-zoom-${string}`, string> = {
@@ -444,6 +323,8 @@ export const themeList = themes.map((theme) => {
     ...(easingOut && { "--image-zoom-easing-out": easingOut }),
     ...(slide && { "--image-zoom-slide-duration": `${slide.duration}ms` }),
     ...(slide?.easing && { "--image-zoom-slide-easing": slide.easing }),
+    ...(fade && { "--image-zoom-controls-duration": `${fade.duration}ms` }),
+    ...(fade?.easing && { "--image-zoom-controls-easing": fade.easing }),
     ...(caption?.duration !== undefined && {
       "--image-zoom-caption-duration": `${caption.duration}ms`,
     }),
