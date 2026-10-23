@@ -278,6 +278,17 @@ function animationsFinished(
   return Promise.allSettled(animations.map(({ finished }) => finished));
 }
 
+// Stops the named CSS animations of the element where they are
+function cancelAnimations(element: Element, names: string[]): void {
+  for (const animation of element.getAnimations()) {
+    if (
+      animation instanceof CSSAnimation &&
+      names.includes(animation.animationName)
+    )
+      animation.cancel();
+  }
+}
+
 /**
  * Returns the overlay shared by every zoom instance, creating it on first use.
  * Built on the client so the page HTML never repeats its id, however many
@@ -490,6 +501,13 @@ function setCrop(img: HTMLImageElement, inset: string | null): void {
     if (inset) img.style.setProperty("--_image-zoom-crop", inset);
     else img.style.removeProperty("--_image-zoom-crop");
   });
+}
+
+// The thumbnail no longer stands in for the image: the file shows in its box, over no background
+function dropPlaceholder(img: HTMLImageElement): void {
+  img.classList.remove("is-holding");
+  img.style.removeProperty("background-image");
+  img.style.removeProperty("background-size");
 }
 
 // Applies a change of style at once, without its transition
@@ -1305,10 +1323,7 @@ class Zoom {
   // (a retina screen, 2000 px and more), so the file waits out of the box (is-holding, overlay.css)
   // and comes in when the image is close to rest (watchArrival()) or the animations end
   private release(slide: ZoomSlide): void {
-    const { img } = slide;
-    img.classList.remove("is-holding");
-    img.style.removeProperty("background-image");
-    img.style.removeProperty("background-size");
+    dropPlaceholder(slide.img);
     // The size the page said holds, so the file takes its place without a jump. Not if the file has
     // another shape: it is laid out as its own
     if (this.hasOtherShape(slide)) this.unfit(slide);
@@ -1362,16 +1377,8 @@ class Zoom {
       this.hasOtherShape(slide)
     )
       return false;
-    for (const animation of img.getAnimations()) {
-      if (
-        animation instanceof CSSAnimation &&
-        animation.animationName === "astro-image-zoom-clip-in"
-      )
-        animation.cancel();
-    }
-    void getComputedStyle(img).clipPath;
-    this.release(slide);
-    img.style.removeProperty("--_image-zoom-crop");
+    cancelAnimations(img, ["astro-image-zoom-clip-in"]);
+    this.unfold(slide);
     return true;
   }
 
@@ -1514,12 +1521,18 @@ class Zoom {
       this.reshape(index, slide);
     }
     if (this.phase === "open" && slide.decoded) {
-      // The zoom animation that held the crop has just gone: commit the style without it, or the
-      // unfold would start from a style that still had the animation, and jump instead of running
-      void getComputedStyle(slide.img).clipPath;
-      this.release(slide);
-      slide.img.style.removeProperty("--_image-zoom-crop");
+      // The zoom animation that held the crop has just gone
+      this.unfold(slide);
     }
+  }
+
+  // The decoded file takes its place, and the rest of the picture unfolds from the crop. The style
+  // is committed first: the unfold would otherwise start from a style that still had the animation
+  // that held the crop, and jump instead of running
+  private unfold(slide: ZoomSlide): void {
+    void getComputedStyle(slide.img).clipPath;
+    this.release(slide);
+    slide.img.style.removeProperty("--_image-zoom-crop");
   }
 
   // The image leaves the shape of its thumbnail for its own, with the thumbnail as its placeholder
@@ -1540,16 +1553,11 @@ class Zoom {
       if (!hasPart) return;
     }
     const first = img.getBoundingClientRect();
-    if (this.phase === "opening") {
-      for (const animation of img.getAnimations()) {
-        if (
-          animation instanceof CSSAnimation &&
-          (animation.animationName === "astro-image-zoom-in" ||
-            animation.animationName === "astro-image-zoom-clip-in")
-        )
-          animation.cancel();
-      }
-    }
+    if (this.phase === "opening")
+      cancelAnimations(img, [
+        "astro-image-zoom-in",
+        "astro-image-zoom-clip-in",
+      ]);
     img.style.removeProperty("width");
     img.style.removeProperty("height");
     img.style.removeProperty("object-fit");
@@ -1588,11 +1596,9 @@ class Zoom {
     const source = this.getThumbnail(index)?.currentSrc;
     if (!source || img.src === source) return Promise.resolve();
     // The thumbnail is the whole image now: no placeholder behind it, nor its crop, and its own size
-    img.classList.remove("is-holding");
+    dropPlaceholder(img);
     const slide = this.slides[index];
     if (slide) this.unfit(slide);
-    img.style.removeProperty("background-image");
-    img.style.removeProperty("background-size");
     setCrop(img, null);
     img.src = source;
     return img.decode().catch(() => {

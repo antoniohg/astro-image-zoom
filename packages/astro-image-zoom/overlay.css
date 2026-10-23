@@ -860,11 +860,8 @@
     --_image-zoom-caption-motion: 0s;
   }
 
-  .astro-image-zoom-image {
-    transition: none;
-  }
-
-  /* The arrows and keys change the image at once */
+  /* The arrows and keys change the image at once too */
+  .astro-image-zoom-image,
   .astro-image-zoom-track.is-sliding .astro-image-zoom-image {
     transition: none;
   }
