@@ -4,7 +4,7 @@
 
 [![astro-image-zoom, Medium-style image zoom for Astro: an image grows from a page into an overlay](https://antoniohg.com/astro-image-zoom/og.png)](https://antoniohg.com/astro-image-zoom/)
 
-Medium-style image zoom for Astro: a click grows each image from its place on the page to fill the
+Medium-style image zoom and lightbox for Astro: a click grows each image from its place on the page to fill the
 screen, and the images of a gallery become a carousel you can swipe.
 
 **[Live demo and docs](https://antoniohg.com/astro-image-zoom/)**
@@ -516,7 +516,7 @@ On screens up to 640px wide the overlay makes its buttons, its distance to the e
 text smaller, and lets the caption take the whole width. A variable you set wins on every screen:
 `--image-zoom-button-size: 56px` keeps 56px buttons on a phone too. Keep the large values for wide screens
 with a media query, or let them grow with the screen with `clamp()`. The overlay reads the values
-each time a gallery opens.
+each time a gallery opens, and again when the window is resized while it is open.
 
 ```css
 .portfolio {
