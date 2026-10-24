@@ -4,7 +4,7 @@
 
 [![astro-image-zoom, Medium-style image zoom for Astro: an image grows from a page into an overlay](https://antoniohg.com/astro-image-zoom/og.png)](https://antoniohg.com/astro-image-zoom/)
 
-Medium-style image zoom for Astro: a click grows each image from its place on the page to fill the
+Medium-style image zoom and lightbox for Astro: a click grows each image from its place on the page to fill the
 screen, and the images of a gallery become a carousel you can swipe.
 
 **[Live demo and docs](https://antoniohg.com/astro-image-zoom/)**
