@@ -1769,6 +1769,9 @@ class Zoom {
   };
 
   private handleResize = (): void => {
+    // The variables a site sets in media queries change with the viewport: copied again, before
+    // the images are fitted, since the padding sizes them
+    this.inheritVariables();
     this.slides.forEach((slide, i) => {
       if (slide.provisional) this.fitProvisional(i, slide);
       else if (slide.fixedSize) this.fitKnown(slide);

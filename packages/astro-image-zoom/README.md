@@ -516,7 +516,7 @@ On screens up to 640px wide the overlay makes its buttons, its distance to the e
 text smaller, and lets the caption take the whole width. A variable you set wins on every screen:
 `--image-zoom-button-size: 56px` keeps 56px buttons on a phone too. Keep the large values for wide screens
 with a media query, or let them grow with the screen with `clamp()`. The overlay reads the values
-each time a gallery opens.
+each time a gallery opens, and again when the window is resized while it is open.
 
 ```css
 .portfolio {

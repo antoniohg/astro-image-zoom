@@ -2018,6 +2018,20 @@ test.describe("theming", () => {
     );
   });
 
+  test("follows the variables that change with the viewport while it is open", async ({
+    page,
+  }) => {
+    const slide = page.locator(".astro-image-zoom-slide.is-active");
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await openZoom(page, "responsive-variables");
+    await expect(slide).toHaveCSS("padding-top", "40px");
+
+    await page.setViewportSize({ width: 390, height: 768 });
+    await expect(slide).toHaveCSS("padding-top", "0px");
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await expect(slide).toHaveCSS("padding-top", "40px");
+  });
+
   test("fades the controls in the time and the curve of --image-zoom-controls-duration and --image-zoom-controls-easing", async ({
     page,
   }) => {

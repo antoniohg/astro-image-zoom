@@ -29,6 +29,15 @@ const image = (name: string) => `${base}images/${name}.svg`;
       main {
         padding-block-end: 150vh;
       }
+
+      /* A variable that changes with the viewport, as a site sets it */
+      #responsive-variables {
+        --image-zoom-padding: 0px;
+
+        @media (width >= 768px) {
+          --image-zoom-padding: 40px;
+        }
+      }
     </style>
     <!-- A site that lays out a gallery from a cascade layer, on the element of the component itself -->
     <style is:inline>
@@ -134,6 +143,16 @@ const image = (name: string) => `${base}images/${name}.svg`;
         <h2>Variables around the gallery</h2>
         <ImageZoom>
           <img src={image("landscape")} alt="Landscape with variables" />
+        </ImageZoom>
+      </section>
+
+      <section id="responsive-variables">
+        <h2>Variables that change with the viewport</h2>
+        <ImageZoom>
+          <img
+            src={image("landscape")}
+            alt="Landscape with responsive padding"
+          />
         </ImageZoom>
       </section>
 
