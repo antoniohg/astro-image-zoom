@@ -129,7 +129,7 @@ const image = (name: string) => `${base}images/${name}.svg`;
 
       <section
         id="variables"
-        style="--image-zoom-image-radius: 16px; --image-zoom-padding: 40px; --image-zoom-bg: rgb(30, 0, 40);"
+        style="--image-zoom-image-radius: 16px; --image-zoom-padding: 40px; --image-zoom-bg: rgb(30, 0, 40); --image-zoom-easing-in: linear; --image-zoom-easing-out: ease-in; --image-zoom-controls-duration: 700ms; --image-zoom-controls-easing: linear;"
       >
         <h2>Variables around the gallery</h2>
         <ImageZoom>
@@ -190,6 +190,68 @@ const image = (name: string) => `${base}images/${name}.svg`;
             src={image("portrait")}
             alt="Portrait two"
             data-image-zoom-caption="Hidden caption two"
+          />
+        </ImageZoom>
+      </section>
+
+      <section id="fade">
+        <h2>Fade</h2>
+        <ImageZoom animation="fade">
+          <img src={image("wide")} alt="Wide that fades" />
+          <img src={image("portrait")} alt="Portrait that fades" />
+        </ImageZoom>
+      </section>
+
+      <section id="caption-rise" style="--image-zoom-caption-enter-y: 8px">
+        <h2>Captions that rise</h2>
+        <ImageZoom>
+          <img
+            src={image("wide")}
+            alt="Wide caption rises"
+            data-image-zoom-caption="Rises one"
+          />
+          <img
+            src={image("portrait")}
+            alt="Portrait caption rises"
+            data-image-zoom-caption="Rises two"
+          />
+        </ImageZoom>
+      </section>
+
+      <section
+        id="caption-top"
+        style="--image-zoom-caption-enter-y: 8px; --image-zoom-caption-enter-opacity: 1"
+      >
+        <h2>Captions that come from above, at the top</h2>
+        <ImageZoom captionPosition="top">
+          <img
+            src={image("wide")}
+            alt="Wide caption from above"
+            data-image-zoom-caption="From above one"
+          />
+          <img
+            src={image("portrait")}
+            alt="Portrait caption from above"
+            data-image-zoom-caption="From above two"
+          />
+        </ImageZoom>
+      </section>
+
+      <section
+        id="caption-parallax"
+        style="--image-zoom-caption-enter-x: 160px"
+      >
+        <h2>Captions in parallax</h2>
+        <ImageZoom>
+          <img
+            src={image("wide")}
+            alt="Wide caption in parallax"
+            data-image-zoom-caption="Parallax one"
+          />
+          <img
+            src={image("portrait")}
+            alt="Portrait caption in parallax"
+            data-image-zoom-caption="Parallax two"
           />
         </ImageZoom>
       </section>

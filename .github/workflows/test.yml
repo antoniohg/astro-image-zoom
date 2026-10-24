@@ -59,7 +59,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # The browser is cached by Playwright version; its system packages (apt) install on each run
+      # The browser is cached by runner image and Playwright version: a build for one Ubuntu release
+      # does not run on the next one (ubuntu-latest moves). Its system packages (apt) install on each run
       - name: Playwright version
         id: playwright
         run: echo "version=$(node -p "require('./packages/astro-image-zoom/node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
@@ -68,7 +69,7 @@ jobs:
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ matrix.browser }}
+          key: playwright-${{ env.ImageOS }}-${{ steps.playwright.outputs.version }}-${{ matrix.browser }}
 
       - name: Install Playwright browser
         if: steps.playwright-cache.outputs.cache-hit != 'true'

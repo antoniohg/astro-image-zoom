@@ -35,6 +35,12 @@ export interface Props {
   animationDuration?: number;
 
   /**
+   * How the image opens and closes: "zoom" grows it from its thumbnail and shrinks it back,
+   * "fade" fades it in and out where it lands
+   */
+  animation?: "zoom" | "fade";
+
+  /**
    * Close on backdrop click
    */
   closeOnBackdrop?: boolean;
@@ -94,6 +100,7 @@ export interface Props {
 const {
   theme = {},
   animationDuration,
+  animation = "zoom",
   closeOnBackdrop = true,
   closeOnImage = true,
   closeOnScroll = true,
@@ -143,6 +150,7 @@ const shadowRoot =
 
 <astro-image-zoom
   class={className || undefined}
+  data-image-zoom-animation={animation}
   data-image-zoom-close-backdrop={String(closeOnBackdrop)}
   data-image-zoom-close-image={String(closeOnImage)}
   data-image-zoom-close-scroll={String(closeOnScroll)}

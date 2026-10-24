@@ -1,0 +1,106 @@
+---
+/**
+ * The graph of a CSS easing, drawn on the server: time across, progress up. Takes the
+ * cubic-bezier(), linear() and steps(n, jump-none) curves of src/data/easings.ts
+ */
+interface Props {
+  easing: string;
+}
+
+const { easing } = Astro.props;
+
+// Progress may leave 0–1: the box leaves room for the overshoot of the openings (up to about 1.2)
+const WIDTH = 120;
+const HEIGHT = 80;
+const PAD = 8;
+const MIN = -0.1;
+const MAX = 1.25;
+const x = (time: number) => PAD + time * (WIDTH - 2 * PAD);
+const y = (progress: number) =>
+  HEIGHT - PAD - ((progress - MIN) / (MAX - MIN)) * (HEIGHT - 2 * PAD);
+const point = (time: number, progress: number) =>
+  `${x(time).toFixed(1)},${y(progress).toFixed(1)}`;
+
+const args = (/\(([^)]*)\)/.exec(easing)?.[1] ?? "")
+  .split(",")
+  .map((part) => part.trim());
+
+function path(): string {
+  // A cubic Bézier is an SVG curve as it is
+  if (easing.startsWith("cubic-bezier")) {
+    const [x1 = 0, y1 = 0, x2 = 1, y2 = 1] = args.map(Number);
+    return `M${point(0, 0)} C${point(x1, y1)} ${point(x2, y2)} ${point(1, 1)}`;
+  }
+  // Stops of linear(): a value and an optional position; missing positions spread evenly
+  if (easing.startsWith("linear")) {
+    const stops = args.map((arg) => {
+      const [value = "0", position] = arg.split(/\s+/);
+      return {
+        value: Number(value),
+        at:
+          position === undefined
+            ? undefined
+            : Number.parseFloat(position) / 100,
+      };
+    });
+    stops[0]!.at ??= 0;
+    stops[stops.length - 1]!.at ??= 1;
+    for (let index = 1; index < stops.length; index++) {
+      if (stops[index]!.at !== undefined) continue;
+      const start = index - 1;
+      let end = index;
+      while (stops[end]!.at === undefined) end++;
+      const from = stops[start]!.at!;
+      const to = stops[end]!.at!;
+      for (let gap = index; gap < end; gap++)
+        stops[gap]!.at = from + ((to - from) * (gap - start)) / (end - start);
+    }
+    return `M${stops.map(({ value, at }) => point(at!, value)).join(" L")}`;
+  }
+  // steps(n, jump-none): n flat frames, from 0 to 1
+  if (easing.startsWith("steps")) {
+    const count = Number(args[0]) || 1;
+    return Array.from({ length: count }, (_, frame) => {
+      const value = count > 1 ? frame / (count - 1) : 1;
+      return `${frame ? "L" : "M"}${point(frame / count, value)} L${point((frame + 1) / count, value)}`;
+    }).join(" ");
+  }
+  return `M${point(0, 0)} L${point(1, 1)}`;
+}
+---
+
+<svg
+  class="curve"
+  viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+  aria-hidden="true"
+  focusable="false"
+>
+  <line class="guide" x1={x(0)} x2={x(1)} y1={y(0)} y2={y(0)}></line>
+  <line class="guide" x1={x(0)} x2={x(1)} y1={y(1)} y2={y(1)}></line>
+  <path d={path()}></path>
+</svg>
+
+<style>
+  @layer components {
+    .curve {
+      inline-size: 100%;
+      block-size: 100%;
+      padding: 0.25rem;
+      overflow: visible;
+
+      path {
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.5;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .guide {
+        stroke: var(--color-rule);
+        stroke-width: 1;
+        stroke-dasharray: 3 3;
+      }
+    }
+  }
+</style>

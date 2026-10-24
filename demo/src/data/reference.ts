@@ -50,6 +50,39 @@ export const colorVariables: ReferenceRow[] = [
   },
 ];
 
+// Keys of the theme prop, each one a color variable
+export const themeKeys: ReferenceRow[] = [
+  {
+    name: "backgroundColor",
+    description: "Overlay background: `--image-zoom-bg`",
+  },
+  {
+    name: "closeButtonColor",
+    description: "Close icon: `--image-zoom-close-color`",
+  },
+  {
+    name: "closeButtonBackground",
+    description: "Close button: `--image-zoom-close-bg`",
+  },
+  {
+    name: "navigationColor",
+    description: "Arrows and counter: `--image-zoom-nav-color`",
+  },
+  {
+    name: "navigationBackground",
+    description:
+      "Navigation bar, or each arrow at the sides: `--image-zoom-nav-bg`",
+  },
+  {
+    name: "captionColor",
+    description: "Caption text: `--image-zoom-caption-color`",
+  },
+  {
+    name: "captionBackground",
+    description: "Caption box: `--image-zoom-caption-bg`",
+  },
+];
+
 // Spacing, corners, controls and caption
 export const layoutVariables: ReferenceRow[] = [
   {
@@ -100,18 +133,44 @@ export const layoutVariables: ReferenceRow[] = [
   },
 ];
 
-// Color scheme and motion
-export const otherVariables: ReferenceRow[] = [
+// Color scheme
+export const schemeVariables: ReferenceRow[] = [
   {
     name: "--image-zoom-color-scheme",
     description:
-      "Set dark or light to follow your own theme toggle instead of the system",
+      "Set `dark` or `light` to follow your own theme toggle instead of the system",
     default: "light dark",
   },
+];
+
+// The zoom, the fade of the controls, the slide and the caption
+export const motionVariables: ReferenceRow[] = [
   {
     name: "--image-zoom-animation-duration",
-    description: "Zoom animation; the animationDuration prop wins over it",
+    description:
+      "The length of the zoom; the `animationDuration` prop wins over it",
     default: "300ms",
+  },
+  {
+    name: "--image-zoom-easing-in",
+    description: "The curve of the opening",
+    default: "cubic-bezier(0.2, 0, 0.2, 1)",
+  },
+  {
+    name: "--image-zoom-easing-out",
+    description: "The curve of the closing",
+    default: "cubic-bezier(0.4, 0, 0.2, 1)",
+  },
+  {
+    name: "--image-zoom-controls-duration",
+    description:
+      "The fade of the buttons and the caption, after most of the zoom; three quarters of it when closing",
+    default: "40% of the zoom",
+  },
+  {
+    name: "--image-zoom-controls-easing",
+    description: "Its curve",
+    default: "ease-out opening, ease-in closing",
   },
   {
     name: "--image-zoom-slide-duration",
@@ -120,8 +179,36 @@ export const otherVariables: ReferenceRow[] = [
   },
   {
     name: "--image-zoom-slide-easing",
-    description: "Its easing",
+    description: "Its curve",
     default: "cubic-bezier(0.2, 0, 0, 1)",
+  },
+  {
+    name: "--image-zoom-caption-duration",
+    description:
+      "The caption of each new image in a gallery coming in, and its rise on opening; `0s` changes it at once",
+    default: "the slide",
+  },
+  {
+    name: "--image-zoom-caption-easing",
+    description: "Its curve",
+    default: "the curve of the slide",
+  },
+  {
+    name: "--image-zoom-caption-enter-opacity",
+    description: "The opacity a new caption starts from",
+    default: "0",
+  },
+  {
+    name: "--image-zoom-caption-enter-x",
+    description:
+      "A parallax: how far to the side a new caption starts, the side its image comes from",
+    default: "0px",
+  },
+  {
+    name: "--image-zoom-caption-enter-y",
+    description:
+      "A rise: how far below a new caption starts (above at the top), also on opening",
+    default: "0px",
   },
 ];
 
@@ -141,51 +228,6 @@ export const parts: ReferenceRow[] = [
 // Props of <ImageZoom>
 export const props: ReferenceRow[] = [
   {
-    name: "theme",
-    description:
-      "The colors of this gallery: `backgroundColor`, `closeButtonColor`, `closeButtonBackground`, `navigationColor`, `navigationBackground`, `captionColor` and `captionBackground`",
-    type: "object",
-    default: "{}",
-  },
-  {
-    name: "animationDuration",
-    description: "Milliseconds; overrides `--image-zoom-animation-duration`",
-    type: "number",
-    default: "300",
-  },
-  {
-    name: "showNavigation",
-    description:
-      "Arrows and counter in galleries; keys and swipes work without them",
-    type: "boolean",
-    default: "true",
-  },
-  {
-    name: "navigationLayout",
-    description:
-      "Arrows and counter in a bar at the bottom, or arrows at the sides of the screen",
-    type: '"bar" | "sides"',
-    default: '"bar"',
-  },
-  {
-    name: "showCounter",
-    description: "Position in the gallery, such as “3 / 8”",
-    type: "boolean",
-    default: "true",
-  },
-  {
-    name: "showCaption",
-    description: "Caption of the zoomed image",
-    type: "boolean",
-    default: "true",
-  },
-  {
-    name: "captionPosition",
-    description: "Where the caption sits on the screen",
-    type: '"bottom" | "top"',
-    default: '"bottom"',
-  },
-  {
     name: "ignore",
     description:
       "Images left out of the zoom and the gallery: simple selectors (tag, `.class`, `#id`, `[attribute]`) matched on each image and the elements around it",
@@ -193,11 +235,11 @@ export const props: ReferenceRow[] = [
     default: '""',
   },
   {
-    name: "labels",
+    name: "showNavigation",
     description:
-      "Texts read by screen readers, key by key; the keys you leave out stay in English",
-    type: "Partial<ImageZoomLabels>",
-    default: "English",
+      "Arrows and counter in galleries; keys and swipes work without them",
+    type: "boolean",
+    default: "true",
   },
   {
     name: "closeOnBackdrop",
@@ -218,6 +260,58 @@ export const props: ReferenceRow[] = [
     default: "true",
   },
   {
+    name: "animation",
+    description:
+      "How the image opens and closes: it grows from its thumbnail, or fades in where it lands",
+    type: '"zoom" | "fade"',
+    default: '"zoom"',
+  },
+  {
+    name: "animationDuration",
+    description: "Milliseconds; overrides `--image-zoom-animation-duration`",
+    type: "number",
+    default: "300",
+  },
+  {
+    name: "navigationLayout",
+    description:
+      "Arrows and counter in a bar at the bottom, or arrows at the sides of the screen",
+    type: '"bar" | "sides"',
+    default: '"bar"',
+  },
+  {
+    name: "showCounter",
+    description: "Position in the gallery, such as “3 / 8”",
+    type: "boolean",
+    default: "true",
+  },
+  {
+    name: "captionPosition",
+    description: "Where the caption sits on the screen",
+    type: '"bottom" | "top"',
+    default: '"bottom"',
+  },
+  {
+    name: "showCaption",
+    description: "Caption of the zoomed image",
+    type: "boolean",
+    default: "true",
+  },
+  {
+    name: "theme",
+    description:
+      "The colors of this gallery, a key per color variable (see Theming); it wins over your CSS",
+    type: "object",
+    default: "{}",
+  },
+  {
+    name: "labels",
+    description:
+      "Texts read by screen readers, key by key; the keys you leave out stay in English",
+    type: "Partial<ImageZoomLabels>",
+    default: "English",
+  },
+  {
     name: "class",
     description: "Class for the `<astro-image-zoom>` element",
     type: "string",
@@ -235,6 +329,15 @@ export const attributes: ReferenceRow[] = [
     name: "data-image-zoom-caption",
     description:
       "Caption shown with the zoomed image; on the `<a>` itself for a link with `data-image-zoom`, where its `title` works too",
+  },
+  {
+    name: "data-image-zoom-width",
+    description:
+      "Width in pixels of the full-size file. With the height, the zoom opens with its final shape at once instead of waiting for the file",
+  },
+  {
+    name: "data-image-zoom-height",
+    description: "Height in pixels of the full-size file",
   },
   {
     name: "data-image-zoom",

@@ -117,13 +117,23 @@ const ZOOM_VARIABLES = [
   "--image-zoom-button-size",
   "--image-zoom-button-radius",
   "--image-zoom-animation-duration",
+  "--image-zoom-easing-in",
+  "--image-zoom-easing-out",
+  "--image-zoom-controls-duration",
+  "--image-zoom-controls-easing",
   "--image-zoom-slide-duration",
   "--image-zoom-slide-easing",
+  "--image-zoom-caption-duration",
+  "--image-zoom-caption-easing",
+  "--image-zoom-caption-enter-opacity",
+  "--image-zoom-caption-enter-x",
+  "--image-zoom-caption-enter-y",
   "--image-zoom-color-scheme",
 ];
 
 // The options of a gallery, from the data-image-zoom-* attributes of its wrapper
 interface ZoomOptions {
+  animation: "zoom" | "fade";
   closeOnBackdrop: boolean;
   closeOnImage: boolean;
   closeOnScroll: boolean;
@@ -146,6 +156,7 @@ function oneOf<T extends string>(
 function readOptions(dataset: DOMStringMap): ZoomOptions {
   const flag = (value: string | undefined): boolean => value !== "false";
   return {
+    animation: oneOf(dataset.imageZoomAnimation, ["zoom", "fade"]),
     closeOnBackdrop: flag(dataset.imageZoomCloseBackdrop),
     closeOnImage: flag(dataset.imageZoomCloseImage),
     closeOnScroll: flag(dataset.imageZoomCloseScroll),
@@ -166,11 +177,13 @@ function readOptions(dataset: DOMStringMap): ZoomOptions {
 const OPEN_ANIMATIONS = [
   "astro-image-zoom-in",
   "astro-image-zoom-clip-in",
+  "astro-image-zoom-fade-in",
   "astro-image-zoom-backdrop-in",
 ];
 const CLOSE_ANIMATIONS = [
   "astro-image-zoom-out",
   "astro-image-zoom-clip-out",
+  "astro-image-zoom-fade-out",
   "astro-image-zoom-backdrop-out",
 ];
 
@@ -263,6 +276,17 @@ function animationsFinished(
         names.includes(animation.animationName),
     );
   return Promise.allSettled(animations.map(({ finished }) => finished));
+}
+
+// Stops the named CSS animations of the element where they are
+function cancelAnimations(element: Element, names: string[]): void {
+  for (const animation of element.getAnimations()) {
+    if (
+      animation instanceof CSSAnimation &&
+      names.includes(animation.animationName)
+    )
+      animation.cancel();
+  }
 }
 
 /**
@@ -479,6 +503,13 @@ function setCrop(img: HTMLImageElement, inset: string | null): void {
   });
 }
 
+// The thumbnail no longer stands in for the image: the file shows in its box, over no background
+function dropPlaceholder(img: HTMLImageElement): void {
+  img.classList.remove("is-holding");
+  img.style.removeProperty("background-image");
+  img.style.removeProperty("background-size");
+}
+
 // Applies a change of style at once, without its transition
 function withoutTransition(element: HTMLElement, change: () => void): void {
   element.style.transition = "none";
@@ -497,6 +528,13 @@ const SIZE_WAIT = 150;
 // file on a slow network costs
 const LOAD_GRACE = 30;
 const DECODE_GRACE = 60;
+
+// When a file that decoded during the opening comes in (watchArrival()): once the image is within
+// ARRIVED of its final width and moves less than RESTING of it in a frame. Close to rest, the first
+// paint of a large file drops no frame anyone sees; a long or springy opening would otherwise hold
+// it for most of its length
+const ARRIVED = 0.05;
+const RESTING = 0.005;
 
 // How much smaller than the slide lets it the thumbnail stands in for the image (fitProvisional()):
 // the full-size file may show more of the picture than its thumbnail (a crop), so the image is
@@ -888,6 +926,7 @@ class Zoom {
   private applyOverlayConfig(): void {
     const { options } = this;
     Object.assign(this.overlay.dataset, {
+      animation: options.animation,
       closeBackdrop: String(options.closeOnBackdrop),
       closeImage: String(options.closeOnImage),
       captionPosition: options.captionPosition,
@@ -934,6 +973,11 @@ class Zoom {
         signal,
       });
     }
+  }
+
+  // The image fades in and out where it lands, instead of flying from its thumbnail
+  private get fades(): boolean {
+    return this.options.animation === "fade";
   }
 
   // From open() until close() starts
@@ -1008,17 +1052,20 @@ class Zoom {
     const transform = flipTransform(sourceRect, finalRect, sourceFit);
 
     this.setAnimationVariables(transform);
-    // Only an image that is cropped or rounded animates its clip-path
+    // Only an image that is cropped or rounded animates its clip-path; a fade has no clip to animate
     this.imageElement.classList.toggle(
       "is-clipped",
-      !isFlatClip(transform.clipPath) ||
-        !isFlatClip(getComputedStyle(this.imageElement).clipPath),
+      !this.fades &&
+        (!isFlatClip(transform.clipPath) ||
+          !isFlatClip(getComputedStyle(this.imageElement).clipPath)),
     );
 
-    // Hide thumbnail instantly and trigger CSS animation simultaneously
-    this.hideThumbnail(sourceImg);
+    // Hide thumbnail instantly and trigger CSS animation simultaneously. A fade does not come from
+    // the thumbnail: it stays on the page, under the overlay
+    if (!this.fades) this.hideThumbnail(sourceImg);
     this.phase = "opening";
     this.overlay.classList.add("is-opening");
+    this.watchArrival(currentOpenId, index, finalRect.width);
 
     // After the animation, switch to the is-open state
     void animationsFinished(this.overlay, OPEN_ANIMATIONS).then(() => {
@@ -1088,6 +1135,7 @@ class Zoom {
     this.imageElement.style.setProperty("--transform-now", image.transform);
     const clipNow = image.clipPath;
     this.imageElement.style.setProperty("--clip-now", clipNow);
+    this.imageElement.style.setProperty("--opacity-now", image.opacity);
 
     // Closed during the opening: the backdrop too, read before the opening stops
     if (closedFrom === "opening") {
@@ -1116,14 +1164,26 @@ class Zoom {
 
     // To the thumbnail of the image on screen, which may not be the one the opening started from.
     // The gallery may have moved to one off screen: the page, hidden under the overlay, scrolls to
-    // it first, so the image lands in view and so does the focus. Not on a scroll close, where the
-    // page is already moving with the gesture
+    // it first, so the image lands in view and so does the focus (a fade needs only the focus). Not
+    // on a scroll close, where the page is already moving with the gesture
     if (!byScroll)
       sourceImg.scrollIntoView({
         block: "nearest",
         inline: "nearest",
         behavior: "instant",
       });
+
+    // A fade leaves where it is: no thumbnail to fly back to, nor an image to take out of the
+    // dialog on a scroll close, where the page moves under it as it fades
+    if (this.fades) {
+      this.imageElement.classList.remove("is-clipped");
+      if (byScroll) this.unlockScroll();
+      void animationsFinished(this.overlay, CLOSE_ANIMATIONS).then(() =>
+        this.finalizeClose(sourceImg),
+      );
+      return;
+    }
+
     const targetRect = sourceImg.getBoundingClientRect();
     const transform = flipTransform(
       targetRect,
@@ -1259,19 +1319,21 @@ class Zoom {
   }
 
   // The decoded file takes the place of the thumbnail that stood in for it. Not while the zoom
-  // animation runs: a large image that paints for the first time mid-animation drops frames (a
-  // retina screen, 2000 px and more), so the file waits out of the box (is-holding, overlay.css)
-  // and comes in when the animations end
+  // animation moves fast: a large image that paints for the first time mid-animation drops frames
+  // (a retina screen, 2000 px and more), so the file waits out of the box (is-holding, overlay.css)
+  // and comes in when the image is close to rest (watchArrival()) or the animations end
   private release(slide: ZoomSlide): void {
-    const { img } = slide;
-    img.classList.remove("is-holding");
-    img.style.removeProperty("background-image");
-    img.style.removeProperty("background-size");
+    dropPlaceholder(slide.img);
     // The size the page said holds, so the file takes its place without a jump. Not if the file has
     // another shape: it is laid out as its own
-    const { naturalWidth, naturalHeight } = img;
+    if (this.hasOtherShape(slide)) this.unfit(slide);
+  }
+
+  // The file has another shape than the size the page said
+  private hasOtherShape(slide: ZoomSlide): boolean {
+    const { naturalWidth, naturalHeight } = slide.img;
     const { dimensions } = slide;
-    if (
+    return Boolean(
       slide.fixedSize &&
       dimensions &&
       naturalWidth > 0 &&
@@ -1279,9 +1341,45 @@ class Zoom {
       Math.abs(
         naturalWidth / naturalHeight / (dimensions.width / dimensions.height) -
           1,
-      ) > 0.02
+      ) > 0.02,
+    );
+  }
+
+  // Follows the image on screen during the opening: once it is close to rest (ARRIVED, RESTING),
+  // a file that decoded in the meantime comes in and unfolds from there (arrive()), instead of
+  // waiting for the end of a long or springy animation. Read from the box on screen, not from the
+  // time: a spring reaches its size early, then swings around it
+  private watchArrival(openId: number, index: number, width: number): void {
+    const slide = this.slides[index];
+    if (!slide?.img.classList.contains("is-holding")) return;
+    let previous = Number.NaN;
+    const check = () => {
+      if (openId !== this.openId || this.phase !== "opening") return;
+      const now = slide.img.getBoundingClientRect().width;
+      const near = Math.abs(now / width - 1) <= ARRIVED;
+      const still = Math.abs(now - previous) <= RESTING * width;
+      previous = now;
+      if (near && still && slide.decoded && this.arrive(slide)) return;
+      requestAnimationFrame(check);
+    };
+    requestAnimationFrame(check);
+  }
+
+  // The file comes in before the end of the opening, and the rest of the picture unfolds from the
+  // crop the thumbnail showed. The crop of the opening stops where it is, nearly at its end, so the
+  // unfold transition runs from there (an animation would hide it). Not when the image changes
+  // shape: that waits for the end of the opening (settle())
+  private arrive(slide: ZoomSlide): boolean {
+    const { img } = slide;
+    if (
+      slide.provisional ||
+      img.classList.contains("is-reshaping") ||
+      this.hasOtherShape(slide)
     )
-      this.unfit(slide);
+      return false;
+    cancelAnimations(img, ["astro-image-zoom-clip-in"]);
+    this.unfold(slide);
+    return true;
   }
 
   // Leaves the image to the size its file and the slide give it
@@ -1423,12 +1521,18 @@ class Zoom {
       this.reshape(index, slide);
     }
     if (this.phase === "open" && slide.decoded) {
-      // The zoom animation that held the crop has just gone: commit the style without it, or the
-      // unfold would start from a style that still had the animation, and jump instead of running
-      void getComputedStyle(slide.img).clipPath;
-      this.release(slide);
-      slide.img.style.removeProperty("--_image-zoom-crop");
+      // The zoom animation that held the crop has just gone
+      this.unfold(slide);
     }
+  }
+
+  // The decoded file takes its place, and the rest of the picture unfolds from the crop. The style
+  // is committed first: the unfold would otherwise start from a style that still had the animation
+  // that held the crop, and jump instead of running
+  private unfold(slide: ZoomSlide): void {
+    void getComputedStyle(slide.img).clipPath;
+    this.release(slide);
+    slide.img.style.removeProperty("--_image-zoom-crop");
   }
 
   // The image leaves the shape of its thumbnail for its own, with the thumbnail as its placeholder
@@ -1438,6 +1542,8 @@ class Zoom {
   // else it waits for the animation to end (settle() runs again)
   private reshape(index: number, slide: ZoomSlide): void {
     const { img } = slide;
+    // A fade animates the whole image, not a part of it to follow: it takes its shape at the end
+    if (this.phase === "opening" && this.fades) return;
     if (this.phase === "opening") {
       const thumbnail = this.getThumbnail(index);
       const hasPart =
@@ -1447,16 +1553,11 @@ class Zoom {
       if (!hasPart) return;
     }
     const first = img.getBoundingClientRect();
-    if (this.phase === "opening") {
-      for (const animation of img.getAnimations()) {
-        if (
-          animation instanceof CSSAnimation &&
-          (animation.animationName === "astro-image-zoom-in" ||
-            animation.animationName === "astro-image-zoom-clip-in")
-        )
-          animation.cancel();
-      }
-    }
+    if (this.phase === "opening")
+      cancelAnimations(img, [
+        "astro-image-zoom-in",
+        "astro-image-zoom-clip-in",
+      ]);
     img.style.removeProperty("width");
     img.style.removeProperty("height");
     img.style.removeProperty("object-fit");
@@ -1495,11 +1596,9 @@ class Zoom {
     const source = this.getThumbnail(index)?.currentSrc;
     if (!source || img.src === source) return Promise.resolve();
     // The thumbnail is the whole image now: no placeholder behind it, nor its crop, and its own size
-    img.classList.remove("is-holding");
+    dropPlaceholder(img);
     const slide = this.slides[index];
     if (slide) this.unfit(slide);
-    img.style.removeProperty("background-image");
-    img.style.removeProperty("background-size");
     setCrop(img, null);
     img.src = source;
     return img.decode().catch(() => {
@@ -1570,9 +1669,11 @@ class Zoom {
     const index = Math.round(this.track.scrollLeft / width);
     if (index === this.state.currentIndex || !this.slides[index]) return;
 
-    // Only the thumbnail of the image on screen stays hidden
-    this.showThumbnail(this.getThumbnail(this.state.currentIndex));
-    this.hideThumbnail(this.getThumbnail(index));
+    // Only the thumbnail of the image on screen stays hidden; with a fade none is
+    if (!this.fades) {
+      this.showThumbnail(this.getThumbnail(this.state.currentIndex));
+      this.hideThumbnail(this.getThumbnail(index));
+    }
 
     this.renderActive(index);
     this.emit("change");
@@ -1602,6 +1703,7 @@ class Zoom {
 
   // Marks the slide on screen and updates what depends on it: caption and buttons
   private renderActive(index: number): void {
+    const from = index < this.state.currentIndex ? "previous" : "next";
     this.state.currentIndex = index;
 
     this.slides.forEach(({ figure }, i) => {
@@ -1609,8 +1711,23 @@ class Zoom {
       figure.setAttribute("aria-hidden", String(i !== index));
     });
 
-    this.captionElement.textContent = this.state.images[index]?.caption ?? "";
+    this.renderCaption(this.state.images[index]?.caption ?? "", from);
     this.updateNavigationButtons();
+  }
+
+  // The caption of the slide on screen. A new text in the open zoom comes in as the
+  // --image-zoom-caption-enter-* variables say (overlay.css), from the side of the image it belongs to:
+  // the class comes off and back on to start it again, also midway
+  private renderCaption(text: string, from: "previous" | "next"): void {
+    const caption = this.captionElement;
+    if (caption.textContent === text) return;
+
+    caption.textContent = text;
+    caption.dataset.from = from;
+    caption.classList.remove("is-changing");
+    if (this.phase !== "open" || !text) return;
+    void caption.offsetWidth;
+    caption.classList.add("is-changing");
   }
 
   // The navigation bar: arrows and counter, each one on its own, only for galleries
@@ -1886,6 +2003,8 @@ class Zoom {
     this.track.classList.remove("is-sliding");
     this.track.style.removeProperty("--_image-zoom-slide-offset");
     this.captionElement.textContent = "";
+    this.captionElement.classList.remove("is-changing");
+    delete this.captionElement.dataset.from;
     this.slides = [];
 
     // Restore focus. close() may have given it back already to the link a click focused, with the

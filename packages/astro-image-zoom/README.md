@@ -342,7 +342,10 @@ imageZoom({ showCounter: false, theme: { backgroundColor: "black" } });
 ```
 
 Starlight's colors are only defaults: the [CSS variables](#css-variables) of your site replace
-them, and `theme` replaces both, color by color.
+them, and `theme` replaces both, color by color. They are the one rule the package puts on the page,
+in the `image-zoom` cascade layer and at zero specificity, so unlayered CSS of yours always wins. If
+you set the variables inside a layer of your own, declare the order first, so yours comes after:
+`@layer image-zoom, components;`.
 
 ### Translations
 
@@ -391,6 +394,7 @@ keep only one of them.
 | `theme.captionColor`          | `string`                   | light or dark, following the system | Caption text color (`--image-zoom-caption-color`)                                                                                          |
 | `theme.captionBackground`     | `string`                   | translucent, following the system   | Caption box background (`--image-zoom-caption-bg`)                                                                                         |
 | `animationDuration`           | `number`                   | —                                   | Animation duration in milliseconds; overrides `--image-zoom-animation-duration` (300ms by default)                                         |
+| `animation`                   | `'zoom' \| 'fade'`         | `'zoom'`                            | How the image opens and closes: it grows from its thumbnail, or fades in where it lands and the thumbnail stays on the page                |
 | `closeOnBackdrop`             | `boolean`                  | `true`                              | Close when clicking backdrop                                                                                                               |
 | `closeOnImage`                | `boolean`                  | `true`                              | Close when clicking the zoomed image                                                                                                       |
 | `closeOnScroll`               | `boolean`                  | `true`                              | Close on a wheel or touchpad scroll, or a vertical swipe                                                                                   |
@@ -448,10 +452,11 @@ The caption is your own text, so it is not translated by the component.
 
 ## Styling
 
-The package's styles live in the `image-zoom` cascade layer, so any unlayered CSS of yours wins.
-To place it in your own order, declare the layer first (`@layer reset, image-zoom, components;`).
-The overlay itself lives in a shadow root, which your rules don't reach: the variables and the
-parts below are the way in.
+The overlay lives in a shadow root, which the CSS of your site doesn't reach: the variables and the
+parts below are the way in. The component adds no stylesheet to your page ([Your page](#your-page)),
+so there is nothing to order with your cascade layers: the `image-zoom` layer the package uses
+lives inside its shadow roots, apart from the layers of your page. Only the
+[Starlight plugin](#starlight) puts a rule on the page.
 
 > Before 0.1.0-beta.12 the variables were named `--zoom-*`: `--zoom-bg` is now `--image-zoom-bg`,
 > and so on for every one, with no fallback to the old names.
@@ -470,8 +475,17 @@ Override the default styles with CSS variables:
   --image-zoom-caption-color: #fff;
   --image-zoom-caption-bg: rgba(0, 0, 0, 0.9);
   --image-zoom-animation-duration: 400ms; /* ms or s; the animationDuration prop wins over it */
+  --image-zoom-easing-in: cubic-bezier(0.2, 0, 0.2, 1); /* the curve of the opening */
+  --image-zoom-easing-out: cubic-bezier(0.4, 0, 0.2, 1); /* and of the closing */
+  --image-zoom-controls-duration: 120ms; /* the fade of the buttons and the caption; 40% of the zoom by default */
+  --image-zoom-controls-easing: ease-out; /* its curve; ease-out in and ease-in out by default */
   --image-zoom-slide-duration: 400ms; /* arrows and keys: the glide to the next image */
   --image-zoom-slide-easing: cubic-bezier(0.2, 0, 0, 1);
+  --image-zoom-caption-duration: 400ms; /* the caption of each new image coming in; the slide by default, 0s changes it at once */
+  --image-zoom-caption-easing: ease-out; /* the curve of the slide by default */
+  --image-zoom-caption-enter-opacity: 0; /* where a new caption starts: its opacity, */
+  --image-zoom-caption-enter-x: 0px; /* a parallax from the side its image comes from, */
+  --image-zoom-caption-enter-y: 0px; /* and a rise into place (also on opening), from above at the top */
 
   /* Layout */
   --image-zoom-padding: 0; /* space between the zoomed image and the screen edges */
@@ -584,8 +598,8 @@ astro-image-zoom-overlay::part(caption) {
   image itself, and the neighbors of a gallery load once the opening animation ends, so no large
   image decodes or paints under it.
 - With `data-image-zoom-width` and `-height` the zoom does not wait for the size either: it opens with
-  the final shape at once. The file that loads while the zoom animates comes in when the animation
-  ends, so a large image does not paint for the first time mid-animation.
+  the final shape at once. The file that loads while the zoom animates comes in once the image is
+  nearly at rest, so a large image does not paint for the first time while it moves fast.
 - The file is asked for before the click: once a link has been pointed at or focused for a moment,
   or pressed, the zoom asks for its full-size file, so the click finds it in the cache. It is
   skipped with the browser's data saver on, and left to the site when Astro's prefetch

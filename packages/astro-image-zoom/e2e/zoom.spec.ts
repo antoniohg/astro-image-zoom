@@ -747,6 +747,126 @@ test.describe("gallery", () => {
     await expect(counter(page)).toHaveText("2 / 3");
   });
 
+  test("fades in the caption of the next slide", async ({ page }) => {
+    await openZoom(page, "gallery");
+    // The first caption comes with the controls, not with an entrance of its own
+    await expect(caption(page)).not.toHaveClass(/\bis-changing\b/);
+
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveText("Second");
+    await expect(caption(page)).toHaveCSS(
+      "animation-name",
+      "astro-image-zoom-caption-enter",
+    );
+    // With the glide of the images by default
+    await expect(caption(page)).toHaveCSS("animation-duration", "0.4s");
+    await expect
+      .poll(() =>
+        caption(page).evaluate((element) => element.getAnimations().length),
+      )
+      .toBe(0);
+    await expect(caption(page)).toHaveCSS("opacity", "1");
+    await expect(caption(page)).toHaveCSS("translate", "none");
+
+    // Closed, it starts again without it
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+    await openZoom(page, "gallery");
+    await expect(caption(page)).not.toHaveClass(/\bis-changing\b/);
+  });
+
+  test("brings the caption in from where its variables say", async ({
+    page,
+  }) => {
+    // Slowed down and taken back to its start, to read where each entrance starts
+    for (const id of ["caption-rise", "caption-top", "caption-parallax"])
+      await page
+        .locator(`#${id} astro-image-zoom`)
+        .evaluate((element: HTMLElement) =>
+          element.style.setProperty("--image-zoom-caption-duration", "10s"),
+        );
+    const start = () =>
+      caption(page).evaluate((element: HTMLElement) => {
+        const [animation] = element.getAnimations();
+        animation?.pause();
+        if (animation) animation.currentTime = 0;
+        const style = getComputedStyle(element);
+        const [x = "0", y = "0"] = style.translate.split(" ");
+        // WebKit may read it a hair past the start
+        const round = (value: number) => Math.round(value * 10) / 10;
+        return {
+          opacity: round(Number(style.opacity)),
+          x: round(Number.parseFloat(x)),
+          y: round(Number.parseFloat(y)),
+        };
+      });
+
+    // A rise: from below on opening, with the controls, and again for each new image
+    await links(page, "caption-rise").first().click();
+    await expect(caption(page)).toHaveCSS(
+      "animation-name",
+      "astro-image-zoom-caption-rise",
+    );
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveText("Rises two");
+    await expect(caption(page)).toHaveCSS(
+      "animation-name",
+      "astro-image-zoom-caption-enter",
+    );
+    expect(await start()).toMatchObject({ opacity: 0, x: 0, y: 8 });
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+
+    // At the top it comes from above, and an opacity of 1 keeps it visible
+    await openZoom(page, "caption-top");
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveText("From above two");
+    expect(await start()).toMatchObject({ opacity: 1, y: -8 });
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+
+    // A parallax: from the side the image comes from
+    await openZoom(page, "caption-parallax");
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveText("Parallax two");
+    expect((await start()).x).toBe(160);
+    await page.keyboard.press("ArrowLeft");
+    await expect(caption(page)).toHaveText("Parallax one");
+    expect((await start()).x).toBe(-160);
+  });
+
+  test("takes the timing of the caption from its variables", async ({
+    page,
+  }) => {
+    await page
+      .locator("#gallery astro-image-zoom")
+      .evaluate((element: HTMLElement) => {
+        element.style.setProperty("--image-zoom-caption-duration", "700ms");
+        element.style.setProperty("--image-zoom-caption-easing", "linear");
+      });
+    await openZoom(page, "gallery");
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveCSS("animation-duration", "0.7s");
+    await expect(caption(page)).toHaveCSS(
+      "animation-timing-function",
+      "linear",
+    );
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+
+    // 0s changes it at once
+    await page
+      .locator("#gallery astro-image-zoom")
+      .evaluate((element: HTMLElement) =>
+        element.style.setProperty("--image-zoom-caption-duration", "0s"),
+      );
+    await openZoom(page, "gallery");
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveText("Second");
+    await expect(caption(page)).toHaveCSS("animation-duration", "0s");
+  });
+
   test("takes the caption from the figcaption or the title of the image", async ({
     page,
   }) => {
@@ -1159,7 +1279,7 @@ test.describe("gallery", () => {
     expect(landscape.width / landscape.height).toBeCloseTo(1.6, 1);
   });
 
-  test("keeps the file that loads during the opening out of the box until it ends", async ({
+  test("keeps the file that loads during the opening out of the box until the image nearly rests", async ({
     page,
   }) => {
     // A slow opening, and a file whose decoding waits
@@ -1174,17 +1294,47 @@ test.describe("gallery", () => {
     await holdDecode(page);
     await links(page, "gallery").nth(1).click();
     await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+    // The unfold lasts 300ms at most: slowed, so the check below finds it running
+    await page
+      .locator("astro-image-zoom-overlay")
+      .evaluate((host: HTMLElement) =>
+        host.style.setProperty(
+          "--_image-zoom-settle",
+          "2s cubic-bezier(0.2, 0, 0.2, 1)",
+        ),
+      );
 
-    // It decodes mid-animation: the thumbnail stays and the file waits, no first paint of it
+    // It decodes while the image still moves fast: the thumbnail stays and the file waits, no
+    // first paint of it
     await releaseDecode(page);
     const image = zoomedImage(page);
     await expect(image).toHaveClass(/is-holding/);
     await expect(image).toHaveCSS("background-image", /square\.svg/);
 
-    // The animations end: the file comes in, and the rest of the picture unfolds from the crop of
-    // the thumbnail with a transition, not in a jump
-    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
-    await expect(image).not.toHaveClass(/is-holding/);
+    // Close to rest, before the opening ends, the file comes in, at nearly its final size
+    const arrival = await image.evaluate(
+      (img: HTMLImageElement) =>
+        new Promise<{ phase: string; width: number; final: number }>(
+          (resolve) => {
+            const dialog = img.closest("dialog")!;
+            const wait = () => {
+              if (img.classList.contains("is-holding"))
+                return requestAnimationFrame(wait);
+              resolve({
+                phase: dialog.className,
+                width: img.getBoundingClientRect().width,
+                final: img.offsetWidth,
+              });
+            };
+            wait();
+          },
+        ),
+    );
+    expect(arrival.phase).toMatch(/\bis-opening\b/);
+    expect(Math.abs(arrival.width / arrival.final - 1)).toBeLessThan(0.06);
+
+    // The rest of the picture unfolds from the crop of the thumbnail with a transition, not in a
+    // jump
     await expect(image).toHaveCSS("background-image", "none");
     await expect
       .poll(() =>
@@ -1197,6 +1347,7 @@ test.describe("gallery", () => {
         ),
       )
       .toContain("clip-path");
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
   });
 
   test("opens with the final shape when the page says the size of the file", async ({
@@ -1227,6 +1378,25 @@ test.describe("gallery", () => {
     const decoded = (await image.boundingBox())!;
     expect(decoded.width).toBeCloseTo(box.width, 0);
     expect(decoded.height).toBeCloseTo(box.height, 0);
+  });
+
+  test("keeps the shape the page says on a narrow screen", async ({ page }) => {
+    // A landscape file on a phone: the width limits it. The image is sized before its file starts
+    // loading, when it does not shrink with its slide on its own
+    await page.setViewportSize({ width: 390, height: 844 });
+    await links(page, "gallery")
+      .nth(1)
+      .evaluate((link: HTMLAnchorElement) => {
+        link.href = "/images/landscape.svg";
+        const img = link.querySelector("img")!;
+        img.dataset.imageZoomWidth = "1600";
+        img.dataset.imageZoomHeight = "1000";
+      });
+
+    await openZoom(page, "gallery", 1);
+    const box = (await zoomedImage(page).boundingBox())!;
+    expect(box.width).toBeLessThanOrEqual(390);
+    expect(box.width / box.height).toBeCloseTo(1.6, 1);
   });
 
   test("asks for the full-size file when its link is pointed at", async ({
@@ -1380,9 +1550,14 @@ test.describe("gallery", () => {
     // Slow animations, so that a long frame on a busy machine cannot skip one whole
     await page
       .locator("astro-image-zoom-overlay")
-      .evaluate((host: HTMLElement) =>
-        host.style.setProperty("--image-zoom-animation-duration", "10s"),
-      );
+      .evaluate((host: HTMLElement) => {
+        host.style.setProperty("--image-zoom-animation-duration", "10s");
+        // The reshape and the unfold last 300ms at most: slowed on their own
+        host.style.setProperty(
+          "--_image-zoom-settle",
+          "10s cubic-bezier(0.2, 0, 0.2, 1)",
+        );
+      });
 
     // Held partway through the reshape, by a watcher set before the image decodes: on a slow
     // machine the reshape is over before a later call reaches the page
@@ -1504,9 +1679,14 @@ test.describe("gallery", () => {
     // Slow animations, so that a long frame on a busy machine cannot skip one whole
     await page
       .locator("astro-image-zoom-overlay")
-      .evaluate((host: HTMLElement) =>
-        host.style.setProperty("--image-zoom-animation-duration", "10s"),
-      );
+      .evaluate((host: HTMLElement) => {
+        host.style.setProperty("--image-zoom-animation-duration", "10s");
+        // The reshape and the unfold last 300ms at most: slowed on their own
+        host.style.setProperty(
+          "--_image-zoom-settle",
+          "10s cubic-bezier(0.2, 0, 0.2, 1)",
+        );
+      });
 
     // Held partway through the unfolding, by a watcher set before the image decodes: on a slow
     // machine the unfolding is over before a later call reaches the page
@@ -1837,6 +2017,198 @@ test.describe("theming", () => {
       "rgb(30, 0, 40)",
     );
   });
+
+  test("fades the controls in the time and the curve of --image-zoom-controls-duration and --image-zoom-controls-easing", async ({
+    page,
+  }) => {
+    const close = page.locator(".astro-image-zoom-close");
+    // Their own fade, from the variables set around the gallery
+    await openZoom(page, "variables");
+    await expect(close).toHaveCSS("transition-duration", /^0\.7s,/);
+    await expect(close).toHaveCSS("transition-timing-function", /^linear,/);
+
+    // Three quarters of it when closing
+    await page
+      .locator("astro-image-zoom-overlay")
+      .evaluate((host: HTMLElement) =>
+        host.style.setProperty("--image-zoom-animation-duration", "10s"),
+      );
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).toHaveClass(/\bis-closing\b/);
+    await expect(close).toHaveCSS("transition-duration", "0.525s");
+    await expect(close).toHaveCSS("transition-timing-function", "linear");
+    await page
+      .locator("astro-image-zoom-overlay")
+      .evaluate((host: HTMLElement) =>
+        host.style.setProperty("--image-zoom-animation-duration", "1ms"),
+      );
+    await expectClosed(page);
+
+    // 40% of the zoom by default: 0.12s for 300ms
+    await openZoom(page, "single");
+    await expect(close).toHaveCSS("transition-duration", /^0\.12s,/);
+    await expect(close).toHaveCSS("transition-timing-function", /^ease-out,/);
+  });
+
+  test("opens and closes with the curves of --image-zoom-easing-in and --image-zoom-easing-out", async ({
+    page,
+  }) => {
+    const backdrop = page.locator(".astro-image-zoom-backdrop");
+    // Slow animations, so the opening and the closing last long enough to be read; the overlay
+    // takes the duration from around the gallery on open, and from its host later
+    const slow = (duration: string) =>
+      page
+        .locator("astro-image-zoom-overlay")
+        .evaluate(
+          (host: HTMLElement, value) =>
+            host.style.setProperty("--image-zoom-animation-duration", value),
+          duration,
+        );
+    await page
+      .locator("#variables")
+      .evaluate((section: HTMLElement) =>
+        section.style.setProperty("--image-zoom-animation-duration", "10s"),
+      );
+
+    await links(page, "variables").click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+    await expect(zoomedImage(page)).toHaveCSS(
+      "animation-timing-function",
+      "linear",
+    );
+    await expect(backdrop).toHaveCSS("animation-timing-function", "linear");
+    await slow("1ms");
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+
+    await slow("10s");
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).toHaveClass(/\bis-closing\b/);
+    await expect(zoomedImage(page)).toHaveCSS(
+      "animation-timing-function",
+      "ease-in",
+    );
+    await expect(backdrop).toHaveCSS("animation-timing-function", "ease-in");
+    await slow("1ms");
+    await expectClosed(page);
+
+    // The default curves for a gallery without them
+    await links(page, "single").click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+    await expect(zoomedImage(page)).toHaveCSS(
+      "animation-timing-function",
+      "cubic-bezier(0.2, 0, 0.2, 1)",
+    );
+  });
+});
+
+test.describe("fade", () => {
+  // Slow animations, so the opening and the closing can be read: from around the gallery on
+  // open, from the host of the overlay later
+  const slow = (page: Page, duration: string) =>
+    page
+      .locator("astro-image-zoom-overlay")
+      .evaluate(
+        (host: HTMLElement, value) =>
+          host.style.setProperty("--image-zoom-animation-duration", value),
+        duration,
+      );
+  const center = async (page: Page) => {
+    const box = (await zoomedImage(page).boundingBox())!;
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  };
+
+  test("fades the image in where it lands, and leaves the thumbnail on the page", async ({
+    page,
+  }) => {
+    await page
+      .locator("#fade")
+      .evaluate((section: HTMLElement) =>
+        section.style.setProperty("--image-zoom-animation-duration", "10s"),
+      );
+    await links(page, "fade").first().click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+    await expect(zoomedImage(page)).toHaveCSS(
+      "animation-name",
+      "astro-image-zoom-fade-in",
+    );
+    // In the middle of the screen from the start, not on the thumbnail
+    const viewport = page.viewportSize()!;
+    const { x, y } = await center(page);
+    expect(Math.abs(x - viewport.width / 2)).toBeLessThan(2);
+    expect(Math.abs(y - viewport.height / 2)).toBeLessThan(2);
+    await expect(links(page, "fade").first().locator("img")).toHaveCSS(
+      "opacity",
+      "1",
+    );
+    await slow(page, "1ms");
+    await expect(dialog(page)).toHaveClass(/\bis-open\b/);
+  });
+
+  test("fades out where it is, also when closed during the opening", async ({
+    page,
+  }) => {
+    await page
+      .locator("#fade")
+      .evaluate((section: HTMLElement) =>
+        section.style.setProperty("--image-zoom-animation-duration", "10s"),
+      );
+    await links(page, "fade").first().click();
+    await expect(dialog(page)).toHaveClass(/\bis-opening\b/);
+
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).toHaveClass(/\bis-closing\b/);
+    await expect(zoomedImage(page)).toHaveCSS(
+      "animation-name",
+      "astro-image-zoom-fade-out",
+    );
+    // From the opacity it had, in place: it does not fly to the thumbnail
+    const opacity = Number(
+      await zoomedImage(page).evaluate(
+        (img: HTMLImageElement) => getComputedStyle(img).opacity,
+      ),
+    );
+    expect(opacity).toBeLessThan(1);
+    const viewport = page.viewportSize()!;
+    const { x } = await center(page);
+    expect(Math.abs(x - viewport.width / 2)).toBeLessThan(2);
+
+    await slow(page, "1ms");
+    await expectClosed(page);
+    await expect(links(page, "fade").first()).toBeFocused();
+  });
+
+  test("scrolls the page to the thumbnail when it is off screen, so the focus lands in view after a fade", async ({
+    page,
+  }) => {
+    await openZoom(page, "fade");
+    await page.evaluate(() =>
+      window.scrollTo(0, document.documentElement.scrollHeight),
+    );
+    await expect(links(page, "fade").first()).not.toBeInViewport();
+
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+    await expect(links(page, "fade").first().locator("img")).toBeInViewport();
+    await expect(links(page, "fade").first()).toBeFocused();
+  });
+
+  test("fades out on a scroll close, without taking the image out of the dialog", async ({
+    page,
+  }) => {
+    await openZoom(page, "fade");
+    await page.mouse.move(640, 360);
+    await page.mouse.wheel(0, 400);
+    await expect(dialog(page)).toHaveClass(/\bis-closing\b/);
+    expect(
+      await page
+        .locator("astro-image-zoom-overlay")
+        .evaluate(
+          (host: HTMLElement) =>
+            host.shadowRoot!.querySelectorAll(".is-detached").length,
+        ),
+    ).toBe(0);
+    await expectClosed(page);
+  });
 });
 
 test.describe("reduced motion", () => {
@@ -1845,6 +2217,17 @@ test.describe("reduced motion", () => {
   test("opens and closes without animating", async ({ page }) => {
     await openZoom(page, "single");
     await expect(zoomedImage(page)).toHaveCSS("animation-duration", "0s");
+    // A fade too
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+    await openZoom(page, "fade");
+    await expect(zoomedImage(page)).toHaveCSS("animation-duration", "0s");
+
+    // The controls appear at once too, even with a fade of their own
+    await expect(page.locator(".astro-image-zoom-close")).toHaveCSS(
+      "transition-duration",
+      /^0s,/,
+    );
     await page.keyboard.press("Escape");
     await expectClosed(page);
 
@@ -1853,6 +2236,31 @@ test.describe("reduced motion", () => {
     await page.keyboard.press("ArrowRight");
     await expect(counter(page)).toHaveText("2 / 3");
     await expect(zoomedImage(page)).toHaveCSS("transition-duration", "0s");
+    // And the caption changes with it
+    await expect(caption(page)).toHaveText("Second");
+    await expect(caption(page)).toHaveCSS("animation-duration", "0s");
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+
+    // A caption that rises is in place at once, on opening and on each new image
+    await openZoom(page, "caption-rise");
+    await expect(caption(page)).toHaveCSS("animation-duration", "0s");
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveText("Rises two");
+    await expect(caption(page)).toHaveCSS("animation-duration", "0s");
+    await page.keyboard.press("Escape");
+    await expectClosed(page);
+
+    // And so is one in parallax, whatever its own duration says
+    await page
+      .locator("#caption-parallax astro-image-zoom")
+      .evaluate((element: HTMLElement) =>
+        element.style.setProperty("--image-zoom-caption-duration", "700ms"),
+      );
+    await openZoom(page, "caption-parallax");
+    await page.keyboard.press("ArrowRight");
+    await expect(caption(page)).toHaveText("Parallax two");
+    await expect(caption(page)).toHaveCSS("animation-duration", "0s");
     await page.keyboard.press("Escape");
     await expectClosed(page);
   });
